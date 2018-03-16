@@ -82,7 +82,7 @@ endif ( )
 # create the dynamic graphblas library.  Requires ANSI C11
 file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated/*.c" )
 add_library ( graphblas SHARED ${GRAPHBLAS_SOURCES} )
-SET_TARGET_PROPERTIES ( graphblas PROPERTIES VERSION 2.0.0
+SET_TARGET_PROPERTIES ( graphblas PROPERTIES VERSION 2.0.1
     SOVERSION 2
     C_STANDARD_REQUIRED 11
     PUBLIC_HEADER "Include/GraphBLAS.h" )
@@ -90,7 +90,7 @@ set_property ( TARGET graphblas PROPERTY C_STANDARD 11 )
 
 # create the static graphblas library.  Requires ANSI C11
 add_library ( graphblas_static STATIC ${GRAPHBLAS_SOURCES} )
-SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES VERSION 2.0.0
+SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES VERSION 2.0.1
     OUTPUT_NAME graphblas
     POSITION_INDEPENDENT_CODE OFF
     SOVERSION 2

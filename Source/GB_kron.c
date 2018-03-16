@@ -62,6 +62,11 @@ GrB_Info GB_kron                    // C<Mask> = accum (C, kron(A,B))
         return (info) ;
     }
 
+    // delete any lingering zombies and assemble any pending tuples in A and B,
+    // so that cnz = NNZ(A) * NNZ(B) can be computed
+    APPLY_PENDING_UPDATES (A) ;
+    APPLY_PENDING_UPDATES (B) ;
+
     // check the dimensions of C
     int64_t anrows = (A_transpose) ? A->ncols : A->nrows ;
     int64_t ancols = (A_transpose) ? A->nrows : A->ncols ;
@@ -89,8 +94,6 @@ GrB_Info GB_kron                    // C<Mask> = accum (C, kron(A,B))
     // delete any lingering zombies and assemble any pending tuples
     APPLY_PENDING_UPDATES (C) ;
     APPLY_PENDING_UPDATES (Mask) ;
-    APPLY_PENDING_UPDATES (A) ;
-    APPLY_PENDING_UPDATES (B) ;
 
     //--------------------------------------------------------------------------
     // allocate the output matrix T

@@ -1,3 +1,8 @@
+Version 2.0.1: Mar 15, 2018
+
+    * bug fix in GxB_kron: computed C incorrectly when A and B had pending
+        updates on input
+
 Version 2.0.0: Mar 12, 2018
 
     * moved opaque object definitions from Include/GraphBLAS.h to Source/GB.h
