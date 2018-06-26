@@ -74,7 +74,7 @@
 // The version of this implementation:
 #define GXB_IMPLEMENTATION_MAJOR 2
 #define GXB_IMPLEMENTATION_MINOR 0
-#define GXB_IMPLEMENTATION_SUB   1
+#define GXB_IMPLEMENTATION_SUB   2
 #define GXB_IMPLEMENTATION \
         GXB_VERSION (GXB_IMPLEMENTATION_MAJOR, \
                      GXB_IMPLEMENTATION_MINOR, \
@@ -87,7 +87,7 @@
 "http://suitesparse.com  Dept of Computer Sci. & Eng, Texas A&M University\n"
 
 // and its date:
-#define GXB_DATE "Mar 15, 2018"
+#define GXB_DATE "June 25, 2018"
 
 // The GraphBLAS license for this particular implementation of GraphBLAS:
 #define GXB_LICENSE \
