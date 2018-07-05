@@ -71,10 +71,10 @@
     (((major)*1000ULL + (minor))*1000ULL + (sub))
 
 // The version of this implementation:
-#define GXB_DATE "July 4, 2018"
-#define GXB_IMPLEMENTATION_MAJOR 2
-#define GXB_IMPLEMENTATION_MINOR 0
-#define GXB_IMPLEMENTATION_SUB   3
+#define GXB_DATE "@GraphBLAS_DATE@"
+#define GXB_IMPLEMENTATION_MAJOR @GraphBLAS_VERSION_MAJOR@
+#define GXB_IMPLEMENTATION_MINOR @GraphBLAS_VERSION_MINOR@
+#define GXB_IMPLEMENTATION_SUB   @GraphBLAS_VERSION_SUB@
 
 #define GXB_IMPLEMENTATION \
         GXB_VERSION (GXB_IMPLEMENTATION_MAJOR, \
@@ -108,10 +108,10 @@
 //------------------------------------------------------------------------------
 
 // This implementation conforms to the following GraphBLAS API version:
-#define GXB_SPEC_DATE "Nov 14, 2017"
-#define GXB_MAJOR 1
-#define GXB_MINOR 1
-#define GXB_SUB   0
+#define GXB_SPEC_DATE "@GraphBLAS_API_DATE@"
+#define GXB_MAJOR @GraphBLAS_API_VERSION_MAJOR@
+#define GXB_MINOR @GraphBLAS_API_VERSION_MINOR@
+#define GXB_SUB   @GraphBLAS_API_VERSION_SUB@
 
 #define GXB GXB_VERSION(GXB_MAJOR, GXB_MINOR, GXB_SUB)
 
