@@ -13,6 +13,9 @@
 // delete them.  It does not tolerate pending tuples, so if they are present,
 // all zombies are deleted and all pending tuples are assembled.
 
+// This function does not need to know if A is hypersparse or not, and its
+// result is the same if A is in CSR or CSC format.
+
 #include "GB.h"
 
 GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
@@ -42,28 +45,28 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     // but this could be done only if the reduce monoid is the same as the
     // pending operator.
 
-    if (PENDING (A)) APPLY_PENDING_UPDATES (A) ;
+    WAIT_PENDING (A) ;
     ASSERT (ZOMBIES_OK (A)) ;       // Zombies are tolerated, and not deleted
-    RETURN_IF_NULL_OR_UNINITIALIZED (reduce) ;
-    RETURN_IF_UNINITIALIZED (accum) ;
+    RETURN_IF_NULL_OR_FAULTY (reduce) ;
+    RETURN_IF_FAULTY (accum) ;
     RETURN_IF_NULL (c) ;
 
-    ASSERT_OK (GB_check (ctype, "type of scalar c", 0)) ;
-    ASSERT_OK (GB_check (reduce, "reduce for reduce_to_scalar", 0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_to_scalar", 0)) ;
-    ASSERT_OK (GB_check (A, "A for reduce_to_scalar", 0)) ;
+    ASSERT_OK (GB_check (ctype, "type of scalar c", D0)) ;
+    ASSERT_OK (GB_check (reduce, "reduce for reduce_to_scalar", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_to_scalar", D0)) ;
+    ASSERT_OK (GB_check (A, "A for reduce_to_scalar", D0)) ;
 
     // check domains and dimensions for c = accum (c,twork)
     GrB_Type ztype = reduce->op->ztype ;
     GrB_Info info = GB_compatible (ctype, NULL, NULL, accum, ztype) ;
     if (info != GrB_SUCCESS)
-    {
+    { 
         return (info) ;
     }
 
     // twork = reduce (twork,A) must be compatible
     if (!GB_Type_compatible (A->type, ztype))
-    {
+    { 
         return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
             "incompatible type for reduction operator z=%s(x,y):\n"
             "input of type [%s]\n"
@@ -169,7 +172,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
             if (A->nzombies == 0)
             {
                 for (int64_t p = 0 ; p < anz ; p++)
-                {
+                { 
                     // twork += A(i,j)
                     ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
                     // wwork = twork
@@ -184,7 +187,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 {
                     // twork += A(i,j) if not a zombie
                     if (IS_NOT_ZOMBIE (Ai [p]))
-                    {
+                    { 
                         // wwork = twork
                         memcpy (wwork, twork, zsize) ;
                         // twork = wwork + Ax [p]
@@ -209,7 +212,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         if (A->nzombies == 0)
         {
             for (int64_t p = 0 ; p < anz ; p++)
-            {
+            { 
                 // twork += (ztype) A(i,j)
                 ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
                 // awork = (ztype) Ax [p]
@@ -226,7 +229,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
             {
                 // twork += (ztype) A(i,j) if not a zombie
                 if (IS_NOT_ZOMBIE (Ai [p]))
-                {
+                { 
                     // awork = (ztype) Ax [p]
                     cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
                     // wwork = twork
@@ -246,14 +249,14 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     // scalars, not matrices.  There is no scalar mask.
 
     if (accum == NULL)
-    {
+    { 
         // c = (ctype) twork
         GB_cast_function
             cast_Z_to_C = GB_cast_factory (ctype->code, ztype->code) ;
         cast_Z_to_C (c, twork, ctype->size) ;
     }
     else
-    {
+    { 
         GB_binary_function faccum = accum->function ;
 
         GB_cast_function cast_C_to_xaccum, cast_Z_to_yaccum, cast_zaccum_to_C ;

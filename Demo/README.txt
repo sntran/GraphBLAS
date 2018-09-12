@@ -13,6 +13,7 @@ demo                    run all demos
 tri_run                 run tricount on a set of matrices
 go                      run tricount on GraphChallenge matrices
 go2                     run tricount on two large matrices
+go3                     run tricount on a few large matrices
 
 --------------------------------------------------------------------------------
 in Demo/Source:
@@ -32,7 +33,6 @@ read_matrix.c           read a matrix from a file (Matrix/*)
 simple_rand.c           a very simple random number generator
 simple_timer.c          a simple yet portable timer
 tricount.c              six triangle counting methods using GraphBLAS
-triu.c                  constructs U=triu(A,1)
 usercomplex.c           user-defined double complex type
 wathen.c                GraphBLAS version of the MATLAB wathen.m
 
@@ -42,11 +42,11 @@ in Demo/Program:
 
 bfs_demo.c              demo program to test bfs
 complex_demo.c          demo program to test complex type
+kron_demo.c             demo program to test GxB_kron
 mis_demo.c              demo program to test mis
 tri_demo.c              demo program to test tricount
 simple_demo.c           demo program to test  simple_rand and simple_timer
 wildtype_demo.c         demo program with arbitrary struct as user-defined type
-kron_demo.c             demo program to test GxB_kron
 
 --------------------------------------------------------------------------------
 in Demo/Output:
@@ -54,11 +54,22 @@ in Demo/Output:
 
 bfs_demo.out            output of bfs_demo
 complex_demo_out.m      output of complex_demo, run in MATLAB to check results
-go_out_laptop.txt       output of go.m on a MacBook Pro
 mis_demo.out            output of mis_demo
 simple_test.out         output of simple_demo
 tri_demo.out            output of tri_demo
 wildtype_demo.out       output of wildtype_demo
+
+go_out_cholesky.txt     output of Demo/go on an IBM Minsky system
+go_out_laptop.txt       output of Demo/go on a MacBook Pro
+go2_out_laptop.txt      output of Demo/go2 on a MacBook Pro
+go3_out_laptop.txt      output of Demo/go2 on a MacBook Pro
+
+Output/V112:            output files from Dec 23, 2017 (Version 1.1.2
+                        of SuiteSparse:GraphBLAS); same as filenames above
+    README.txt
+    go_out_cholesky.txt
+    go_out_laptop.txt
+    go3_out_laptop.txt
 
 --------------------------------------------------------------------------------
 in Demo/Include:
@@ -73,12 +84,15 @@ usercomplex.h           include file for usercomplex.h
 in Demo/MATLAB:
 --------------------------------------------------------------------------------
 
+Contents.m              contents of Demo/MATLAB
 tricount.m              five triangle counting methods using MATLAB
 adj_to_edges.m          convert adjacency matrix to incidence matrix
 edges_to_adj.m          convert incidence matrix to adjacency matrix
 check_adj.m             check an adjaceny matrix
 tri_matlab.m            run a set of GraphChallenge matrices
 tri_matlab_out.txt      output of tri_matlab.m
+kron_demo.m             kron demo
+kron_test.m             kron test
 
 --------------------------------------------------------------------------------
 in Demo/Matrix:
@@ -93,6 +107,7 @@ the Harwell/Boeing matrix collection.  Contains:
     bcsstk16
     eye3
     fs_183_1
+    huge
     ibm32a
     ibm32b
     lp_afiro

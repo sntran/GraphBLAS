@@ -21,19 +21,19 @@ GrB_Info GxB_Matrix_select  // C<Mask> = accum (C, select(A,k)) or select(A',k)
     const void *k,                  // optional input for select operator
     const GrB_Descriptor desc       // descriptor for C, Mask, and A
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     WHERE ("GxB_Matrix_select (C, Mask, accum, op, A, k, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;
-    RETURN_IF_UNINITIALIZED (Mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
+    RETURN_IF_NULL_OR_FAULTY (C) ;
+    RETURN_IF_FAULTY (Mask) ;
+    RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, ignore) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
 
     //--------------------------------------------------------------------------
     // select the entries and optionally transpose; assemble pending tuples

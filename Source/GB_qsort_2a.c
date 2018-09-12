@@ -10,7 +10,7 @@
 // This sort is not stable, but it is used in GraphBLAS only on lists with
 // unique tuples (i,k).  So it does not need to be stable.  Just the first
 // entry i in each tuple (i,k) is used as the sort key.  The second item k in
-// each tuple happens to be unique in itself, but this is not part of the 
+// each tuple happens to be unique in itself, but this is not part of the
 // sort key.
 
 #include "GB.h"
@@ -51,7 +51,7 @@ void GB_qsort_2a        // sort array A of size 2-by-n, using 1 key (A [0][])
     int64_t A_1 [ ],      // size n array
     int64_t n
 )
-{
+{ 
     quicksort (arg (A), n) ;
 }
 

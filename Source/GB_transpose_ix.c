@@ -7,12 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// The input matrix is m-by-n with cnz nonzeros, with column pointers Ap of
-// size n+1.  The pattern of column j is in Ai [Ap [j] ... Ap [j+1]] and thus
-// cnz is equal to Ap [n].
-
-// The values of the input matrix are in Ax, of type A_type.  They are
-// typecasted to R_type, the type of the R matrix.
+// The values of A are typecasted to R_type, the type of the R matrix.
+// A can be sparse or hypersparse, but R is not hypersparse.
 
 // The row pointers of the output matrix have already been computed, in Rp.
 // Row i will appear in Ri, in the positions Rp [i] .. Rp [i+1], for the
@@ -27,15 +23,11 @@
 
 void GB_transpose_ix        // transpose the pattern and values of a matrix
 (
-    const int64_t *Ap,      // size n+1, input column pointers
-    const int64_t *Ai,      // size cnz, input row indices
-    const void *Ax,         // size cnz, input numerical values
-    const GrB_Type A_type,  // type of input A
     int64_t *Rp,            // size m+1, input: row pointers, shifted on output
     int64_t *Ri,            // size cnz, output column indices
     void *Rx,               // size cnz, output numerical values, type R_type
-    const int64_t n,        // number of columns in input
-    const GrB_Type R_type   // type of output R (do typecasting into R)
+    const GrB_Type R_type,  // type of output R (do typecasting into R)
+    const GrB_Matrix A      // input matrix
 )
 {
 
@@ -43,23 +35,18 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A_type, "A type for transpose_ix", 0)) ;
-    ASSERT_OK (GB_check (R_type, "R type for transpose_ix", 0)) ;
-    ASSERT (Ap != NULL && Ai != NULL && Ax != NULL) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_ix", D0)) ;
+    ASSERT_OK (GB_check (R_type, "R type for transpose_ix", D0)) ;
     ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
-    ASSERT (n >= 0) ;
+    ASSERT (GB_Type_compatible (A->type, R_type)) ;
+    ASSERT (!ZOMBIES (A)) ;
 
-    ASSERT (GB_Type_compatible (A_type, R_type)) ;
+    //--------------------------------------------------------------------------
+    // get the input matrix
+    //--------------------------------------------------------------------------
 
-    // no zombies are tolerated
-    #ifndef NDEBUG
-    // there is no A->nzombies flag to check, so check the whole pattern
-    int64_t anz = Ap [n] ;
-    for (int64_t p = 0 ; p < anz ; p++)
-    {
-        ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
-    }
-    #endif
+    const int64_t *Ai = A->i ;
+    const void    *Ax = A->x ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
@@ -69,9 +56,9 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     {                                                           \
         rtype *rx = (rtype *) Rx ;                              \
         atype *ax = (atype *) Ax ;                              \
-        for (int64_t j = 0 ; j < n ; j++)                       \
+        for_each_vector (A)                                     \
         {                                                       \
-            for (int64_t p = Ap [j] ; p < Ap [j+1] ; p++)       \
+            for_each_entry (j, p, pend)                         \
             {                                                   \
                 int64_t q = Rp [Ai [p]]++ ;                     \
                 Ri [q] = j ;                                    \
@@ -91,7 +78,7 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
 
     // switch factory for two types, controlled by code1 and code2
     GB_Type_code code1 = R_type->code ;         // defines rtype
-    GB_Type_code code2 = A_type->code ;         // defines atype
+    GB_Type_code code2 = A->type->code ;        // defines atype
     ASSERT (code1 <= GB_UDT_code) ;
     ASSERT (code2 <= GB_UDT_code) ;
     #include "GB_2type_template.c"
@@ -106,13 +93,13 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // fall through the switch factory to here, which can never be
     // typecasted.  Because the generic worker does no typecasting, the
     // switch factory cannot be disabled.
-    ASSERT (A_type == R_type && A_type->code == GB_UDT_code) ;
+    ASSERT (A->type == R_type && A->type->code == GB_UDT_code) ;
 
-    int64_t asize = A_type->size ;
-    for (int64_t j = 0 ; j < n ; j++)
+    int64_t asize = A->type->size ;
+    for_each_vector (A)
     {
-        for (int64_t p = Ap [j] ; p < Ap [j+1] ; p++)
-        {
+        for_each_entry (j, p, pend)
+        { 
             int64_t q = Rp [Ai [p]]++ ;
             Ri [q] = j ;
             memcpy (Rx +(q*asize), Ax +(p*asize), asize) ;

@@ -14,7 +14,7 @@ GrB_Info GxB_BinaryOp_xtype         // return the type of x
     GrB_Type *xtype,                // return type of input x
     const GrB_BinaryOp binaryop     // binary operator to query
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -22,8 +22,8 @@ GrB_Info GxB_BinaryOp_xtype         // return the type of x
 
     WHERE ("GxB_BinaryOp_xtype (&xtype, binaryop)") ;
     RETURN_IF_NULL (xtype) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (binaryop) ;
-    ASSERT_OK (GB_check (binaryop, "binaryop for xtype", 0)) ;
+    RETURN_IF_NULL_OR_FAULTY (binaryop) ;
+    ASSERT_OK (GB_check (binaryop, "binaryop for xtype", D0)) ;
 
     //--------------------------------------------------------------------------
     // return the xtype

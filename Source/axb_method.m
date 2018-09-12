@@ -32,8 +32,9 @@ end
 
 name = sprintf ('%s_%s_%s', addop, multop, fname) ;
 
-fprintf (f, 'define(`GB_AxB'', `GB_AxB__%s'')\n', name) ;
+fprintf (f, 'define(`GB_AgusB'', `GB_AgusB__%s'')\n', name) ;
 fprintf (f, 'define(`GB_AdotB'', `GB_AdotB__%s'')\n', name) ;
+fprintf (f, 'define(`GB_AheapB'', `GB_AheapB__%s'')\n', name) ;
 fprintf (f, 'define(`ztype'', `%s'')\n', ztype) ;
 fprintf (f, 'define(`xytype'', `%s'')\n', xytype) ;
 fprintf (f, 'define(`identity'', `%s'')\n', identity) ;
@@ -50,13 +51,13 @@ fclose (f) ;
 % type control.m4
 
 cmd = sprintf (...
-'cat control.m4 Template/GB_AxB.c | m4 | tail +8 > Generated/GB_AxB__%s.c', ...
+'cat control.m4 Generator/GB_AxB.c | m4 | tail +8 > Generated/GB_AxB__%s.c', ...
 name) ;
 fprintf ('%s\n', cmd) ;
 system (cmd) ;
 
 cmd = sprintf (...
-'cat control.m4 Template/GB_AxB.h | m4 | tail +8 >> Generated/GB_AxB__semirings.h') ;
+'cat control.m4 Generator/GB_AxB.h | m4 | tail +8 >> Generated/GB_AxB__semirings.h') ;
 % fprintf ('%s\n', cmd) ;
 system (cmd) ;
 

@@ -18,7 +18,7 @@ GrB_Info GB_Type_new
     const size_t sizeof_ctype,  // size of the user type
     const char *name            // name of the type, as "sizeof (ctype)"
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -35,8 +35,8 @@ GrB_Info GB_Type_new
     // allocate the type
     GB_CALLOC_MEMORY (*type, 1, sizeof (struct GB_Type_opaque)) ;
     if (*type == NULL)
-    {
-        return (ERROR (GrB_OUT_OF_MEMORY, (LOG, "out of memory"))) ;
+    { 
+        return (NO_MEMORY) ;
     }
 
     // initialize the type
@@ -57,23 +57,23 @@ GrB_Info GB_Type_new
 
     // look for "sizeof" in the input string
     if (name != NULL)
-    {
+    { 
         strncpy (input2, name, GB_LEN) ;
         p = strstr (input2, "sizeof") ;
     }
 
     if (p != NULL)
-    {
+    { 
 
         // "sizeof" appears in the input string, advance past it
         p += 6 ;
 
         // find leading "(" if it appears, and advance to one character past it
-        char *p2 = strstr (p, "(") ; 
+        char *p2 = strstr (p, "(") ;
         if (p2 != NULL) p = p2 + 1 ;
 
         // find trailing ")" if it appears, and delete it
-        p2 = strstr (p, ")") ; 
+        p2 = strstr (p, ")") ;
         if (p2 != NULL) *p2 = '\0' ;
 
         // p now contains the final name, copy it to the output name

@@ -7,31 +7,36 @@
 
 //------------------------------------------------------------------------------
 
-// Assigns a single scalar to a matrix, C<Mask>(I,J) = accum(C(I,J),x)
-// The scalar x is implicitly expanded into a matrix A of size ni-by-nj,
+// Assigns a single scalar to a matrix:
+// C<Mask>(Rows,Cols) = accum(C(Rows,Cols),x)
+// The scalar x is implicitly expanded into a matrix A of size nRows-by-nCols,
 // with each entry in A equal to x.
+
+// Compare with GxB_Matrix_subassign_scalar,
+// which uses Mask and C_Replace differently
 
 #include "GB.h"
 
 #define ASSIGN(type,T,ampersand)                                               \
-GrB_Info GrB_Matrix_assign_ ## T    /* C<Mask>(I,J) = accum (C(I,J),x)      */ \
+GrB_Info GrB_Matrix_assign_ ## T    /* C<Mask>(Rows,Cols) += x              */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
     const GrB_Matrix Mask,          /* optional mask for C                  */ \
-    const GrB_BinaryOp accum,       /* optional accum for Z=accum(C(I,J),x) */ \
-    const type x,                   /* scalar to assign to C(I,J)           */ \
-    const GrB_Index *I,             /* row indices                          */ \
-    const GrB_Index ni,             /* number of row indices                */ \
-    const GrB_Index *J,             /* column indices                       */ \
-    const GrB_Index nj,             /* number of column indices             */ \
+    const GrB_BinaryOp accum,       /* accum for Z=accum(C(Rows,Cols),x)    */ \
+    const type x,                   /* scalar to assign to C(Rows,Cols)     */ \
+    const GrB_Index *Rows,          /* row indices                          */ \
+    GrB_Index nRows,                /* number of row indices                */ \
+    const GrB_Index *Cols,          /* column indices                       */ \
+    GrB_Index nCols,                /* number of column indices             */ \
     const GrB_Descriptor desc       /* descriptor for C and Mask            */ \
 )                                                                              \
 {                                                                              \
-    WHERE ("GrB_Matrix_assign_" GB_STR(T) " (C, Mask, accum, x, I, ni, J, nj, desc)") ; \
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;                                      \
-    RETURN_IF_UNINITIALIZED (Mask) ;                                           \
+    WHERE ("GrB_Matrix_assign_" GB_STR(T)                                      \
+        " (C, Mask, accum, x, Rows, nRows, Cols, nCols, desc)") ;              \
+    RETURN_IF_NULL_OR_FAULTY (C) ;                                             \
+    RETURN_IF_FAULTY (Mask) ;                                                  \
     return (GB_assign_scalar (C, Mask, accum,                                  \
-        ampersand x, GB_## T ## _code, I, ni, J, nj, desc)) ;                  \
+        ampersand x, GB_## T ## _code, Rows, nRows, Cols, nCols, desc)) ;      \
 }
 
 ASSIGN (bool     , BOOL   , &) ;

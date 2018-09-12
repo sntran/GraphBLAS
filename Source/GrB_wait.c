@@ -41,13 +41,13 @@ GrB_Info GrB_wait ( )       // finish all pending computations
 
     GrB_Matrix A ;
     while ((A = GB_queue_remove_head ( )) != NULL)
-    {
+    { 
         // A has been removed from the head of the queue but it still has
         // pending operations.  GB_check expects it to be in the queue.
-        // ASSERT_OK (GB_check (A, "to assemble in GrB_wait", 0)) ;
+        // ASSERT_OK (GB_check (A, "to assemble in GrB_wait", D0)) ;
         ASSERT (PENDING (A) || ZOMBIES (A)) ;
         // delete any lingering zombies and assemble any pending tuples.
-        APPLY_PENDING_UPDATES (A) ;
+        WAIT (A) ;
     }
 
     return (REPORT_SUCCESS) ;

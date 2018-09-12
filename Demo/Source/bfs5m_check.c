@@ -60,8 +60,8 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
 
     // descriptor: invert the mask for mxv, and clear output before assignment
     OK (GrB_Descriptor_new (&desc)) ;
-    OK (GrB_Descriptor_set (desc, GrB_MASK, GrB_SCMP)) ;
-    OK (GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE)) ;
+    OK (GxB_set (desc, GrB_MASK, GrB_SCMP)) ;
+    OK (GxB_set (desc, GrB_OUTP, GrB_REPLACE)) ;
 
     //--------------------------------------------------------------------------
     // BFS traversal and label the nodes

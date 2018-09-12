@@ -18,13 +18,13 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     const GB_Type_code code1,      // the type of z, the output value
     const GB_Type_code code2       // the type of x, the input value
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_Type_code_compatible (code1, code2)) ;
+    ASSERT (GB_code_compatible (code1, code2)) ;
     ASSERT (code1 <= GB_UDT_code) ;
     ASSERT (code2 <= GB_UDT_code) ;
 

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_assoc_template.c:
+// GB_assoc_template.c
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -176,7 +176,7 @@ else
     switch (GB_boolean_rename (opcode))
     {
 
-        case GB_LOR_opcode :
+        case GB_LOR_opcode : 
 
             // OR == MAX == PLUS
             #define ADD(w,t) w = (w || t)
@@ -184,7 +184,7 @@ else
             break ;
             #undef  ADD
 
-        case GB_LAND_opcode :
+        case GB_LAND_opcode : 
 
             // AND == MIN == TIMES
             #define ADD(w,t) w = (w && t)
@@ -192,7 +192,7 @@ else
             break ;
             #undef  ADD
 
-        case GB_LXOR_opcode :
+        case GB_LXOR_opcode : 
 
             // XOR == NE == MINUS == ISNE
             #define ADD(w,t) w = (w != t)
@@ -200,7 +200,7 @@ else
             break ;
             #undef  ADD
 
-        case GB_EQ_opcode :
+        case GB_EQ_opcode : 
 
             // EQ == ISEQ
             #define ADD(w,t) w = (w == t)
@@ -214,7 +214,7 @@ else
 
         #ifdef INCLUDE_SECOND_OPERATOR
 
-        case GB_FIRST_opcode :
+        case GB_FIRST_opcode : 
 
             // FIRST == DIV
             #define ADD(w,t) ;      // do nothing; keep the first tuple
@@ -222,7 +222,7 @@ else
             break ;
             #undef  ADD
 
-        case GB_SECOND_opcode :
+        case GB_SECOND_opcode : 
 
             // SECOND
             #define ADD(w,t) w = t  // replace with the 2nd tuple

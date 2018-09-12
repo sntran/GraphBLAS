@@ -29,7 +29,7 @@ GrB_Info GrB_Matrix_reduce_ ## T    /* c = accum (c, reduce_to_scalar (A))  */ \
 )                                                                              \
 {                                                                              \
     WHERE ("GrB_Matrix_reduce_" GB_STR(T) " (&c, accum, reduce, A, desc)") ;   \
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;                                      \
+    RETURN_IF_NULL_OR_FAULTY (A) ;                                             \
     return (GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, A)) ;            \
 }
 
@@ -55,7 +55,7 @@ GrB_Info GrB_Matrix_reduce_UDT      // c = accum (c, reduce_to_scalar (A))
     const GrB_Matrix A,             // matrix to reduce
     const GrB_Descriptor desc       // descriptor (currently unused)
 )
-{
+{ 
     // Reduction to a user-defined type requires an assumption about the type
     // of the scalar c.  It's just a void* pointer so its type must be
     // inferred from the other arguments.  The type cannot be found from
@@ -64,8 +64,8 @@ GrB_Info GrB_Matrix_reduce_UDT      // c = accum (c, reduce_to_scalar (A))
     // Thus, the type of c must be the same as the reduce monoid.
 
     WHERE ("GrB_Matrix_reduce_UDT (&c, accum, reduce, A, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (reduce) ;
+    RETURN_IF_NULL_OR_FAULTY (A) ;
+    RETURN_IF_NULL_OR_FAULTY (reduce) ;
     return (GB_reduce_to_scalar (c, reduce->op->ztype, accum, reduce, A)) ;
 }
 

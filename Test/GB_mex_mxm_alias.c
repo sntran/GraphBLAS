@@ -9,6 +9,8 @@
 
 #include "GB_mex.h"
 
+#define USAGE "C = GB_mex_mxm_alias (C, accum, semiring, desc)"
+
 #define FREE_ALL                            \
 {                                           \
     GB_MATRIX_FREE (&C) ;                   \
@@ -21,7 +23,7 @@
         GrB_free (&semiring) ;              \
     }                                       \
     GrB_free (&desc) ;                      \
-    GB_mx_put_global (malloc_debug) ;       \
+    GB_mx_put_global (true) ;               \
 }
 
 void mexFunction
@@ -33,20 +35,21 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix C = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
 
     // check inputs
+    WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_mxm_alias (C, accum, semiring, desc)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)

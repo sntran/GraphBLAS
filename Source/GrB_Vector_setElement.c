@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GrB_Vector_setElement: set an entry in a vector, w (i) = x
+// GrB_Vector_setElement: set an entry in a vector, w (row) = x
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,22 +7,23 @@
 
 //------------------------------------------------------------------------------
 
-// Set a single scalar, w(i) = x, typecasting from the type of x to
+// Set a single scalar, w(row) = x, typecasting from the type of x to
 // the type of w as needed.
 
 #include "GB.h"
 
 #define SET(type,T,ampersand)                                               \
-GrB_Info GrB_Vector_setElement_ ## T    /* w(i) = x    */                   \
+GrB_Info GrB_Vector_setElement_ ## T    /* w(row) = x    */                 \
 (                                                                           \
     GrB_Vector w,                       /* vector to modify           */    \
-    const type x,                       /* scalar to assign to w(i)   */    \
-    const GrB_Index i                   /* row index                  */    \
+    const type x,                       /* scalar to assign to w(row) */    \
+    GrB_Index row                       /* row index                  */    \
 )                                                                           \
 {                                                                           \
-    WHERE ("GrB_Vector_setElement_" GB_STR(T) " (C, i, j, x)") ;            \
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;                                   \
-    return (GB_setElement ((GrB_Matrix) w, ampersand x, i, 0,               \
+    WHERE ("GrB_Vector_setElement_" GB_STR(T) " (w, x, row)") ;             \
+    RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
+    ASSERT (VECTOR_OK (w)) ;                                                \
+    return (GB_setElement ((GrB_Matrix) w, ampersand x, row, 0,             \
         GB_ ## T ## _code)) ;                                               \
 }
 

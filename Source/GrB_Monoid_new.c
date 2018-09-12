@@ -45,7 +45,7 @@ GrB_Info GrB_Monoid_new_UDT         // create a monoid with a user-defined type
     const GrB_BinaryOp op,          // binary operator of the monoid
     const void *identity            // identity value of the monoid
 )
-{
+{ 
     WHERE ("GrB_Monoid_new_UDT (&monoid, op, identity)") ;
     return (GB_Monoid_new (monoid, op, identity, GB_UDT_code)) ;
 }

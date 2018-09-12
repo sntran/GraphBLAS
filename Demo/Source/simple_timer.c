@@ -36,6 +36,16 @@ void simple_tic         /* returns current time in seconds and nanoseconds */
         tic [0] = (double) t.tv_sec ;
         tic [1] = (double) t.tv_nsec ;
 
+    #elif defined ( __MACH__ )
+
+        clock_serv_t cclock ;
+        mach_timespec_t t ;
+        host_get_clock_service (mach_host_self ( ), SYSTEM_CLOCK, &cclock) ;
+        clock_get_time (cclock, &t) ;
+        mach_port_deallocate (mach_task_self ( ), cclock) ;
+        tic [0] = (double) t.tv_sec;
+        tic [1] = (double) t.tv_nsec;
+
     #else
 
         /* The ANSI C11 clock() function is used instead.  This gives the

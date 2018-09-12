@@ -22,7 +22,7 @@ GrB_Info GxB_SelectOp_free          // free a user-created select operator
         if (op != NULL && op->opcode == GB_USER_SELECT_opcode)
         {
             if (op->magic == MAGIC)
-            {
+            { 
                 op->magic = FREED ;         // to help detect dangling pointers
                 GB_FREE_MEMORY (*selectop, 1,
                     sizeof (struct GB_SelectOp_opaque)) ;

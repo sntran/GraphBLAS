@@ -7,9 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-// This is used by GB_AxB_builtin.c and GB_Matrix_AdotB.c to create built-in
-// versions of sparse matrix-matrix multiplication.  The #include'ing file
-// #define's the AxB macro, and mult_opcode, add_opcode, xycode, and zcode
+// This is used by GB_AxB_Gustavson_builtin.c and GB_AxB_dot.c to create
+// built-in versions of sparse matrix-matrix multiplication.  The #include'ing
+// file #define's the AxB macro, and mult_opcode, add_opcode, xycode, and zcode
 
 {
     //--------------------------------------------------------------------------
@@ -73,7 +73,7 @@
             break ;
 
         //----------------------------------------------------------------------
-        case GB_MINUS_opcode   :    // z = flipxy ? (y-x) : (x-y)
+        case GB_MINUS_opcode   :    // z = flipxy ? (y-x):(x-y)
         //----------------------------------------------------------------------
 
             // 40 semirings: (min,max,plus,times) for non-boolean
@@ -95,7 +95,7 @@
             break ;
 
         //----------------------------------------------------------------------
-        case GB_DIV_opcode   :      // z = flipxy ? (y / x) : (x / y)
+        case GB_DIV_opcode   :      // z = flipxy ? (y / x):(x / y)
         //----------------------------------------------------------------------
 
             // 40 semirings: (min,max,plus,times) for non-boolean

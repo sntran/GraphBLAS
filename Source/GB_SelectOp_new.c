@@ -9,8 +9,7 @@
 
 // The select function signature must be:
 
-//      bool f (const GrB_Index i, const GrB_Index j,
-//              const GrB_Index nrows, const GrB_Index ncols,
+//      bool f (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
 //              const void *x, const void *k) ;
 
 // This function is not directly user-callable.  Use GxB_SelectOp_new instead.
@@ -24,7 +23,7 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     const GrB_Type xtype,       // type of input x
     const char *name            // name of the function
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -34,7 +33,7 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     RETURN_IF_NULL (selectop) ;
     (*selectop) = NULL ;
     RETURN_IF_NULL (function) ;
-    RETURN_IF_UNINITIALIZED (xtype) ;   // xtype may be NULL
+    RETURN_IF_FAULTY (xtype) ;   // xtype may be NULL
 
     //--------------------------------------------------------------------------
     // create the select op
@@ -43,8 +42,8 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     // allocate the select operator
     GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque)) ;
     if (*selectop == NULL)
-    {
-        return (ERROR (GrB_OUT_OF_MEMORY, (LOG, "out of memory"))) ;
+    { 
+        return (NO_MEMORY) ;
     }
 
     // initialize the select operator
@@ -54,7 +53,7 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     op->function = function ;
     strncpy (op->name, name, GB_LEN-1) ;
     op->opcode = GB_USER_SELECT_opcode ;    // generic opcode for all user ops
-    ASSERT_OK (GB_check (op, "new user-defined select op", 0)) ;
+    ASSERT_OK (GB_check (op, "new user-defined select op", D0)) ;
     return (REPORT_SUCCESS) ;
 }
 

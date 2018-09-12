@@ -36,7 +36,6 @@ my_*.out
 .nfs*
 .pyc
 
-
 Demo/bfs_demo.out
 Demo/complex_demo_out.m
 Demo/mis_demo.out
@@ -47,19 +46,6 @@ Test/errlog.txt
 Test/log.txt
 Doc/GraphBLAS_UserGuide.log
 Doc/GraphBLAS_UserGuide.out
-Tcov/cover_GB_2type_template.c
-Tcov/cover_GB_AxB.c
-Tcov/cover_GB_AxB_compare_template.c
-Tcov/cover_GB_AxB_factory.c
-Tcov/cover_GB_AxB_template.c
-Tcov/cover_GB_assoc_template.c
-Tcov/cover_GB_ops_template.c
-Tcov/cover_GB_qsort_template.c
-Tcov/cover_GB_semiring_template.c
-Tcov/cover_GB_subref_template.c
-Tcov/cover_gb_report.c
-Tcov/cover_gb.c
-Tcov/cover_gb_exp.c
 Tcov/errlog.txt
 Tcov/log.txt
 Tcov/gbstat.mat

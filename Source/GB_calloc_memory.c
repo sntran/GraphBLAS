@@ -39,12 +39,12 @@ void *GB_calloc_memory      // pointer to allocated block of memory
 
     bool ok = GB_size_t_multiply (&size, nitems, size_of_item) ;
     if (!ok || nitems > GB_INDEX_MAX || size_of_item > GB_INDEX_MAX)
-    {
+    { 
         // overflow
         p = NULL ;
     }
     else
-    {
+    { 
 
         // check the malloc debug status.  This debug flag is set outside
         // of GraphBLAS and not modified, so it is safe to check it outside
@@ -61,6 +61,9 @@ void *GB_calloc_memory      // pointer to allocated block of memory
 
         if (pretend_to_fail)
         {
+#ifdef PRINT_MALLOC
+            printf ("pretend to fail\n") ;
+#endif
             p = NULL ;
         }
         else
@@ -78,7 +81,7 @@ void *GB_calloc_memory      // pointer to allocated block of memory
             }
 
 #ifdef PRINT_MALLOC
-            printf ("calloc:  %14p %3d %1d n "GBd" size "GBd"\n", 
+            printf ("calloc:  %14p %3d %1d n "GBd" size "GBd"\n",
                 p, nmalloc, GB_Global.malloc_debug,
                 (int64_t) nitems, (int64_t) size_of_item) ;
 #endif

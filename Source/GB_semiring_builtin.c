@@ -7,16 +7,21 @@
 
 //------------------------------------------------------------------------------
 
+// Determine if A*B uses a built-in semiring, and if so, determine the
+// opcodes and type codes of the semiring.
+
 #include "GB.h"
 
 #ifndef GBCOMPACT
 
 bool GB_semiring_builtin            // true if semiring is builtin
 (
+    // inputs:
     const GrB_Matrix A,
     const GrB_Matrix B,
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // true if z=fmult(y,x), flipping x and y
+    // outputs, unused by caller if this function returns false
     GB_Opcode *mult_opcode,         // multiply opcode
     GB_Opcode *add_opcode,          // add opcode
     GB_Type_code *xycode,           // type code for x and y inputs
@@ -27,6 +32,8 @@ bool GB_semiring_builtin            // true if semiring is builtin
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
+
+    ASSERT (ALIAS_OK (A, B)) ;
 
     GrB_BinaryOp add  = semiring->add->op ;     // add operator
     GrB_BinaryOp mult = semiring->multiply ;    // multiply operator
@@ -51,7 +58,7 @@ bool GB_semiring_builtin            // true if semiring is builtin
         (B->type != (flipxy ? mult->xtype : mult->ytype)) ||
         (A->type != B->type) || (A->type->code == GB_UDT_code)
        || (*add_opcode == GB_USER_opcode) || (*mult_opcode == GB_USER_opcode))
-    {
+    { 
         return (false) ;
     }
 
@@ -75,7 +82,7 @@ bool GB_semiring_builtin            // true if semiring is builtin
     ASSERT ((*zcode)  <= GB_UDT_code) ;
 
     if ((*xycode) == GB_BOOL_code)
-    {
+    { 
         // z = mult(x,y) where both x and y are boolean.
         // DIV becomes FIRST
         // MIN and TIMES become LAND
@@ -90,7 +97,7 @@ bool GB_semiring_builtin            // true if semiring is builtin
     }
 
     if ((*zcode) == GB_BOOL_code)
-    {
+    { 
         // Only the LAND, LOR, LXOR, and EQ monoids remain if z is
         // boolean.  MIN, MAX, PLUS, and TIMES are renamed.
         (*add_opcode) = GB_boolean_rename (*add_opcode) ;

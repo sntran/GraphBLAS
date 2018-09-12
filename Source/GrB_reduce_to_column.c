@@ -20,8 +20,9 @@ GrB_Info GrB_Matrix_reduce_ ## kind /* w<mask> = accum (w,reduce(A))       */ \
     const GrB_Descriptor desc       /* descriptor for w, mask, and A       */ \
 )                                                                             \
 {                                                                             \
-    WHERE ("GrB_Matrix_reduce_" GB_STR(kind) " (w, mask, accum, reduce, A, desc)") ; \
-    RETURN_IF_NULL_OR_UNINITIALIZED (reduce) ;                                \
+    WHERE ("GrB_Matrix_reduce_" GB_STR(kind)                                  \
+        " (w, mask, accum, reduce, A, desc)") ;                               \
+    RETURN_IF_NULL_OR_FAULTY (reduce) ;                                       \
     return (GB_reduce_to_column ((GrB_Matrix) w, (GrB_Matrix) mask, accum,    \
         reduceop, A, desc)) ;                                                 \
 }

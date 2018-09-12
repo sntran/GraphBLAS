@@ -21,7 +21,7 @@ GrB_Info GrB_Monoid_free            // free a user-created monoid
         if (mon != NULL && mon->user_defined)
         {
             if (mon->magic == MAGIC)
-            {
+            { 
                 // only user-defined monoids are freed.  predefined monoids
                 // are statically allocated and cannot be freed.
                 mon->magic = FREED ; // to help detect dangling pointers

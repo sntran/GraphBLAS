@@ -78,8 +78,6 @@ SPEC: This version fully conforms to the version @GraphBLAS_API_VERSION_MAJOR@.@
 of the GraphBLAS C API Specification.  It includes several additional functions
 and features as extensions to the spec.  These extensions are tagged with the
 keyword SPEC: in the code and in the User Guide, and in the Include/GraphBLAS.h
-file.  All functions and objects with the name GxB_* are extensions to the
-spec, as are all macros of the form GXB_*.  Functions, objects, and macros with
-prefix GB_* must not be accessed by user code.  They are for internal use in
-GraphBLAS only.
-
+file.  All functions, objects, and macros with the name GxB_* are extensions to
+the spec.  Functions, objects, and macros with prefix GB_* must not be accessed
+by user code.  They are for internal use in GraphBLAS only.

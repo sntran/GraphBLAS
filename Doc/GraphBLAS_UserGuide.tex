@@ -12,6 +12,7 @@
 \hyphenation{Suite-Sparse}
 \hyphenation{Graph-BLAS}
 \hyphenation{Suite-Sparse-Graph-BLAS}
+\hyphenation{Suite-Sparse-Graph-BLAS}
 
 \title{User Guide for SuiteSparse:GraphBLAS}
 
@@ -42,6 +43,25 @@ sparse matrix operations on a semiring.
 
 \maketitle
 
+{\tt NOTE: Version 2.1 is a major update with support for new matrix formats
+(by row or column, and hypersparse matrices), and MATLAB-like colon notation
+(\verb'I=begin:end' or \verb'I=begin:inc:end').  Some graph algorithms are more
+naturally expressed with matrices stored by row, and this version includes the
+new \verb'GxB_BY_ROW' format.  If you want the default format to be by row,
+just compile with \verb'-DBYROW', or add the following after calling
+\verb'GrB_init':
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ; \end{verbatim}}
+
+This BETA1 version has been fully tested and is ready to use, but the
+\verb'GxB_*' extensions added to Version 2.1 may change as feedback from the
+GraphBLAS community is received.  These include \verb'GxB_get', \verb'GxB_set',
+and \verb'GxB_AxB_METHOD', \verb'GxB_RANGE', \verb'GxB_STRIDE', and
+\verb'GxB_BACKWARDS', and their related definitions, described in
+Sections~\ref{descriptor},~\ref{options},~and~\ref{colon}}.
+
 \newpage
 {\small
 \tableofcontents
@@ -70,31 +90,25 @@ provides a wide range of built-in types and operators, and allows the user
 application to create new types and operators without needing to recompile the
 GraphBLAS library.
 
-See \cite{Davis18} for a journal article on SuiteSparse:GraphBLAS.
-A full and precise definition of the GraphBLAS specification is provided in
-{\em The GraphBLAS C API Specification} by {Ayd\i n Bulu\c{c}, Timothy Mattson,
-Scott McMillan, Jos\'e Moreira, and Carl Yang}
-\cite{spec,BulucMattsonMcMillanMoreiraYang17}, based on {\em
-GraphBLAS Mathematics} by Jeremy Kepner \cite{Kepner2017}.  The GraphBLAS C API
-Specification is available at \url{http://graphblas.org}.  This version of
-SuiteSparse:GraphBLAS fully conforms to
 % API version and date are set by cmake (see GraphBLAS/CMakeLists.txt)
-Version
-\input{GraphBLAS_API_version.tex}
-of that
-specification.  In this User Guide, aspects of the GraphBLAS specification that
-would be true for any GraphBLAS implementation are simply called ``GraphBLAS.''
-Details unique to this particular implementation are referred to as
-SuiteSparse:GraphBLAS. 
+
+See \cite{Davis18} for a journal article on SuiteSparse:GraphBLAS, and
+\cite{Davis18b} for a more recent conference paper.  A full and precise
+definition of the GraphBLAS specification is provided in {\em The GraphBLAS C
+API Specification} by {Ayd\i n Bulu\c{c}, Timothy Mattson, Scott McMillan,
+Jos\'e Moreira, and Carl Yang} \cite{BulucMattsonMcMillanMoreiraYang17,spec},
+based on {\em GraphBLAS Mathematics} by Jeremy Kepner \cite{Kepner2017}.  The
+GraphBLAS C API Specification is available at \url{http://graphblas.org}.  This
+version of SuiteSparse:GraphBLAS fully conforms to Version
+\input{GraphBLAS_API_version.tex} of that specification.  In this User Guide,
+aspects of the GraphBLAS specification that would be true for any GraphBLAS
+implementation are simply called ``GraphBLAS.'' Details unique to this
+particular implementation are referred to as SuiteSparse:GraphBLAS. 
 
 \begin{spec}
-{\bf SPEC:} See the tag {\bf SPEC:} for extensions to the spec.  They are also placed in text boxes like this one.
-All functions and objects with a name of the form \verb'GxB_*'
-and all macros with a name of the form \verb'GXB_'
-are extensions to the spec.
-Functions and objects prefixed with \verb'GB_' are
-internal to SuiteSparse:GraphBLAS and should not be referenced by user
-applications.
+{\bf SPEC:} See the tag {\bf SPEC:} for SuiteSparse extensions to the spec.
+They are also placed in text boxes like this one.  All functions, objects, and
+macros with a name of the form \verb'GxB_*' are extensions to the spec.
 \end{spec}
 
 \newpage
@@ -137,14 +151,19 @@ three styles as needed.
 %===============================================================================
 \label{sparse}
 
-Graphs can be huge, with many nodes and edges.  A dense adjacency matrix for a
-graph of $n$ nodes takes $O(n^2)$ memory, which is impossible if $n$ is, say, a
-million.  Most graphs are sparse, however, with only $O(n)$ edges, and graphs
-with millions of nodes and edges can easily be created by representing them as
-sparse matrices, where only explicit values need to be stored.  In
-SuiteSparse:GraphBLAS, creating a million-by-million sparse matrix or a
-trillion-by-1 column vector can be done on quite easily on a commodity laptop,
-as long as it does not have too many explicit entries.
+Graphs can be huge, with many nodes and edges.  A dense adjacency matrix ${\bf
+A}$ for a graph of $n$ nodes takes $O(n^2)$ memory, which is impossible if $n$
+is, say, a million.  Most graphs arising in practice are sparse, however, with
+only $|{\bf A}|=O(n)$ edges, where $|{\bf A}|$ denotes the number of edges in
+the graph, or the number of explicit entries present in the data structure for
+the matrix ${\bf A}$.  Sparse graphs with millions of nodes and edges can
+easily be created by representing them as sparse matrices, where only explicit
+values need to be stored.  Some graphs are {\em hypersparse}, with ${|\bf A}|
+<< n$.  SuiteSparse:GraphBLAS supports two kinds of sparse matrix formats: a
+regular sparse format, taking $O(n+|{\bf A}|)$ space, and a hypersparse format
+taking only $O(|{\bf A}|)$ space.  As a result, creating a sparse matrix of
+size $n$-by-$n$ where $n=2^{60}$ (about $10^{18}$) can be done on quite easily
+on a commodity laptop, limited only by $|{\bf A}|$.
 
 A sparse matrix data structure only stores a subset of the possible $n^2$
 entries, and it assumes the values of entries not stored have some implicit
@@ -156,14 +175,12 @@ equivalent ways.  It can be viewed as a set of indices $(i,j)$, where $(i,j)$
 is in the pattern of a matrix ${\bf A}$ if ${\bf A}(i,j)$ is an explicit value.
 It can also be viewed as a Boolean matrix ${\bf S}$ where ${\bf S}(i,j)$ is
 true if $(i,j)$ is an explicit entry and false otherwise.  In MATLAB notation,
-\verb'S=spones(A)' or \verb'S=(A~=0)', if the implicit value is zero.  Later on
-in this User Guide, this pattern of \verb'A', however it is stored, is called
-\verb'A.pattern' when used in MATLAB notation.  The \verb'(i,j)' pairs, and
-their values, can also be extracted from the matrix via the MATLAB expression
-\verb'[I,J,X]=find(A)', where the \verb'k'th tuple \verb'(I(k),J(k),X(k))'
-represents the explicit entry \verb'A(I(k),J(k))', with numerical value
-\verb'X(k)' equal to $a_{ij}$, with row index $i$=\verb'I(k)' and column index
-$j$=\verb'J(k)'.
+\verb'S=spones(A)' or \verb'S=(A~=0)', if the implicit value is zero.  The
+\verb'(i,j)' pairs, and their values, can also be extracted from the matrix via
+the MATLAB expression \verb'[I,J,X]=find(A)', where the \verb'k'th tuple
+\verb'(I(k),J(k),X(k))' represents the explicit entry \verb'A(I(k),J(k))', with
+numerical value \verb'X(k)' equal to $a_{ij}$, with row index $i$=\verb'I(k)'
+and column index $j$=\verb'J(k)'.
 
 The entries in the pattern of ${\bf A}$ can take on any value, including the
 implicit value, whatever it happens to be.  This differs slightly from MATLAB,
@@ -185,16 +202,13 @@ background on sparse matrix algorithms, see also \cite{Davis06book} and
 %===============================================================================
 \label{overview}
 
-GraphBLAS provides a collection of {\em methods} to create, query, and free
-each of its nine different types of objects: sparse matrices, 
-sparse vectors, types, operators (binary, unary and select), monoids,
+GraphBLAS provides a collection of {\em methods} to create, query, and free its
+of objects: sparse matrices, sparse vectors, types, operators, monoids,
 semirings, and a descriptor object used for parameter settings.  Details are
-given in Section~\ref{objects}.
-
-Once these objects are created they can be used in mathematical {\em
-operations} (not to be confused with the how the term {\em operator} is used in
-GraphBLAS).  A short summary of these operations and their nearest MATLAB
-analog is given in the table below.
+given in Section~\ref{objects}.  Once these objects are created they can be
+used in mathematical {\em operations} (not to be confused with the how the term
+{\em operator} is used in GraphBLAS).  A short summary of these operations and
+their nearest MATLAB analog is given in the table below.
 
 % \vspace{0.1in}
 \begin{tabular}{ll}
@@ -302,8 +316,8 @@ taking $O(nz^2)$ time:
     end\end{verbatim}}\end{mdframed}
 
 The above code is very easy read and simple to write, but exceedingly slow.  In
-MATLAB, the method below is preferred and is far faster, taking only $O(nz)$
-time.  It can easily be a million times faster than the method above.
+MATLAB, the method below is preferred and is far faster, taking only $O(|{\bf
+A}|)$ time.  It can easily be a million times faster than the method above.
 Unfortunately the second method below is a little harder to read and a little
 less natural to write:
 
@@ -321,10 +335,10 @@ less natural to write:
     end
     A = sparse (I,J,X,m,n) ;   \end{verbatim}} \end{mdframed}
 
-GraphBLAS can do both methods.  SuiteSparse:GraphBLAS stores its matrices in
-the same way as MATLAB except that it allows for pending computations, and as a
-result it can do both methods above equally as fast as the MATLAB \verb'sparse'
-function, allowing the user to write simpler code.
+GraphBLAS can do both methods.  SuiteSparse:GraphBLAS stores its matrices in a
+format that allows for pending computations, which are done later in bulk, and
+as a result it can do both methods above equally as fast as the MATLAB
+\verb'sparse' function, allowing the user to write simpler code.
 
 %===============================================================================
 \subsection{The accumulator and the mask} %=====================================
@@ -368,8 +382,8 @@ This process can be described in mathematical notation as:
     {\small
     \begin{tabbing}
     \hspace{2em} \= \hspace{2em} \= \hspace{2em} \= \\
-    \> ${\bf A = A}'$, if requested via descriptor (first input option) \\
-    \> ${\bf B = B}'$, if requested via descriptor (second input option) \\
+    \> ${\bf A = A}^{\sf T}$, if requested via descriptor (first input option) \\
+    \> ${\bf B = B}^{\sf T}$, if requested via descriptor (second input option) \\
     \> ${\bf T}$ is computed according to the specific operation  \\
     \> ${\bf C \langle M \rangle = C \odot T}$,
         accumulating and writing the results back via the mask
@@ -571,9 +585,9 @@ compatible with itself.  When GraphBLAS requires inputs of a specific type, or
 when one type cannot be typecast to another, the GraphBLAS function returns an
 error code, \verb'GrB_DOMAIN_MISMATCH' (refer to Section~\ref{error} for a
 complete list of error codes).  Typecasting can only be done between built-in
-types, and it follows the rules of the C language (not MATLAB) wherever the
-rules of C are well-defined.   In particular, a large integer outside the range
-of a smaller one is wrapped, modulo style.  This differs from MATLAB.
+types, and it follows the rules of the ANSI C language (not MATLAB) wherever
+the rules of ANSI C are well-defined.   In particular, a large integer outside
+the range of a smaller one is wrapped, modulo style.  This differs from MATLAB.
 
 However, unlike MATLAB, the C language specification states that the results of
 typecasting a \verb'float' or \verb'double' to an integer type is not always
@@ -588,7 +602,9 @@ even for \verb'NaN'.  The result is \verb'false' if the value compares equal to
 zero, and true otherwise.  Thus \verb'NaN' converts to \verb'true'.
 
 \begin{spec}
-{\bf SPEC:} the GraphBLAS API Specification states that typecasting follows the rules of C.  Yet C leaves some typecasting undefined.   SuiteSparse:GraphBLAS provides a precise definition for all typecasting as an extension to the spec.
+{\bf SPEC:} the GraphBLAS API states that typecasting follows the rules of ANSI
+C.  Yet C leaves some typecasting undefined.  SuiteSparse:GraphBLAS provides a
+precise definition for all typecasting as an extension to the spec.
 \end{spec}
 
 %===============================================================================
@@ -606,7 +622,7 @@ denote the multiplication of two matrices over a semiring.
 \begin{tabular}{lll}
 \hline
 \verb'GrB_mxm'       & matrix-matrix multiply  & ${\bf C \langle M \rangle = C \odot AB}$ \\
-\verb'GrB_vxm'       & vector-matrix multiply  & ${\bf w'\langle m'\rangle = w'\odot u'A}$ \\
+\verb'GrB_vxm'       & vector-matrix multiply  & ${\bf w^{\sf T}\langle m^{\sf T}\rangle = w^{\sf T}\odot u^{\sf T}A}$ \\
 \verb'GrB_mxv'       & matrix-vector multiply  & ${\bf w \langle m \rangle = w \odot Au}$ \\
 \hline
 \verb'GrB_eWiseMult' & element-wise,           & ${\bf C \langle M \rangle = C \odot (A \otimes B)}$ \\
@@ -635,7 +651,7 @@ denote the multiplication of two matrices over a semiring.
 \verb'GrB_reduce'    & reduce to vector        & ${\bf w \langle m \rangle = w \odot} [{\oplus}_j {\bf A}(:,j)]$ \\
                      & reduce to scalar        & $s = s \odot [{\oplus}_{ij}  {\bf A}(I,J)]$ \\
 \hline
-\verb'GrB_transpose' & transpose               & ${\bf C \langle M \rangle = C \odot A'}$ \\
+\verb'GrB_transpose' & transpose               & ${\bf C \langle M \rangle = C \odot A^{\sf T}}$ \\
 \hline
 \verb'GxB_kron'      & Kronecker product       & ${\bf C \langle M \rangle = C \odot \mbox{kron}(A, B)}$ \\
 \hline
@@ -685,26 +701,24 @@ A user application that directly relies on GraphBLAS must include the
 } \end{mdframed}
 
 The \verb'GraphBLAS.h' file defines functions, types, and macros prefixed with
-\verb'GrB_', \verb'GRB_', \verb'GxB_', and \verb'GXB_' that may be used in user
-applications.  The prefixes \verb'GrB_' and \verb'GRB_' denote items that
-appear in the official GraphBLAS API C Specification.  The prefixes \verb'GxB_'
-and \verb'GXB_' refer to SuiteSparse-specific extensions to the GraphBLAS API.
-Both may be used in user applications but be aware that items with prefixes
-\verb'GxB_' and \verb'GXB_' will not appear in other implementations of the
-GraphBLAS standard.
+\verb'GrB_' and \verb'GxB_' that may be used in user applications.  The prefix
+\verb'GrB_' denote items that appear in the official {\em GraphBLAS C API
+Specification}.  The prefix \verb'GxB_' refers to SuiteSparse-specific
+extensions to the GraphBLAS API.  Both may be used in user applications but be
+aware that items with prefixes \verb'GxB_' will not appear in other
+implementations of the GraphBLAS standard.
 
-There are a few functions and objects prefixed with \verb'GB_' that also appear
-in \verb'GraphBLAS.h', but all names with this prefix are internal to
-SuiteSparse:GraphBLAS and must not be referenced by user applications.  They
-are not documented in this User Guide, and no guarantee at all is made about
-them in future versions of this package.  They can change or even be removed
-without notice.  In addition, no contents of any GraphBLAS object (\verb'A',
-say) should be dereferenced with \verb'A->whatever'.  This content is opaque to
-end user applications and can change without notice in future versions of this
-package.  These names and content are technically visible to end-user
-applications, but this is only to enable the creation and use of polymorphic
-functions via the \verb'_Generic' keyword in ANSI C11.
-
+% There are a few functions and objects prefixed with \verb'GB_' that also
+% appear in \verb'GraphBLAS.h', but all names with this prefix are internal to
+% SuiteSparse:GraphBLAS and must not be referenced by user applications.  They
+% are not documented in this User Guide, and no guarantee at all is made about
+% them in future versions of this package.  They can change or even be removed
+% without notice.  In addition, no contents of any GraphBLAS object (\verb'A',
+% say) should be dereferenced with \verb'A->whatever'.  This content is opaque
+% to end user applications and can change without notice in future versions of
+% this package.  These names and content are technically visible to end-user
+% applications, but this is only to enable the creation and use of polymorphic
+% functions via the \verb'_Generic' keyword in ANSI C11.
 
 \begin{spec}
 {\bf SPEC:} The following macros are extensions to the spec.
@@ -715,19 +729,19 @@ GraphBLAS, including the following macros that can assist a user application in
 compiling and using GraphBLAS.
 
 There are two version numbers associated with SuiteSparse:GraphBLAS:
-the version of the GraphBLAS API Specification it
+the version of the {\em GraphBLAS C API Specification} it
 conforms to, and the version of the implementation itself.  These can
 be used in the following manner in a user application:
 
 {\footnotesize
 \begin{verbatim}
-    #if GXB >= GXB_VERSION (2,0,3)
+    #if GxB >= GxB_VERSION (2,0,3)
     ... use features in GraphBLAS specification 2.0.3 ...
     #else
     ... only use features in early specifications
     #endif
 
-    #if GXB_IMPLEMENTATION > GXB_VERSION (1,4,0)
+    #if GxB_IMPLEMENTATION > GxB_VERSION (1,4,0)
     ... use features from version 1.4.0 of a specific GraphBLAS implementation
     #endif \end{verbatim}}
 
@@ -735,17 +749,24 @@ be used in the following manner in a user application:
 SuiteSparse:GraphBLAS also defines the following strings with \verb'#define'.
 Refer to the \verb'GraphBLAS.h' file for details.
 
-\begin{itemize}
-\item \verb'GXB_ABOUT': describes this particular implementation,
-copyright, and URL.
-\item \verb'GXB_DATE': the date of this implementation.
-\item \verb'GXB_SPEC': describes the GraphBLAS specification
-\item \verb'GXB_SPEC_DATE': the date of the GraphBLAS specification
-\item \verb'GXB_LICENSE': the license for this particular implementation
-\end{itemize}
+\vspace{0.2in}
+{\footnotesize
+\begin{tabular}{ll}
+\hline
+Macro                & purpose                                      \\
+\hline
+\verb'GxB_ABOUT'        & this particular implementation, copyright, and URL \\
+\verb'GxB_DATE'         & the date of this implementation \\
+\verb'GxB_SPEC'         & the GraphBLAS specification for this implementation \\
+\verb'GxB_SPEC_DATE'    & the date of the GraphBLAS specification \\
+\verb'GxB_LICENSE'      & the license for this particular implementation \\
+\hline
+\end{tabular}
+}
+\vspace{0.2in}
 
 Finally, SuiteSparse:GraphBLAS gives itself a unique name of the form
-\verb'GXB_SUITESPARSE_GRAPHBLAS' that the user application can use in \verb'#ifdef'
+\verb'GxB_SUITESPARSE_GRAPHBLAS' that the user application can use in \verb'#ifdef'
 tests. This is helpful in case a particular implementation provides
 non-standard features that extend the GraphBLAS specification, such as
 additional predefined built-in operators, or if a GraphBLAS implementation does
@@ -754,14 +775,14 @@ SuiteSparse:GraphBLAS name is provided in its \verb'GraphBLAS.h' file as:
 
     {\footnotesize
     \begin{verbatim}
-    #define GXB_SUITESPARSE_GRAPHBLAS \end{verbatim}}
+    #define GxB_SUITESPARSE_GRAPHBLAS \end{verbatim}}
 
 For example, SuiteSparse:GraphBLAS predefines additional built-in operators not
 in the specification.  If the user application wishes to use these in any
 GraphBLAS implementation, an \verb'#ifdef' can control when they are used.
 Refer to the examples in the \verb'GraphBLAS/Demo' folder.
 
-As another example, the GraphBLAS API Specification states that an
+As another example, the GraphBLAS API states that an
 implementation need not define the order in which \verb'GrB_Matrix_build'
 assembles duplicate tuples in its \verb'[I,J,X]' input arrays.  As a result, no
 particular ordering should be relied upon in general.  However,
@@ -772,7 +793,7 @@ exploit the ordering returned by SuiteSparse:GraphBLAS.
 
     {\footnotesize
     \begin{verbatim}
-    #ifdef GXB_SUITESPARSE_GRAPHBLAS
+    #ifdef GxB_SUITESPARSE_GRAPHBLAS
     // duplicates in I, J, X assembled in a specific order;
     // results are well-defined even if op is not associative.
     GrB_Matrix_build (C, I, J, X, nvals, op) ;
@@ -802,7 +823,6 @@ GraphBLAS function   & purpose                                      & Section \\
 }
 \vspace{0.2in}
 
-\newpage
 %===============================================================================
 \subsection{{\sf GrB\_init:} initialize GraphBLAS} %============================
 %===============================================================================
@@ -858,6 +878,29 @@ and \verb'GrB_*_reduce' (to scalar).  These methods only ensure that the
 computations for a single object are completed.  Use \verb'GrB_wait'
 to ensure that all computations are completed (see Section~\ref{wait}).
 
+SuiteSparse:GraphBLAS is not yet multithreaded, but it is safe to use in a
+multithreaded user application.  This support is in Beta status, however,
+because of the behavior of \verb'GrB_finalize' discussed below.  User threads
+should not operate on the same matrices at the same time, with one exception.
+Multiple threads can use the same matrices as inputs to GraphBLAS operations,
+but only if they have no pending operations (use \verb'GrB_Matrix_nvals' or
+\verb'GrB_wait' first).  User threads cannot simultaneously modify the output
+matrix of any GraphBLAS operation.
+
+With multiple user threads, at least thread should call \verb'GrB_init'
+before any thread calls any \verb'GrB_*' or \verb'GxB_*' function.
+
+When the user application is finished, {\bf all} user application threads that
+called any GraphBLAS operation must call \verb'GrB_finalize', to free up
+thread-local workspace allocated internally.  This behavior is a deviation from
+the GraphBLAS API and may be modified in the future.
+
+\begin{spec}
+{\bf SPEC:} Requiring all user threads in a multi-threaded user application to
+call \verb'GrB_finalize' is specific to SuiteSparse:GraphBLAS and is a
+deviation from the {\em GraphBLAS C API Specification}.
+\end{spec}
+
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_wait:} wait for pending operations to finish} %===========
@@ -897,19 +940,11 @@ user-defined functions if the following specific rules are followed.
 \item User-defined functions may be called in any order when used in a
     GraphBLAS operation.  This order may change in non-obvious ways, even in
     the same GraphBLAS operation.  For example, SuiteSparse:\-GraphBLAS relies
-    on two different algorithms for computing the matrix multiplication ${\bf
-    C=A'B}$.  If ${\bf C}$ is small, or if ${\bf A}$ is a vector, then it does
-    not transpose ${\bf A}$ explicitly, but uses dot-products between column
-    vectors of ${\bf A}$ and ${\bf B}$ instead.  Otherwise, it transposes ${\bf
-    A}$ and uses a sequence of sparse-matrix-times-sparse-vector operations.
-    MATLAB uses the same algorithm in its built-in sparse matrix
-    multiplication, \verb'C=A*B', also written by this author.  A user
-    application in GraphBLAS has no control over the decision on which
-    algorithm is used, and the heuristic used to select the algorithm may
-    change in the future.  Other GraphBLAS implementations may use entirely
-    different algorithms.  The \verb'GrB_wait' function has no effect on this
-    order and the user application should not rely on any particular order used
-    in a specific implementation of GraphBLAS.
+    on multiple algorithms for matrix multiplication, and selects between them
+    automatically.  The methods will call user-defined multiply and add
+    operators in the semiring, in different order.  The user application should
+    not rely on any particular order used in a specific implementation of
+    GraphBLAS.
 
 \item User-defined functions are permitted to access global variables.
     However, if they do so, the global variables they rely on should not be
@@ -948,6 +983,16 @@ non-blocking mode in the \verb'GrB_*_setElement' methods and the
 SuiteSparse:GraphBLAS may extend this to other methods and operations.  Refer
 to the example at the end of Section~\ref{overview}.
 
+If multiple user threads have created matrices or vectors, and those have
+pending operations, then a single call by one thread to \verb'GrB_wait' causes
+all pending operations left by all threads to be completed.  If other user
+threads are working on any of those matrices, this would result in a race
+condition.  Therefore, \verb'GrB_wait' should be called only when no other user
+thread is operating on any other matrix.  Functions that cause a specific
+matrix to be finalized (\verb'GrB_*_nvals', \verb'GrB_*_extractElement',
+\verb'GrB_*_extractTuples', and \verb'GrB_*_reduce' (to scalar)) can be safely
+called by multiple user threads on different matrices.
+
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_Info:} status code returned by GraphBLAS} %===============
@@ -979,6 +1024,7 @@ are error codes.
 \verb'GrB_OUTPUT_NOT_EMPTY'     & output matrix already has values in it \\
 \hline
 \verb'GrB_OUT_OF_MEMORY'        & out of memory \\
+\verb'GrB_INSUFFICIENT_SPACE'   & output array not large enough \\
 \verb'GrB_INDEX_OUT_OF_BOUNDS'  & a row or column index is out of bounds;
                                   for indices in a list of indices. \\
 \hline
@@ -990,8 +1036,9 @@ SuiteSparse:GraphBLAS never panics, however.
 \vspace{0.2in}
 }
 
-Not all GraphBLAS methods or operations can return all status codes.  According
-to the GraphBLAS specification, any GraphBLAS method or operation can return an
+Not all GraphBLAS methods or operations can return all status codes.
+% According to the GraphBLAS specification, 
+Any GraphBLAS method or operation can return an
 out-of-memory condition, \verb'GrB_OUT_OF_MEMORY', or a panic,
 \verb'GrB_PANIC'.  These two errors, and the \verb'GrB_INDEX_OUT_OF_BOUNDS'
 error, are called {\em execution errors}.  The other errors are called {\em
@@ -1023,6 +1070,7 @@ Each GraphBLAS method and operation returns a \verb'GrB_Info' error code.  The
 \verb'GrB_error' function returns additional information on the error in a
 thread-safe null-terminated string.  The string returned by \verb'GrB_error' is
 statically allocated in thread local storage and must not be freed or modified.
+Each user thread has its own error status.
 The simplest way to use it is just to print it out, such as:
 
     {\footnotesize
@@ -1043,27 +1091,29 @@ and operators are used incorrectly.  Refer to the output of the example
 programs in the \verb'Demo' folder, which intentionally generate errors to
 illustrate the use of \verb'GrB_error'.
 
-% #ifdef DEVELOPER:
-% Also given is the filename and line number of the location in the
-% SuiteSparse:GraphBLAS function where the error was detected.  An experienced
-% user with access to the SuiteSparse:GraphBLAS source code may gain further
-% insight into the error by examining the code that detected it.
-
 % \newpage
 %===============================================================================
 \subsection{{\sf GrB\_finalize:} finish GraphBLAS} %============================
 %===============================================================================
 \label{finalize}
 
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GrB_finalize ( ) ;     // finish GraphBLAS
+\end{verbatim}
+}\end{mdframed}
+
 \verb'GrB_finalize' must be called as the last GraphBLAS operation, even after
 all calls to \verb'GrB_free'.  All GraphBLAS objects created by the user
 application should be freed first, before calling \verb'GrB_finalize' since
-\verb'GrB_finalize' will not free those objects.
-
-In non-blocking mode, GraphBLAS may leave some computations as pending.  These
-computations can be safely abandoned if the user application frees all
-GraphBLAS objects it has created and then calls \verb'GrB_finalize'.  There is
-no need to call \verb'GrB_wait' in this case.
+\verb'GrB_finalize' will not free those objects.  In non-blocking mode,
+GraphBLAS may leave some computations as pending.  These computations can be
+safely abandoned if the user application frees all GraphBLAS objects it has
+created and then calls \verb'GrB_finalize'.  There is no need to call
+\verb'GrB_wait' in this case.  When the user application is finished, {\bf all}
+user threads must call \verb'GrB_finalize', to free up thread-local workspace
+allocated internally.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1071,11 +1121,12 @@ no need to call \verb'GrB_wait' in this case.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{objects}
 
-GraphBLAS defines nine different objects to represent matrices and vectors,
+GraphBLAS defines eight different objects to represent matrices and vectors,
 their scalar data type (or domain), binary and unary operators on scalar types,
-operators for selecting entries from a matrix or vector,
 monoids, semirings, and a {\em descriptor} object used to specify optional
 parameters that modify the behavior of a GraphBLAS operation.
+SuiteSparse:GraphBLAS adds an operator for selecting entries from a matrix or
+vector.
 
 The GraphBLAS API makes a distinction between {\em methods} and {\em
 operations}.  A method is a function that works on a GraphBLAS object, creating
@@ -1115,8 +1166,10 @@ GraphBLAS provides 11 built-in types and 256 built-in operators.  With these,
 44 unique monoids and 960 unique semirings can be constructed.
 
 \begin{spec}
-{\bf SPEC:} SuiteSparse:GraphBLAS predefines all unique monoids and semirings that can be constructed from built-in types and operators, as an extension to the spec.  They appear in \verb'GraphBLAS.h'.
-The \verb'GxB_SelectOp' object is an extension to GraphBLAS.
+{\bf SPEC:} SuiteSparse:GraphBLAS predefines all unique monoids and semirings
+that can be constructed from built-in types and operators, as an extension to
+the spec.  They appear in \verb'GraphBLAS.h'.  The \verb'GxB_SelectOp' object
+is an extension to GraphBLAS.
 \end{spec}
 
 \newpage
@@ -1343,9 +1396,9 @@ type is freed the matrix can no longer be used.  The only safe thing that can
 be done with such a matrix is to free it.
 
 Note the function signature of \verb'GrB_Type_free', above.  It is illustrated
-with the generic name, \verb'GrB_free'.  Any of the nine GraphBLAS objects can
-be freed with the single function, \verb'GrB_free'.  Refer to
-Section~\ref{free} for more details.
+with the generic name, \verb'GrB_free'.  Any GraphBLAS object can be freed with
+the single function, \verb'GrB_free'.  Refer to Section~\ref{free} for more
+details.
 
 GraphBLAS includes many such generic functions.  When describing a specific
 variation, a function is described with its specific name in this User Guide
@@ -1466,6 +1519,8 @@ passed as \verb'(void *)' pointers, but they will be pointers to values of the
 correct type, defined by \verb'ztype' and \verb'xtype', respectively, when the
 operator was created.  The pointers will be unique.  That is, the user function
 is never called with pointers that point to the same space.
+
+% SPEC: the spec is silent on aliasing in user-defined functions
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -1865,7 +1920,7 @@ It does nothing at all if passed a built-in binary operator.
 
 \newpage
 %===============================================================================
-\subsection{GraphBLAS select operators: {\sf GxB\_SelectOp}} %==================
+\subsection{SuiteSparse:GraphBLAS select operators: {\sf GxB\_SelectOp}} %======
 %===============================================================================
 \label{selectop}
 
@@ -1879,7 +1934,7 @@ The \verb'GxB_SelectOp' operator is used by \verb'GxB_select' (see Section
 \ref{select}) to select entries from a matrix.  Each entry \verb'A(i,j)' is
 evaluated with the operator, which returns true if the entry is to be kept in
 the output, or false if it is not to appear in the output.  The signature of
-the select function \verb'f' are as follows:
+the select function \verb'f' is as follows:
 
 {\footnotesize
 \begin{verbatim}
@@ -1916,13 +1971,13 @@ GraphBLAS name          & MATLAB            & description \\
 \vspace{0.2in}
 
 \begin{spec}
-{\bf SPEC:} \verb'GxB_SelectOp' and all built-in functions in the table above
+{\bf SPEC:} \verb'GxB_SelectOp' and the table above
 are extensions to the spec.
 \end{spec}
 
 The built-in \verb'GxB_NONZERO' select operator is unique in that it is a
 function of the value of the entry $a_{ij}$, but it is still type-generic.  It
-does this by simply returning false all bits in the value are zero, or true
+does this by simply returning false if all bits in the value are zero, or true
 otherwise.  This gives the proper result for any built-in type, since integer
 and floating-point zeros are represented this way.  For user-defined types, the
 function returns the same thing.  This action is well-defined but its
@@ -1932,8 +1987,7 @@ zero means for this type.  Whatever it means, if the bits of a value with a
 user-defined type are all zero, the function returns false, and if any bit is
 one, the \verb'GxB_NONZERO' function returns true.
 
-The next sections define the following methods for the \verb'GxB_SelectOp'
-object:
+The following methods operate on the \verb'GxB_SelectOp' object:
 
 \vspace{0.1in}
 {\footnotesize
@@ -1968,11 +2022,11 @@ returned in the \verb'selectop' handle, which must not be \verb'NULL' on input.
 On output, its contents contains a pointer to the new select operator.
 
 The \verb'function' argument to \verb'GxB_SelectOp_new' is a pointer to a
-user-defined function with the signature described on the prior page.  Given
-the properties of an entry $a_{ij}$ in an $m$-by-$n$ matrix, the
-\verb'function' should return \verb'true' if the entry should be kept in the
-output of \verb'GxB_select', or \verb'false' if it should not appear in the
-output.
+user-defined function whose signature is given at the beginning of
+Section~\ref{selectop}.  Given the properties of an entry $a_{ij}$ in an
+$m$-by-$n$ matrix, the \verb'function' should return \verb'true' if the entry
+should be kept in the output of \verb'GxB_select', or \verb'false' if it should
+not appear in the output.
 
 The type \verb'xtype' is the GraphBLAS type of the input $x$ of the
 user-defined function $z=f(i,j,m,n,x,k)$.  The type may be built-in or
@@ -1980,6 +2034,13 @@ user-defined, or it may even be \verb'GrB_NULL'.  If the \verb'xtype' is
 \verb'GrB_NULL', then \verb'GxB_select' does not pass the value of $x=a_{ij}$
 to the select function, but passes \verb'GrB_NULL' for the input \verb'x' to
 the user-defined select \verb'function'.
+
+For example, to delete all entries in a matrix equal to the additive identity
+of a monoid, create a user-defined \verb'GxB_SelectOp' with a function that
+compares its input value \verb'x' with the value of the identity, passed in to
+it via the \verb'k' parameter of type \verb'void *'.  The user-defined function
+should return \verb'false' if \verb'x' is equal the value \verb'(*k)', and
+false otherwise.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -2001,7 +2062,9 @@ GrB_Info GxB_SelectOp_xtype     // return the type of x
 
 \verb'GxB_SelectOp_xtype' returns the \verb'xtype' of the select operator,
 which is the type of $x$ in the function $z=f(i,j,m,n,x,k)$.  If the select
-operator is type-generic, \verb'xtype' is returned as \verb'GrB_NULL'.
+operator is type-generic, \verb'xtype' is returned as \verb'GrB_NULL'.  This is
+not an error condition, but simply indicates that the \verb'GxB_SelectOp' is
+type-generic.
 
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_SelectOp\_free:} free a user-defined select operator}
@@ -2405,10 +2468,20 @@ which is defined in \verb'GraphBLAS.h' as
 
 Row and column indices of an \verb'nrows'-by-\verb'ncols' matrix range from
 zero to the \verb'nrows-1' for the rows, and zero to \verb'ncols-1' for the
-columns.  Indices are zero-based, like C, and not one-based, like MATLAB.
-In SuiteSparse:GraphBLAS, the largest size permitted for any integer of
-\verb'GrB_Index' is $2^{60}$.  If compiled for use in MATLAB, this maximum
-size is reduced to match the MATLAB maximum size, which is $2^{48}-1$.
+columns.  Indices are zero-based, like C, and not one-based, like MATLAB.  In
+SuiteSparse:GraphBLAS, the largest size permitted for any integer of
+\verb'GrB_Index' is $2^{60}$.  The largest \verb'GrB_Matrix' that
+SuiteSparse:GraphBLAS can construct is thus $2^{60}$-by-$2^{60}$.  An
+$n$-by-$n$ matrix $A$ that size can easily be constructed in practice with
+$O(|{\bf A}|)$ memory requirements, where $|{\bf A}|$ denotes the number of
+entries that explicitly appear in the pattern of ${\bf A}$.  The time and
+memory required to construct a matrix that large does not depend on $n$, since
+SuiteSparse:GraphBLAS can represent ${\bf A}$ in hypersparse form (see
+Section~\ref{hypersparse}).  The largest \verb'GrB_Vector' that can be
+constructed is $2^{60}$-by-1.
+
+If compiled for use in MATLAB, this maximum size is reduced to match the
+MATLAB maximum index size, which is $2^{48}-1$.
 
 This section describes a set of methods that create, modify, query,
 and destroy a GraphBLAS sparse vector, \verb'GrB_Vector':
@@ -3022,7 +3095,7 @@ the same time as the assembly of duplicates.
 {\bf SPEC:} As an extension to the spec, results are defined even if \verb'dup' is non-associative.
 \end{spec}
 
-The {\em GraphBLAS API Specification} requires \verb'dup' to be associative so
+The GraphBLAS API requires \verb'dup' to be associative so
 that entries can be assembled in any order, and states that the result is
 undefined if \verb'dup' is not associative.  However, SuiteSparse:GraphBLAS
 guarantees a well-defined order of assembly.  Entries in the tuples
@@ -3042,7 +3115,7 @@ will occur in order:
     T (i,j) = dup (T (i,j), X (k4)) ; \end{verbatim}}
 
 This is a well-defined order but the user should not depend upon it when using
-other GraphBLAS implementations since the GraphBLAS API specification does not
+other GraphBLAS implementations since the GraphBLAS API does not
 require this ordering.
 
 However, SuiteSparse:GraphBLAS guarantees this ordering, and with this
@@ -3116,7 +3189,7 @@ pointer that points to a memory space holding a single entry of this
 user-defined type.  This user-defined type must exactly match the user-defined
 type of \verb'C' since no typecasting is done between user-defined types.
 
-\paragraph{\bf Performance considerations:}
+\paragraph{\bf Performance considerations:} % BLOCKING: setElement, *assign
 SuiteSparse:GraphBLAS exploits the non-blocking mode to greatly improve the
 performance of this method.  Refer to the example shown in
 Section~\ref{overview}.  If the entry exists in the pattern already, it is
@@ -3198,7 +3271,7 @@ size as a single scalar of the type of \verb'A'.
 All computations for the matrix \verb'A' are
 guaranteed to be finished when the method returns.
 %
-In in particular, this method causes all pending updates from
+In particular, this method causes all pending updates from
 \verb'GrB_setElement', \verb'GrB_assign', or \verb'GxB_subassign' to be
 assembled, so its use can have performance implications.  Calls to this
 function should not be arbitrarily intermixed with calls to these other two
@@ -3229,13 +3302,9 @@ GrB_Info GrB_Matrix_extractTuples           // [I,J,X] = find (A)
 \verb'[I,J,X]=find(A)' in MATLAB.  Entries in the tuples \verb'[I,J,X]' are
 unique.  No pair of row and column indices \verb'(i,j)' appears more than once.
 
-The GraphBLAS API specification states the tuples can be returned in any order.
-SuiteSparse:GraphBLAS chooses to always return them in sorted order, first by
-column index (all tuples in column 0 appear first, then column 1, and so on),
-and then within each column the tuples are sorted by row index.
-SuiteSparse:GraphBLAS guarantees this ordering but this should not be expected
-of all implementations of GraphBLAS since their internal representation may
-differ from that used by SuiteSparse:GraphBLAS.
+The GraphBLAS API states the tuples can be returned in any order.
+SuiteSparse:GraphBLAS chooses to always return them in sorted order, depending
+on whether the matrix is stored by row or by column.
 
 The number of tuples in the matrix \verb'A' is given by
 \verb'GrB_Matrix_nvals(&anvals,A)'.  If \verb'anvals' is larger than the size
@@ -3244,8 +3313,8 @@ of the arrays (\verb'nvals' in the parameter list), an error
 \verb'nvals' is larger than \verb'anvals', then only the first \verb'anvals'
 entries in the arrays \verb'I' \verb'J', and \verb'X' are modified, containing
 all the tuples of \verb'A', and the rest of \verb'I' \verb'J', and \verb'X' are
-left unchanged.
-On output, \verb'nvals' contains the number of tuples extracted.
+left unchanged.  On output, \verb'nvals' contains the number of tuples
+extracted.
 
 \paragraph{Forced completion:}
 All computations for the matrix \verb'A' are
@@ -3305,19 +3374,21 @@ In SuiteSparse:GraphBLAS, any pending updates to the matrix are abandoned.
 %===============================================================================
 \label{descriptor}
 
-A GraphBLAS {\em descriptor} modifies the behavior of a GraphBLAS operation
-(not a operator).  GraphBLAS operations are described in
-Section~\ref{operations}, and all of them have a final parameter of a
-descriptor.  If the descriptor is \verb'NULL', defaults are used.  No GraphBLAS
-method (Section~\ref{objects}) is modified by a descriptor, and neither are any
-unary or binary operators.
+A GraphBLAS {\em descriptor} modifies the behavior of a GraphBLAS operation.
+% (not a operator). 
+% GraphBLAS operations are described in
+% Section~\ref{operations}, and all of them have a final parameter of a
+% descriptor.
+If the descriptor is \verb'GrB_NULL', defaults are used.
+% No GraphBLAS method (Section~\ref{objects}) is modified by a descriptor, and
+% neither are any unary or binary operators.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_DEFAULT' option is an extension to the spec.
+{\bf SPEC:} \verb'GxB_DEFAULT', \verb'GxB_AxB_METHOD', and \verb'GxB_AxB_*'
+are extensions to the spec.
 \end{spec}
 
-In the current GraphBLAS API Specification, there are four different components
-in a descriptor.  The access to these parameters and their values is governed
+The access to these parameters and their values is governed
 by two \verb'enum' types, \verb'GrB_Desc_Field' and \verb'GrB_Desc_Value':
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -3328,7 +3399,8 @@ typedef enum
     GrB_OUTP,       // descriptor for output of a method
     GrB_MASK,       // descriptor for the mask input of a method
     GrB_INP0,       // descriptor for the first input of a method
-    GrB_INP1        // descriptor for the second input of a method
+    GrB_INP1,       // descriptor for the second input of a method
+    GxB_AxB_METHOD  // descriptor for selecting C=A*B algorithm
 }
 GrB_Desc_Field ;
 \end{verbatim} } \end{mdframed}
@@ -3338,17 +3410,30 @@ GrB_Desc_Field ;
 \begin{verbatim}
 typedef enum
 {
-    GxB_DEFAULT,    // default behavior of the method
-    GrB_REPLACE,    // clear the output before assigning new values to it
-    GrB_SCMP,       // use the structural complement of the input
-    GrB_TRAN        // use the transpose of the input
+    // for all GrB_Descriptor fields:
+    GxB_DEFAULT,        // default behavior of the method
+
+    // for GrB_OUTP only:
+    GrB_REPLACE,        // clear the output before assigning new values to it
+
+    // for GrB_MASK only:
+    GrB_SCMP,           // use the structural complement of the input
+
+    // for GrB_INP0 and GrB_INP1 only:
+    GrB_TRAN,           // use the transpose of the input
+
+    // for GxB_AxB_METHOD only:
+    GxB_AxB_GUSTAVSON,  // gather-scatter saxpy method
+    GxB_AxB_HEAP,       // heap-based saxpy method
+    GxB_AxB_DOT         // dot product
 }
 GrB_Desc_Value ;
 \end{verbatim} } \end{mdframed}
 
+\newpage
 The internal representation is opaque to the user, but in this User Guide the
-four descriptor fields of a descriptor \verb'desc' are illustrated as an array
-of four items, as described in the list below.  The underlying implementation
+five descriptor fields of a descriptor \verb'desc' are illustrated as an array
+of five items, as described in the list below.  The underlying implementation
 need not be an array:
 
 \begin{itemize}
@@ -3417,6 +3502,56 @@ need not be an array:
     To clarify this in each function, the inputs are labeled as
     \verb'first input:' and \verb'second input:' in the function signatures.
 
+\item \verb'desc [GxB_AxB_METHOD]' suggests the method that should be
+    used to compute \verb'C=A*B'.  All the methods compute the same result,
+    except they may have different floating-point roundoff errors.  This
+    descriptor should be considered as a hint; SuiteSparse:GraphBLAS is
+    free to ignore it.  The current version always follows the hint, however.
+
+    \begin{itemize}
+
+    \item \verb'GxB_DEFAULT' means that a method is selected automatically.
+
+    \item \verb'GxB_AxB_GUSTAVSON':  an extended version of Gustavson's method
+    \cite{Gustavson78}, which is a very good general-purpose method, but
+    sometimes the workspace can be too large.  Assuming all matrices are stored
+    by column, it computes \verb'C(:,j)=A*B(:,j)' with a sequence of {\em
+    saxpy} operations (\verb'C(:,j)+=A(:,k)*B(k:,j)' for each nonzero
+    \verb'B(k,j)').  It requires workspace of size $m$, to the number of rows
+    of \verb'C', which is not suitable if the matrices are extremely sparse.
+
+    \item \verb'GxB_AxB_HEAP': a heap-based method, computing
+    \verb'C(:,j)=A*B(:,j)' via a heap of size equal to the maximum number of
+    entries in any column of \verb'B'.  The method is very good for hypersparse
+    matrices, particularly when $|{\bf B}|$ is less than the number of rows of
+    \verb'C'.  The method used is similar to Algorithm II in
+    \cite{BulucGilbert08} (see also \cite{BulucGilbert12}).  It computes
+    \verb'C' in the same order as Gustavson's method, using a heap instead of a
+    large gather/scatter workspace.  The heap has size $b$, equal to the
+    maximum number of entries in any one vector of \verb'B'.
+
+    \item \verb'GxB_AxB_DOT': computes \verb"C(i,j)=A(:,i)'*B(:,j)", for each
+    entry \verb'C(i,j)'.  If the mask is present and not complemented, only
+    entries for which \verb'M(i,j)=1' are computed.  This is a very specialized
+    method that works well only if the mask is present, very sparse, and not
+    complemented, or when \verb'C' is tiny.  For example, it works very well
+    when \verb'A' and \verb'B' are tall and thin, and \verb"C<M>=A'*B" or
+    \verb"C=A'*B" are computed.  It is impossibly slow if \verb'C' is large and
+    the mask is not present, since it takes $\Omega(mn)$ time if \verb'C' is
+    $m$-by-$n$ in that case.  It can work either without any workspace at all,
+    or with workspace of size $O(k)$, where $k$ is the inner dimension (the
+    number of rows of \verb'B' if the matrices are stored by column). 
+    It does not need any workspace at all if \verb'A' or \verb'B' are
+    completely dense, and is the fastest method in this case.  Otherwise, the
+    method is faster if it has access to workspace, and thus it uses $O(k)$
+    workspace if $k < (|{\bf A}|+|{\bf B}|)$.  If this condition does not hold,
+    then the workspace could dominate the memory usage, so it foregoes the use
+    of any workspace.  Since it uses no workspace if $k \ge (|{\bf A}|+|{\bf
+    B}|)$, it can work very well for extremely sparse or hypersparse matrices,
+    when the mask is present and not complemented.
+
+    \end{itemize}
+
 \end{itemize}
 
 % \newpage
@@ -3435,10 +3570,11 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
 \end{verbatim} } \end{mdframed}
 
 \verb'GrB_Descriptor_new' creates a new descriptor, with all fields set to
-their defaults (output is not replaced, mask is not complemented, and neither
-input matrix is transposed).
+their defaults (output is not replaced, mask is not complemented, neither
+input matrix is transposed, and the method used in \verb'C=A*B' is
+selected automatically).
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Descriptor\_set:}  set a parameter in a descriptor}
 %-------------------------------------------------------------------------------
@@ -3456,14 +3592,16 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
 \end{verbatim} } \end{mdframed}
 
 \verb'GrB_Descriptor_set' sets a descriptor field (\verb'GrB_OUTP',
-\verb'GrB_MASK', \verb'GrB_INP0', or \verb'GrB_INP1') to a particular value
-(\verb'GxB_DEFAULT', \verb'GrB_SCMP', \verb'GrB_TRAN', or \verb'GrB_REPLACE').
-In the current specification, the following settings can be made:
+\verb'GrB_MASK', \verb'GrB_INP0', \verb'GrB_INP1', or \verb'GxB_AxB_METHOD') to
+a particular value (\verb'GxB_DEFAULT', \verb'GrB_SCMP', \verb'GrB_TRAN',
+\verb'GrB_REPLACE', \verb'GxB_AxB_GUSTAVSON', \verb'GxB_AxB_HEAP', or
+\verb'GxB_AxB_DOT').
 
 \vspace{0.2in}
 \noindent
 {\small
-\begin{tabular}{l|p{2.4in}|p{2.2in}}
+\begin{tabular}{|l|p{2.4in}|p{2.2in}|}
+\hline
 Descriptor & Default   & Non-default \\
 field      & &  \\
 \hline
@@ -3476,7 +3614,9 @@ field      & &  \\
     After computing ${\bf Z=C\odot T}$,
     the output {\bf C} is cleared of all entries.
     Then ${\bf C \langle M \rangle = Z}$ is performed. \\
+
 \hline
+
 \verb'GrB_MASK'
     & \verb'GxB_DEFAULT':
     The Mask is not complemented.  \verb'Mask(i,j)=1' means the value $C_{ij}$
@@ -3486,6 +3626,7 @@ field      & &  \\
     The Mask is complemented.  \verb'Mask(i,j)=0' means the value $C_{ij}$
     can be modified by the operation, while \verb'Mask(i,j)=1' means the value
     $C_{ij}$ shall not be modified by the operation. \\
+
 \hline
 
 \verb'GrB_INP0'
@@ -3496,39 +3637,83 @@ field      & &  \\
     matrices are transposed, never vectors. \\
 
 \hline
+
 \verb'GrB_INP1'
     & \verb'GxB_DEFAULT':
     The second input is not transposed prior to using it in the operation.
     & \verb'GrB_TRAN':
     The second input is transposed prior to using it in the operation.  Only
     matrices are transposed, never vectors. \\
+
+\hline
+
+\verb'GrB_AxB_METHOD'
+    & \verb'GxB_DEFAULT':
+    The method used for computing \verb'C=A*B' is selected automatically.
+    & \verb'GxB_AxB_'{\em method}: The selected method is used to compute
+    \verb'C=A*B'.  \\
+
+\hline
 \end{tabular}
 }
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
-\subsubsection{{\sf GxB\_Descriptor\_get:}  get a parameter from a descriptor}
+\subsubsection{{\sf GxB\_Desc\_set:}  set a parameter in a descriptor}
 %-------------------------------------------------------------------------------
-\label{descriptor_get}
+\label{desc_set}
 
 \begin{mdframed}[userdefinedwidth=6in]
 {\footnotesize
 \begin{verbatim}
-GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
+GrB_Info GxB_Desc_set           // set a parameter in a descriptor
 (
-    GrB_Desc_Value *val,        // value of the parameter
-    const GrB_Descriptor desc,  // descriptor to query; NULL means defaults
-    const GrB_Desc_Field field  // parameter to query
+    GrB_Descriptor desc,        // descriptor to modify
+    const GrB_Desc_Field field, // parameter to change
+    ...                         // value to change it to
 ) ;
 \end{verbatim} } \end{mdframed}
 
-\verb'GxB_Descriptor_get' returns the value of a single field in a descriptor.
+\verb'GxB_Desc_set' is identical to \verb'GrB_Descriptor_set', except that the
+type of the third parameter can vary with the field.  All descriptor fields are
+currently of type \verb'GrB_Desc_Value', so currently this function is
+identical in all ways to \verb'GrB_Descriptor_set', except for the name of the
+function.  Future versions of this function will allow for arbitrary types of
+the third parameter, depending on the field.  For a simpler-to-use alternative,
+see \verb'GxB_set' described in Section~\ref{options}.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Descriptor_get' function is an extension to the spec.
+{\bf SPEC:} The \verb'GxB_Desc_set' function is an extension to the spec.
 \end{spec}
 
-% \newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Desc\_get:}  get a parameter from a descriptor}
+%-------------------------------------------------------------------------------
+\label{desc_get}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Desc_get           // get a parameter from a descriptor
+(
+    const GrB_Descriptor desc,  // descriptor to query; NULL means defaults
+    const GrB_Desc_Field field, // parameter to query
+    ...                         // value of the parameter
+) ;
+\end{verbatim} } \end{mdframed}
+
+\verb'GxB_Desc_get' returns the value of a single field in a descriptor.  The
+type of the third parameter is a pointer to a variable type, whose type depends
+on the field.  Currently, all descriptor values are of type
+\verb'GrB_Desc_Value', so this third parameter is a pointer to a scalar value of
+type \verb'GrB_Desc_Value'.  For a simpler-to-use alternative, see
+\verb'GxB_get' described in Section~\ref{options}.
+
+\begin{spec}
+{\bf SPEC:} The \verb'GxB_Desc_get' function is an extension to the spec.
+\end{spec}
+
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Descriptor\_free:} free a descriptor}
 %-------------------------------------------------------------------------------
@@ -3559,16 +3744,16 @@ safely does nothing if passed a \verb'NULL' handle, or if
 There are currently no predefined descriptors, but if these are added in the
 future, this function will do nothing if passed a built-in descriptor.
 
-% \newpage
+\newpage
 %===============================================================================
 \subsection{{\sf GrB\_free:} free any GraphBLAS object} %=======================
 %===============================================================================
 \label{free}
 
-Each of the nine GraphBLAS objects has \verb'GrB_*_new' and \verb'GrB_*_free'
-methods that are specific to each object.  They can also be accessed by a
-generic function, \verb'GrB_free', that works for all nine objects.  If
-\verb'G' is any of the nine GraphBLAS objects, the statement
+Each of the nine objects has \verb'GrB_*_new' and \verb'GrB_*_free' methods
+that are specific to each object.  They can also be accessed by a generic
+function, \verb'GrB_free', that works for all nine objects.  If \verb'G' is any
+of the nine objects, the statement
 
     {\footnotesize
     \begin{verbatim}
@@ -3599,21 +3784,787 @@ attempts to free a built-in object, SuiteSparse:GraphBLAS will safely do
 nothing.  In all cases, the \verb'GrB_free' function in SuiteSparse:GraphBLAS
 always returns \verb'GrB_SUCCESS'.
 
+
+
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{SuiteSparse:GraphBLAS Options} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{options}
+
+\begin{spec}
+{\bf SPEC:} {\sf GxB\_set} and {\sf GxB\_get} are extensions to the
+specification.
+\end{spec}
+
+SuiteSparse:GraphBLAS includes two type-generic methods, \verb'GxB_set' and
+\verb'GxB_get', that set and query various options and parameters settings,
+including a generic way to set values in the \verb'GrB_Descriptor' object.
+Using these methods, the user application can provide hints to
+SuiteSparse:GraphBLAS on how it should store and operate on its matrices.
+These hints have no effect on the results of any GraphBLAS operation (except
+perhaps floating-point roundoff differences), but they can have a great impact
+on the amount of time or memory taken.
+
+\begin{itemize}
+
+\item \verb'GxB_set (field, value)' provides hints to
+    SuiteSparse:GraphBLAS on how it should store all matrices created after
+    calling this function:  by row, by column, and whether or not to use a {\em
+    hypersparse} format \cite{BulucGilbert08,BulucGilbert12}.  These are global
+    options that modify all matrices created after calling this method.
+
+\item \verb'GxB_set (GrB_Matrix A, field, value)' provides hints to
+    SuiteSparse: GraphBLAS on how to store a particular matrix.  This method
+    allows SuiteSparse:GraphBLAS to transform a specific matrix from one format
+    to another.  The format has no effect on the result computed by GraphBLAS;
+    it only affects the time and memory taken to do the computations.
+
+\item \verb'GxB_set (GrB_Descriptor desc, field, value)' is another way to
+    set the value of a field in a \verb'GrB_Descriptor'.  It is identical to \\
+    \verb'GrB_Descriptor_set', just with a generic name.  Except for
+    \verb'GxB_AxB_METHOD', the descriptor settings are not hints but are always
+    implemented by GraphBLAS, since they affect the results of any GraphBLAS
+    operation.
+
+\end{itemize}
+
+The \verb'GxB_get' method queries a \verb'GrB_Descriptor', a \verb'GrB_Matrix',
+or the global options.
+
+\begin{itemize}
+
+\item \verb'GxB_get (field, &value)' retrieves the current value of
+    a global option.
+
+\item \verb'GxB_get (GrB_Matrix A, field, &value)' retrieves the current
+    value of an option from a particular matrix \verb'A'.
+
+\item \verb'GxB_get (GrB_Descriptor desc, field, &value)' retrieves the value
+    of a field in a descriptor.
+
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+\subsection{Storing a matrix by row or by column}
+%-------------------------------------------------------------------------------
+
+The GraphBLAS \verb'GrB_Matrix' is entirely opaque to the user application, and
+the GraphBLAS API does not specify how the matrix should be stored.  However,
+choices made in how the matrix is represented in a particular implementation,
+such as SuiteSparse:GraphBLAS, can have a large impact on performance.
+
+Many graph algorithms are just as fast in any format, but some algorithms are
+much faster in one format or the other.  For example, suppose the user
+application stores a directed graph as a matrix \verb'A', with the edge $(i,j)$
+represented as the value \verb'A(i,j)', and the application makes many accesses
+to the $i$th row of the matrix, with \verb'GrB_Col_extract'
+\verb'(w,...,A,GrB_ALL,...,i,desc)' with the transposed descriptor
+(\verb'GrB_INP0' set to \verb'GrB_TRAN').  If the matrix is stored by column
+this can be extremely slow, just like the expression \verb'w=A(i,:)' in MATLAB,
+where \verb'i' is a scalar.
+
+MATLAB stores its sparse matrices by column, in ``non-hypersparse'' format, in
+what is called the Compressed Sparse Column format, or CSC for short.  An
+\verb'm'-by-\verb'n' matrix in MATLAB is represented as a set of \verb'n'
+column vectors, each with a sorted list of row indices and values of the
+nonzero entries in that column.  As a result, \verb'w=A(:,j)' is very fast,
+since the result is already held in the data structure a single list, the $j$th
+column vector.  However, \verb'w=A(i,:)' is very slow in MATLAB, since every
+column in the matrix has to be searched to see if it contains row \verb'i'.  In
+MATLAB, if many such accesses are made, it is much better to transpose the
+matrix (say \verb"AT=A'") and then use \verb"w=AT(:,i)" instead.  This can have
+a dramatic impact on the performance of MATLAB.
+
+Likewise, if \verb'u' is a very sparse column vector and \verb'A' is stored by
+column, then \verb"w=u'*A" (via \verb'GrB_vxm') is slower than \verb'w=A*u'
+(via \verb'GrB_mxv').  The opposite is true if the matrix is stored by row.
+
+An example of this can be found in Section B.1 of Version 1.2 of the GraphBLAS
+API Specification, where the breadth-first search \verb'BFS' uses
+\verb'GrB_vxm' to compute \verb"q'=q'*A".  This method is not fast if the
+matrix \verb'A' is stored by column.  The \verb'bfs5' and \verb'bfs6' examples
+in the \verb'Demo/' folder of SuiteSparse:GraphBLAS use \verb'GrB_mxv' instead,
+because in Version 2.0.3 and earlier, SuiteSparse:GraphBLAS only supported a
+data structure that stored its matrices by column.  The methods are equivalent;
+they just use a matrix \verb'A' that is the transpose of the other.
+
+SuiteSparse:GraphBLAS still stores its sparse matrices by column, by default,
+just like MATLAB.  However, it can also be instructed to store any selected
+matrices, or all matrices, by row instead, so that \verb'w=A(i,:)' (via
+\verb'GrB_Col_extract' with a transposed descriptor) is very fast.  This allows
+the BFS example in GraphBLAS API to be done efficiently.  The change in data
+format has no effect on the result, just the time and memory usage.  To use a
+row-oriented format by default, the following can be done in a user application
+that tends to access its matrices by row.
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_init (...) ;
+    // just after GrB_init: do the following:
+    #ifdef GxB_SUITESPARSE_GRAPHBLAS
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
+    #endif \end{verbatim} }
+
+If this is done, and no other \verb'GxB_set' calls are made with
+\verb'GxB_FORMAT', all matrices will be stored by row.  Alternatively,
+SuiteSparse:GraphBLAS can be compiled with \verb'-DBYROW', which changes the
+default format to \verb'GxB_BY_ROW', with no calls to any \verb'GxB_*'
+function.
+
+%-------------------------------------------------------------------------------
+\subsection{Hypersparse matrices}
+\label{hypersparse}
+%-------------------------------------------------------------------------------
+
+MATLAB can store an \verb'm'-by-\verb'n' matrix with a very large value of
+\verb'm', since a CSC data structure takes $O(n+|{\bf A}|)$ memory, independent
+of \verb'm', where $|{\bf A}|$ is the number of nonzeros in the matrix.  It
+cannot store a matrix with a huge \verb'n', and this structure is also
+inefficient when $|{\bf A}|$ is much smaller than \verb'n'.  In contrast,
+SuiteSparse:GraphBLAS can store its matrices in {\em hypersparse} format,
+taking only $O(|{\bf A}|)$ memory, independent of how it is stored (by row or
+by column) and independent of both \verb'm' and \verb'n'
+\cite{BulucGilbert08,BulucGilbert12}.
+
+In both the CSR and CSC formats, the matrix is held as a set of sparse vectors.
+In non-hypersparse format, the set of sparse vectors is itself dense; all
+vectors are present, even if they are empty.  For example, an
+\verb'm'-by-\verb'n' matrix in non-hypersparse CSC format contains \verb'n'
+sparse vectors.  Each column vector takes at least one integer to represent,
+even for a column with no entries.  This allows for quick lookup for a
+particular vector, but the memory required is $O(n+|{\bf A}|)$.  With a
+hypersparse CSC format, the set of vectors itself is sparse, and columns with
+no entries take no memory at all.  The drawback of the hypersparse format is
+that finding an arbitrary column vector \verb'j', such as for the computation
+\verb'C=A(:,j)', takes $O(\log k)$ time if there $k \le n$ vectors in the data
+structure.  One advantage of the hypersparse structure is the memory required
+for an \verb'm'-by-\verb'n' hypersparse CSC matrix is only $O(|{\bf A}|)$,
+independent of \verb'm' and \verb'n'.  Algorithms that must visit all non-empty
+columns of a matrix are much faster when working with hypersparse matrices,
+since empty columns can be skipped.
+
+The \verb'hyper_ratio' parameter controls the hypersparsity of the internal
+data structure for a matrix.  The parameter is typically in the range 0 to 1.
+The default is \verb'hyper_ratio' = \verb'GxB_HYPER_DEFAULT', which is an
+\verb'extern' \verb'const' \verb'double' value, currently set to 0.0625.  This
+default ratio may change in the future.
+
+The \verb'hyper_ratio' determines how the matrix is converted between the
+hypersparse and non-hypersparse formats.  Let $n$ be the number of columns of a
+CSC matrix, or the number of rows of a CSR matrix.  The matrix can have at most
+$n$ non-empty vectors.
+
+Let $k$ be the actual number of non-empty vectors.  That is, for the CSC
+format, $k \le n$ is the number of columns that have at least one entry.  Let
+$h$ be the value of \verb'hyper_ratio'.
+
+If a matrix is currently hypersparse, it can be converted to non-hypersparse if
+the either condition $n \le 1$ or $k > 2nh$ holds, or both.  Otherwise, it
+stays hypersparse.  Note that if $n \le 1$ the matrix is always stored as
+non-hypersparse.
+
+If currently non-hypersparse, it can be converted to hypersparse if
+both conditions $n > 1$ and $k \le nh$ hold.  Otherwise, it stays
+non-hypersparse.  Note that if $n \le 1$ the matrix always remains
+non-hypersparse.
+
+The default value of \verb'hyper_ratio' is assigned at startup by
+\verb'GrB_init', and can then be modified globally with \verb'GxB_set'.  All
+new matrices are created with the same \verb'hyper_ratio', determined by the
+global value.  Once a particular matrix \verb'A' has been constructed, its
+hypersparsity ratio can be modified from the default with:
+
+    {\footnotesize
+    \begin{verbatim}
+    double hyper_ratio = 0.2 ;
+    GxB_set (A, GxB_HYPER, hyper_ratio) ; \end{verbatim}}
+
+To force a matrix to always be non-hypersparse, use \verb'hyper_ratio' equal to
+\verb'GxB_NEVER_HYPER'.  To force a matrix to always stay hypersparse, set
+\verb'hyper_ratio' to \verb'GxB_ALWAYS_HYPER'.
+
+A \verb'GrB_Matrix' can thus be held in one of four formats: any combination of
+hyper/non-hyper and CSR/CSC.  All \verb'GrB_Vector' objects are always stored
+in non-hypersparse CSC format.
+
+A new matrix created via \verb'GrB_Matrix_new' starts with $k=0$ and is created
+in hypersparse form by default unless $n \le 1$ or if $h<0$, where $h$ is the
+global \verb'hyper_ratio' value.  The matrix is created in in either
+\verb'GxB_BY_ROW' or \verb'GxB_BY_COL' format, as determined by the last call
+to \verb'GxB_set(GxB_FORMAT,...)' or \verb'GrB_init'.
+
+A new matrix \verb'C' created via \verb'GrB_dup (&C,A)' inherits the CSR/CSC
+format, hypersparsity format, and \verb'hyper_ratio' from \verb'A'.
+
+%-------------------------------------------------------------------------------
+{\bf Parameter types:}
+%-------------------------------------------------------------------------------
+The \verb'GxB_Option_Field' enumerated type gives the type of the \verb'field'
+parameter for the second argument of \verb'GxB_set' and \verb'GxB_get',
+for setting global options or matrix options.
+
+{\footnotesize
+\begin{verbatim}
+typedef enum
+{
+    GxB_HYPER,      // defines switch to hypersparse format (a double value)
+    GxB_FORMAT      // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+}
+GxB_Option_Field ;
+\end{verbatim} }
+
+The \verb'GxB_FORMAT' field can be by row or by column, set to a value
+with the type \verb'GxB_Format_Value':
+
+{\footnotesize
+\begin{verbatim}
+typedef enum
+{
+    GxB_BY_ROW,         // CSR: compressed sparse row format
+    GxB_BY_COL          // CSC: compressed sparse column format
+}
+GxB_Format_Value ;
+\end{verbatim} }
+
+The default format is by column, just like MATLAB.  This is given by the
+predefined value \verb'GxB_FORMAT_DEFAULT', which is equal to \verb'GxB_BY_COL'
+if default compile-time options are used.  To change the default at compile
+time to \verb'GxB_BY_ROW', compile the SuiteSparse:GraphBLAS library with
+\verb'-DBYROW'.  This changes \verb'GxB_FORMAT_DEFAULT' to \verb'GxB_BY_ROW'.
+The default hypersparsity ratio is 0.0625 (1/16), but this value may change
+in the future.
+
+Setting the \verb'GxB_HYPER' field to \verb'GxB_ALWAYS_HYPER' ensures a matrix
+always stays hypersparse.  If set to \verb'GxB_NEVER_HYPER', it always stays
+non-hypersparse.  At startup, \verb'GrB_init' defines the following initial
+settings:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_set (GxB_HYPER, GxB_HYPER_DEFAULT) ;
+    GxB_set (GxB_FORMAT, GxB_FORMAT_DEFAULT) ;
+\end{verbatim} }
+
+That is, by default, all new matrices are held by column in CSC format, unless
+\verb'-DBYROW' is used at compile time, in which case the default is to store
+all new matrices by row in CSR format.  If a matrix has fewer than $n/16$
+columns, it can be converted to hypersparse format.  If it has more than $n/8$
+columns, it can be converted to non-hypersparse format.  These options can be
+changed for all future matrices with \verb'GxB_set'.  For example, to change
+all future matrices to be in non-hypersparse CSR when created, use:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_set (GxB_HYPER, GxB_NEVER_HYPER) ;
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
+\end{verbatim} }
+
+Then if a particular matrix needs a different format, then (as an example):
+
+{\footnotesize
+\begin{verbatim}
+    GxB_set (A, GxB_HYPER, 0.1) ;
+    GxB_set (A, GxB_FORMAT, GxB_BY_COL) ;
+\end{verbatim} }
+
+This changes the matrix \verb'A' so that it is stored by column, and it is
+converted from non-hypersparse to hypersparse format if it has fewer than 10\%
+non-empty columns.  If it is hypersparse, it is a candidate for conversion to
+non-hypersparse if has 20\% or more non-empty columns.  If it has between 10\%
+and 20\% non-empty columns, it remains in whatever format it is currently in.
+
+MATLAB only supports a non-hypersparse CSC format.  The format in
+SuiteSparse:GraphBLAS that is equivalent to the MATLAB format is given below:
+
+{\footnotesize
+\begin{verbatim}
+    GrB_init ( ) ;
+    GxB_set (GxB_HYPER, GxB_NEVER_HYPER) ;
+    GxB_set (GxB_FORMAT, GxB_BY_COL) ;
+    // no subsequent use of GxB_HYPER or GxB_FORMAT
+\end{verbatim} }
+
+The \verb'GxB_HYPER' and \verb'GxB_FORMAT' options should be considered as
+suggestions from the user application as to how SuiteSparse:GraphBLAS can
+obtain the best performance for a particular application.
+SuiteSparse:GraphBLAS is free to ignore any of these suggestions, both now and
+in the future, and the available options and formats may be augmented in the
+future.  Any prior options no longer needed in future versions of
+SuiteSparse:GraphBLAS will be silently ignored, so the use these options is
+safe for future updates.
+
+SuiteSparse:GraphBLAS is not yet multi-threaded, but it is thread-safe if the
+user application threads do not operate on the same matrices at the same time.
+Output matrices and vectors used by different threads must be different, and
+input matrices and vectors can be safely used only if any pending computations
+on them have finished, via \verb'GrB_wait' or the per-matrix methods,
+\verb'GrB_*_nvals', \verb'GrB_*_extractElement', \verb'GrB_*_extractTuples',
+and reduction to a scalar via \verb'GrB_*_reduce'.
+
+All threads in the same user application share the same global options,
+including hypersparsity and CSR/CSC format determined by \verb'GxB_set', and
+blocking mode determined by \verb'GrB_init'.  Specific format and hypersparsity
+parameters of each matrix are specific to that matrix and can be independently
+changed.
+
+% \newpage
+%===============================================================================
+\subsection{{\sf GxB\_set:} set a global option}
+%===============================================================================
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_set                    // set a global default option
+(
+    const GxB_Option_Field field,   // option to change
+    ...                             // value to change it to
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage of \verb'GxB_set' sets the value of a global option.
+The \verb'field' parameter can be \verb'GxB_HYPER' or \verb'GxB_FORMAT'.
+
+For example, the following usage sets the global hypersparsity ratio to 0.2,
+and the format of future matrices to \verb'GxB_BY_ROW'. 
+No existing matrices are changed.
+
+{\footnotesize
+\begin{verbatim}
+    GxB_set (GxB_HYPER, 0.2) ;
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
+\end{verbatim} }
+
+%===============================================================================
+\subsection{{\sf GxB\_set:} set a matrix option}
+%===============================================================================
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_set                    // set an option in a matrix
+(
+    GrB_Matrix A,                   // matrix to modify
+    const GxB_Option_Field field,   // option to change
+    ...                             // value to change it to
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage of \verb'GxB_set' sets the value of a matrix option, for a
+particular matrix.
+The \verb'field' parameter can be \verb'GxB_HYPER' or \verb'GxB_FORMAT'.
+
+For example, the following usage sets the hypersparsity
+ratio to 0.2, and the format of \verb'GxB_BY_ROW', for a particular matrix
+\verb'A'.  SuiteSparse:GraphBLAS currently applies these changes immediately,
+but since they are simply hints, future versions of SuiteSparse:GraphBLAS may
+delay the change in format if it can obtain better performance.
+
+For performance, the matrix option should be set as soon as it is created with
+\verb'GrB_Matrix_new', so the internal transformation takes less time.
+
+{\footnotesize
+\begin{verbatim}
+    GxB_set (A, GxB_HYPER, 0.2) ;
+    GxB_set (A, GxB_FORMAT, GxB_BY_ROW) ;
+\end{verbatim} }
+
+% \newpage
+%===============================================================================
+\subsection{{\sf GxB\_set:} set a {\sf GrB\_Descriptor} value}
+%===============================================================================
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_set                // set a parameter in a descriptor
+(
+    GrB_Descriptor desc,        // descriptor to modify
+    const GrB_Desc_Field field, // parameter to change
+    ...                         // value to change it to
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage is identical to \verb'GrB_Descriptor_set', just with a name that is
+consistent with the other usages of this generic function.  The \verb'field'
+parameter can be \verb'GrB_OUTP', \verb'GrB_MASK', \verb'GrB_INP0', or
+\verb'GrB_INP1'.  Future versions will allow for different types for the third
+parameter.  Refer to Sections~\ref{descriptor_set}~and~\ref{desc_set} for
+details.
+
+%===============================================================================
+\subsection{{\sf GxB\_get:} retrieve a global option}
+%===============================================================================
+\label{gxbget}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_get                    // gets the current global default option
+(
+    const GxB_Option_Field field,   // option to query
+    ...                             // return value of the global option
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage of \verb'GxB_get' retrieves the value of a global option.
+The \verb'field' parameter can be \verb'GxB_HYPER' or \verb'GxB_FORMAT'.
+For example:
+
+{\footnotesize
+\begin{verbatim}
+    double h ;
+    GxB_get (GxB_HYPER, &h) ;
+    printf ("hyper_ratio = %g for all new matrices\n", h) ;
+
+    GxB_Format_Value s ;
+    GxB_get (GxB_FORMAT, &s) ;
+    if (s == GxB_BY_COL) printf ("all new matrices are stored by column\n") :
+    else printf ("all new matrices are stored by row\n") ; \end{verbatim} }
+
+% \newpage
+%===============================================================================
+\subsection{{\sf GxB\_get:} retrieve a matrix option}
+%===============================================================================
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_get                    // gets the current option of a matrix
+(
+    const GrB_Matrix A,             // matrix to query
+    const GxB_Option_Field field,   // option to query
+    ...                             // return value of the matrix option
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage of \verb'GxB_get' retrieves the value of a matrix option.
+The \verb'field' parameter can be \verb'GxB_HYPER' or \verb'GxB_FORMAT'.
+For example:
+
+{\footnotesize
+\begin{verbatim}
+    double h ;
+    GxB_get (A, GxB_HYPER, &h) ;
+    printf ("matrix A has hyper_ratio = %g\n", h) ;
+
+    GxB_Format_Value s ;
+    GxB_get (A, GxB_FORMAT, &s) ;
+    if (s == GxB_BY_COL) printf ("matrix A is stored by column\n") :
+    else printf ("matrix A is stored by row\n") ; \end{verbatim} }
+
+%===============================================================================
+\subsection{{\sf GxB\_get:} retrieve a {\sf GrB\_Descriptor} value}
+%===============================================================================
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_get                // get a parameter from a descriptor
+(
+    const GrB_Descriptor desc,  // descriptor to query; NULL means defaults
+    const GrB_Desc_Field field, // parameter to query
+    ...                         // value of the parameter
+) ;
+\end{verbatim} } \end{mdframed}
+
+This usage is identical to \verb'GxB_Desc_get', just with a name
+that is consistent with the other usages of this generic function.
+The \verb'field' parameter can be \verb'GrB_OUTP', \verb'GrB_MASK',
+\verb'GrB_INP0', \verb'GrB_INP1' or \verb'GxB_AxB_METHOD'.  Refer to
+Section~\ref{desc_get} for details.
+
+%===============================================================================
+\newpage
+\subsection{Summary of usage of {\sf GxB\_set} and {\sf GxB\_get}}
+%===============================================================================
+
+The different usages of \verb'GxB_set' and \verb'GxB_get' are summarized below.
+
+\noindent
+To set/get the global options:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_set (GxB_HYPER, double h) ;
+    GxB_set (GxB_HYPER, GxB_ALWAYS_HYPER) ;
+    GxB_set (GxB_HYPER, GxB_NEVER_HYPER) ;
+    GxB_get (GxB_HYPER, double *h) ;
+
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
+    GxB_set (GxB_FORMAT, GxB_BY_COL) ;
+    GxB_get (GxB_FORMAT, GxB_Format_Value *s) ; \end{verbatim} }
+
+\noindent
+To set/get a matrix option:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_set (GrB_Matrix A, GxB_HYPER, double h) ;
+    GxB_set (GrB_Matrix A, GxB_HYPER, GxB_ALWAYS_HYPER) ;
+    GxB_set (GrB_Matrix A, GxB_HYPER, GxB_NEVER_HYPER) ;
+    GxB_get (GrB_Matrix A, GxB_HYPER, double *h) ;
+
+    GxB_set (GrB_Matrix A, GxB_FORMAT, GxB_BY_ROW) ;
+    GxB_set (GrB_Matrix A, GxB_FORMAT, GxB_BY_COL) ;
+    GxB_get (GrB_Matrix A, GxB_FORMAT, GxB_Format_Value *s) ; \end{verbatim} }
+
+\noindent
+To set/get a descriptor field:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_set (GrB_Descriptor d, GrB_OUTP, GxB_DEFAULT) ;
+    GxB_set (GrB_Descriptor d, GrB_OUTP, GrB_REPLACE) ;
+
+    GxB_set (GrB_Descriptor d, GrB_MASK, GxB_DEFAULT) ;
+    GxB_set (GrB_Descriptor d, GrB_MASK, GrB_SCMP) ;
+
+    GxB_set (GrB_Descriptor d, GrB_INP0, GxB_DEFAULT) ;
+    GxB_set (GrB_Descriptor d, GrB_INP0, GrB_TRAN ;
+
+    GxB_set (GrB_Descriptor d, GrB_INP1, GxB_DEFAULT) ;
+    GxB_set (GrB_Descriptor d, GrB_INP1, GrB_TRAN);
+
+    GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_DEFAULT) ;
+    GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON) ;
+    GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_HEAP) ;
+    GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_DOT) ;
+
+    GxB_get (GrB_Descriptor d, GrB_Desc_Field f, GrB_Desc_Value *v) ; \end{verbatim} }
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{SuiteSparse:GraphBLAS Colon and Index Notation} %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{colon}
+
+MATLAB uses a colon notation to index into matrices, such as
+\verb'C=A(2:4,3:8)', which extracts \verb'C' as 3-by-6 submatrix from \verb'A',
+from rows 2 through 4 and columns 3 to 8 of the matrix \verb'A'.  A single
+colon is used to denote all rows, \verb'C=A(:,9)', or all columns,
+\verb'C=A(12,:)', which refers to the 9th column and 12th row of \verb'A',
+respectively.  An arbitrary integer list can be given as well, such as the
+MATLAB statements:
+
+    {\footnotesize
+    \begin{verbatim}
+    I = [2 1 4] ;
+    J = [3 5] ;
+    C = A (I,J) ; \end{verbatim} }
+\noindent
+which creates the 3-by-2 matrix \verb'C' as follows:
+\[
+C =
+\left[
+\begin{array}{cc}
+a_{2,3} & a_{2,5} \\
+a_{1,3} & a_{1,5} \\
+a_{4,3} & a_{4,5} \\
+\end{array}
+\right]
+\]
+
+The GraphBLAS API can do the equivalent of \verb'C=A(I,J)',
+\verb'C=A(:,J)', \verb'C=A(I,:)', and \verb'C=A(:,:)', by passing a parameter
+\verb'const GrB_Index *I' as either an array of size \verb'ni', or as the
+special value \verb'GrB_ALL', which corresponds to the stand-alone colon
+\verb'C=A(:,J)', and the same can be done for \verb'J'..  To compute
+\verb'C=A(2:4,3:8)' in GraphBLAS requires the user application to create two
+explicit integer arrays \verb'I' and \verb'J' of size 3 and 5, respectively,
+and then fill them with the explicit values \verb'[2,3,4]' and
+\verb'[3,4,5,6,7,8]'.  This works well if the lists are small, or if the matrix
+has more entries than rows or columns.
+
+However, particularly with hypersparse matrices, the size of the explicit
+arrays \verb'I' and \verb'J' can vastly exceed the number of entries in the
+matrix.  When using its hypersparse format, SuiteSparse:GraphBLAS allows the
+user application to create a \verb'GrB_Matrix' with dimensions up to $2^{60}$,
+with no memory constraints.  The only constraint on memory usage in a
+hypersparse matrix is the number of entries in the matrix.
+
+For example, creating a $n$-by-$n$ matrix \verb'A' of type \verb'GrB_FP64' with
+$n=2^{60}$ and one million entries is trivial to do in Version 2.1 (and later)
+of SuiteSparse:GraphBLAS, taking at most 24MB of space.  SuiteSparse:GraphBLAS
+Version 2.1 (or later) could do this on an old smartphone.  However, using just
+the pure GraphBLAS API, constructing \verb'C=A(0:(n/2),0:(n/2))'
+in SuiteSparse Version 2.0 would require the creation of an integer array
+\verb'I' of size $2^{59}$, containing the sequence 0, 1, 2, 3, ...., requiring
+about 4 ExaBytes of memory (4 million terabytes).  This is roughly 1000 times
+larger than the memory size of the world's largest computer in 2018.
+
+SuiteSparse:GraphBLAS Version 2.1 and later extends the GraphBLAS API with a
+full implementation of the MATLAB colon notation for integers,
+\verb'I=begin:inc:end'.  This extension allows the construction of the matrix
+\verb'C=A(0:(n/2),0:(n/2))' in this example, with dimension $2^{59}$, probably
+taking just milliseconds on an old smartphone.
+
+The \verb'GrB_extract', \verb'GrB_assign', and \verb'GrB_subassign' operations
+(described in the Section~\ref{operations}) each have parameters that define a
+list of integer indices, using two parameters:
+
+    {\footnotesize
+    \begin{verbatim}
+    const GrB_Index *I ;    // an array, or a special value GrB_ALL
+    GrB_Index ni ;          // the size of I, or a special value \end{verbatim}}
+
+These two parameters define five kinds of index lists, which can be used to
+specify either an explicit or implicit list of row indices and/or column
+indices.  The length of the list of indices is denoted \verb'|I|'.  This
+discussion applies equally to the row indices \verb'I' and the column indices
+\verb'J'.  The five kinds are listed below.
+
+\begin{enumerate}
+\item
+    An explicit list of indices, such as \verb'I = [2 1 4 7 2]' in MATLAB
+    notation, is handled by passing in \verb'I' as a pointer to an array of
+    size 5, and passing \verb'ni=5' as the size of the list.
+    The length of the explicit list is \verb'ni=|I|'.
+    Duplicates may appear.
+
+\item To specify all rows of a matrix, use \verb'I = GrB_ALL'.  The
+    parameter \verb'ni' is ignored.  This is equivalent to \verb'C=A(:,J)'
+    in MATLAB.  In GraphBLAS, this is the sequence \verb'0:(m-1)' if \verb'A'
+    has \verb'm' rows, with length \verb'|I|=m'.  If \verb'J' is used the
+    columns of an \verb'm'-by-\verb'n' matrix, then \verb'J=GrB_ALL' refers to
+    all columns, and is the sequence \verb'0:(n-1)', of length \verb'|J|=n'.
+
+\item To specify a contiguous range of indices, such as \verb'I=10:20'
+    in MATLAB, the array \verb'I' has size 2, and \verb'ni' is passed to
+    SuiteSparse:GraphBLAS as the special value \verb'ni = GxB_RANGE'.  The
+    beginning index is \verb'I[GxB_BEGIN]' and the ending index is
+    \verb'I[GxB_END]'.   Both values must be non-negative since
+    \verb'GrB_Index' is an unsigned integer (\verb'uint64_t').  The value of
+    \verb'I[GxB_INC]' is ignored.
+
+    {\footnotesize
+    \begin{verbatim}
+    // to specify I = 10:20
+    GrB_Index I [2], ni = GxB_RANGE ;
+    I [GxB_BEGIN] = 10 ;      // the start of the sequence
+    I [GxB_END  ] = 20 ;      // the end of the sequence \end{verbatim}}
+
+    Let $b$ = \verb'I[GxB_BEGIN]', let $e$ = \verb'I[GxB_END]',
+    The sequence has length zero if $b > e$; otherwise the length is
+    $|I| = (e-b) + 1$.
+
+\item To specify a strided range of indices with a non-negative stride,
+    such as \verb'I=3:2:10', the array \verb'I' has size 3, and \verb'ni' has
+    the special value \verb'GxB_STRIDE'.  This is the sequence 3, 5, 7, 9, of
+    length 4.  Note that 10 does not appear in the list.  The end point need
+    not appear if the increment goes past it.
+
+    {\footnotesize
+    \begin{verbatim}
+    // to specify I = 3:2:10
+    GrB_Index I [3], ni = GxB_STRIDE ;
+    I [GxB_BEGIN ] = 3 ;      // the start of the sequence
+    I [GxB_INC   ] = 2 ;      // the increment
+    I [GxB_END   ] = 10 ;     // the end of the sequence \end{verbatim}}
+
+    The \verb'GxB_STRIDE' sequence is the same as the \verb'List' generated by
+    the following for loop:
+
+    {\footnotesize
+    \begin{verbatim}
+    int64_t k = 0 ;
+    GrB_Index *List = (a pointer to an array of large enough size)
+    for (int64_t i = I [GxB_BEGIN] ; i <= I [GxB_END] ; i += I [GxB_INC])
+    {
+        // i is the kth entry in the sequence
+        List [k++] = i ;
+    } \end{verbatim}}
+
+    Then passing the explicit array \verb'List' and its length \verb'ni=k' has
+    the same effect as passing in the the array \verb'I' of size 3, with
+    \verb'ni=GxB_STRIDE'.  The latter is simply much faster to produce, and
+    much more efficient for SuiteSparse:GraphBLAS to process.
+
+    Let $b$ = \verb'I[GxB_BEGIN]', let $e$ = \verb'I[GxB_END]', and let
+    $\Delta$ = \verb'I[GxB_INC]'.  The sequence has length zero if $b > e$ or
+    $\Delta=0$.  Otherwise, the length of the sequence is
+    \[
+    |I| = \Bigl\lfloor\dfrac{e-b}{\Delta}\Bigr\rfloor + 1
+    \]
+
+\item
+    In MATLAB notation, if the stride is negative, the sequence is decreasing.
+    For example, \verb'10:-2:1' is the sequence 10, 8, 6, 4, 2, in that order.
+    In SuiteSparse:GraphBLAS, use \verb'ni = GxB_BACKWARDS', with an array
+    \verb'I' of size 3.  The following example specifies defines the equivalent
+    of the MATLAB expression \verb'10:-2:1' in SuiteSparse:GraphBLAS:
+
+    \vspace{-0.1in}
+    {\footnotesize
+    \begin{verbatim}
+    // to specify I = 10:-2:1
+    GrB_Index I [3], ni = GxB_BACKWARDS ;
+    I [GxB_BEGIN ] = 10 ;     // the start of the sequence
+    I [GxB_INC   ] = 2 ;      // the magnitude of the increment
+    I [GxB_END   ] = 1 ;      // the end of the sequence \end{verbatim}}
+
+    \vspace{-0.1in}
+    The value -2 cannot be assigned to the \verb'GrB_Index' array \verb'I',
+    since that is an unsigned type.  The signed increment is represented
+    instead with the special value \verb'ni = GxB_BACKWARDS'.
+    The \verb'GxB_BACKWARDS' sequence is the same as generated by the following
+    for loop:
+
+    \vspace{-0.1in}
+    {\footnotesize
+    \begin{verbatim}
+    int64_t k = 0 ;
+    GrB_Index *List = (a pointer to an array of large enough size)
+    for (int64_t i = I [GxB_BEGIN] ; i >= I [GxB_END] ; i -= I [GxB_INC])
+    {
+        // i is the kth entry in the sequence
+        List [k++] = i ;
+    } \end{verbatim}}
+
+    \vspace{-0.1in}
+    Let $b$ = \verb'I[GxB_BEGIN]', let $e$ = \verb'I[GxB_END]', and let
+    $\Delta$ = \verb'I[GxB_INC]' (note that $\Delta$ is not negative).  The
+    sequence has length zero if $b < e$ or $\Delta=0$.  Otherwise, the length
+    of the sequence is
+    \[
+    |I| = \Bigl\lfloor\dfrac{b-e}{\Delta}\Bigr\rfloor + 1
+    \]
+
+\end{enumerate}
+
+Since \verb'GrB_Index' is an unsigned integer, all three values
+\verb'I[GxB_BEGIN]', \verb'I[GxB_INC]', and \verb'I[GxB_END]' must
+be non-negative.
+
+Just as in MATLAB, it is valid to specify an empty sequence of length zero.
+For example, \verb'I = 5:3' has length zero in MATLAB and the same is
+true for a \verb'GxB_RANGE' sequence in SuiteSparse:GraphBLAS, with
+\verb'I[GxB_BEGIN]=5' and \verb'I[GxB_END]=3'.  This has the same
+effect as array \verb'I' with \verb'ni=0'.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_RANGE', \verb'GxB_STRIDE', and \verb'GxB_BACKWARDS'
+are extensions to the specification.
+\end{spec}
+
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{GraphBLAS Operations} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{operations}
 
-The next sections define each of the GraphBLAS operations, also listed in
-the table below.
+The next sections define each of the GraphBLAS operations, also listed in the
+table below.  SuiteSparse:GraphBLAS extensions (\verb'GxB_subassign',
+\verb'GxB_select' and \verb'GxB_kron') are included in the table.
 
 \vspace{0.2in}
 {\small
 \begin{tabular}{lll}
 \hline
 \verb'GrB_mxm'       & matrix-matrix multiply  & ${\bf C \langle M \rangle = C \odot AB}$ \\
-\verb'GrB_vxm'       & vector-matrix multiply  & ${\bf w'\langle m'\rangle = w'\odot u'A}$ \\
+\verb'GrB_vxm'       & vector-matrix multiply  & ${\bf w^{\sf T}\langle m^{\sf T}\rangle = w^{\sf T}\odot u^{\sf T}A}$ \\
 \verb'GrB_mxv'       & matrix-vector multiply  & ${\bf w \langle m \rangle = w \odot Au}$ \\
 \hline
 \verb'GrB_eWiseMult' & element-wise,           & ${\bf C \langle M \rangle = C \odot (A \otimes B)}$ \\
@@ -3625,12 +4576,12 @@ the table below.
 \verb'GrB_extract'   & extract submatrix       & ${\bf C \langle M \rangle = C \odot A(I,J)}$ \\
                      &                         & ${\bf w \langle m \rangle = w \odot u(i)}$ \\
 \hline
-\verb'GxB_subassign' & assign submatrix        & ${\bf C (I,J) \langle M \rangle = C(I,J) \odot A}$ \\
-                     & (with submask for ${\bf C(I,J)}$)
+\verb'GxB_subassign' & assign submatrix,       & ${\bf C (I,J) \langle M \rangle = C(I,J) \odot A}$ \\
+                     & with submask for ${\bf C(I,J)}$
                                                & ${\bf w (i)   \langle m \rangle = w(i)   \odot u}$ \\
 \hline
 \verb'GrB_assign'    & assign submatrix        & ${\bf C \langle M \rangle (I,J) = C(I,J) \odot A}$ \\
-                     & (with submask for ${\bf C}$)
+                     & with submask for ${\bf C}$
                                                & ${\bf w \langle m \rangle (i)   = w(i)   \odot u}$ \\
 \hline
 \verb'GrB_apply'     & apply unary operator    & ${\bf C \langle M \rangle = C \odot} f{\bf (A)}$ \\
@@ -3642,7 +4593,7 @@ the table below.
 \verb'GrB_reduce'    & reduce to vector        & ${\bf w \langle m \rangle = w \odot} [{\oplus}_j {\bf A}(:,j)]$ \\
                      & reduce to scalar        & $s = s \odot [{\oplus}_{ij}  {\bf A}(I,J)]$ \\
 \hline
-\verb'GrB_transpose' & transpose               & ${\bf C \langle M \rangle = C \odot A'}$ \\
+\verb'GrB_transpose' & transpose               & ${\bf C \langle M \rangle = C \odot A^{\sf T}}$ \\
 \hline
 \verb'GxB_kron'      & Kronecker product       & ${\bf C \langle M \rangle = C \odot \mbox{kron}(A, B)}$ \\
 \hline
@@ -3672,8 +4623,8 @@ SuiteSparse:GraphBLAS.  The purpose of this is two-fold:
 
 \item {\bf Illustration and documentation:}  MATLAB is so expressive, and so
     beautiful to read and write, that the \verb'GB_spec_*' functions read
-    almost like the exact specifications from the GraphBLAS C API
-    Specification.  Excerpts and condensed versions of these functions have
+    almost like the exact specifications from the GraphBLAS API.
+    Excerpts and condensed versions of these functions have
     already been used to this point in the User Guide, such as
     Figure~\ref{fig_accummask}, and the subsequent sections rely on them as
     well.  This is why the discussion here is not just relegated to an Appendix
@@ -3689,7 +4640,7 @@ SuiteSparse:GraphBLAS.  The purpose of this is two-fold:
     correct.  Thus, each function has been written twice: once in a
     highly-optimized function in C, and again in a simple and elegant MATLAB
     function.  The latter is almost a direct translation of all the mathematics
-    behind the GraphBLAS API Specification, so it is much easier to visually
+    behind the GraphBLAS API, so it is much easier to visually
     inspect the \verb'GB_spec_*' version in MATLAB to ensure the correct
     mathematics are being computed.
 
@@ -3782,8 +4733,8 @@ This approach has its limitations:
 
 \begin{itemize}
 \item {\bf matrix classes:} MATLAB only supports sparse double, sparse double
-    complex, and sparse logical matrices.  MATLAB can represent all eleven
-    GraphBLAS types as dense matrices, so in all these specification
+    complex, and sparse logical matrices.  MATLAB can represent dense matrices
+    in all eleven built-in GraphBLAS data types, so in all these specification
     \verb'M'-files, the matrices are either in dense format in the
     corresponding MATLAB class, or they are held as sparse double or sparse
     logical, and the actual GraphBLAS type is held with it as a string member
@@ -3916,6 +4867,206 @@ written back into \verb'C' via the \verb'accum' and \verb'Mask', ${\bf C
 \langle M \rangle  = C \odot T}$.  The latter step is reflected in the MATLAB
 function \verb'GB_spec_accum_mask.m', discussed in Section~\ref{accummask}.
 
+\paragraph{\bf Performance considerations:}
+Suppose all matrices are in \verb'GxB_BY_COL' format, and \verb'B' is extremely
+sparse but \verb'A' is not as sparse.  Then computing \verb'C=A*B' is very
+fast, and much faster then when \verb'A' is extremely sparse.  For example, if
+\verb'A' is square and \verb'B' is a column vector that is all nonzero except
+for one entry \verb'B(j,0)=1', then \verb'C=A*B' is the same as extracting column
+\verb'A(:,j)'.  This is very fast if \verb'A' is stored by column but slow if
+\verb'A' is stored by row.  If \verb'A' is a sparse row with a single entry
+\verb'A(0,i)=1', then \verb'C=A*B' is the same as extracting row \verb'B(i,:)'.
+This is fast if \verb'B' is stored by row but slow if \verb'B' is stored by
+column.
+
+If the user application needs to repeatedly extract rows and columns from a
+matrix, whether by matrix multiplication or by \verb'GrB_extract', then keep
+two copies: one stored by row, and other by column, and use the copy that
+results in the fastest computation.
+
+%===============================================================================
+\subsection{Meta-algorithm for sparse matrix multiplication}
+\label{meta}
+%===============================================================================
+
+SuiteSparse:GraphBLAS includes three different
+methods for computing \verb'C<M>=A*B', and more may be added in the future.
+It uses a meta-algorithm to select between the methods, described below.
+The default behavior depends on the CSR/CSC format of each matrix (any
+combination can be used for the four matrices), whether or not the mask
+\verb'M' is present, and the descriptor values for transposing \verb'A' and
+\verb'B'.  This gives a large number of possible combinations, so the
+meta-algorithm that selects the method starts by reducing this space of
+combinations.
+
+A matrix stored by row but not transposed has the same data structure as a
+matrix stored by column and transposed.  To make all matrices uniform
+all matrices are viewed as if stored by column, by negating the transpose
+descriptors if they are stored by row.  No data movement takes place.
+
+{\footnotesize
+\begin{verbatim}
+    A_transpose = true if transposed by INP0, false otherwise
+    B_transpose = true if transposed by INP1, false otherwise
+    if (A is stored by row)
+        A_transpose = !A_transpose
+    if (B is stored by row)
+        B_transpose = !B_transpose
+    if (C is stored by row)
+        C_transpose = true
+    else
+        C_transpose = false
+    if (M is present and stored by row)
+        M_transpose = true
+    else
+        M_transpose = false \end{verbatim}}
+
+Now all matrices are treated as if stored by column.  The next phase applies
+the default {\em swap rule}, which removes the transpose of \verb'C' via the
+linear algebraic property $A^{\sf T} B^{\sf T}=(BA)^{\sf T}$.
+
+{\footnotesize
+\begin{verbatim}
+    swap_rule = C_transpose 
+    if (swap_rule)
+        swap the matrices A and B
+        A_transpose = !B_transpose
+        B_transpose = !A_transpose
+        C_transpose = !C_transpose
+        M_transpose = !M_transpose \end{verbatim}}
+
+With this default swap rule, \verb'C_transpose' is now false.  All transposes
+below are now explicit, requiring data movement.  Next, the mask is explicitly
+transposed.
+
+{\footnotesize
+\begin{verbatim}
+    if (M_transpose)
+        M = M' (an explicit transpose)
+        M_transpose = false \end{verbatim}}
+
+There are now four cases to handle:
+
+\begin{enumerate} 
+
+\item If computing \verb"C<M> = A'*B'":   the matrix \verb'B' is
+    explicitly tranposed and then rule (2) below is applied.
+
+\item If computing \verb"C<M> = A'*B"
+
+{\footnotesize
+\begin{verbatim}
+if default method:
+    if M is present, or if A or B have a single column, or if B or A are dense:
+        use the dot method
+    else
+        select the heap or Gustavson method (see below)
+if dot method:
+    compute C<M>=A'*B
+else if heap or Gustavon's method:
+    A=A' ;
+    compute C<M>=A*B \end{verbatim}}
+
+\item If computing \verb"C<M> = A*B'"
+
+{\footnotesize
+\begin{verbatim}
+if default method:
+    select the heap or Gustavson method (see below)
+if dot method (not selected automatically):
+    A=A' ; B=B' ;
+    compute C<M>=A'*B
+else if heap or Gustavon's method:
+    B=B' ;
+    compute C<M>=A*B \end{verbatim}}
+
+\item If computing \verb"C<M> = A*B"
+
+{\footnotesize
+\begin{verbatim}
+if default method:
+    select the heap or Gustavson method (see below)
+if dot method (not selected automatically):
+    A=A' ;
+    compute C<M>=A'*B
+else if heap or Gustavon's method:
+    compute C<M>=A*B \end{verbatim}}
+
+\end{enumerate}
+
+The \verb'GrB_vxm' and \verb'GrB_mxv' operations described in
+Sections~\ref{vxm}~and~\ref{mxv} use the same method above, where the vectors
+\verb'w', \verb'mask', and \verb'u' are treated as \verb'n'-by-1 matrices,
+stored by column.
+
+The default automatic selection between the heap method or Gustavson's method
+for \verb'C<M>=A*B' depends on the sparsity of \verb'A' and \verb'B'.  Let $b$
+be the largest number of entries in any column of \verb'B'.  Let $m$-by-$n$ be
+the dimensions of \verb'C'.  Let $k$ be the inner dimension, so that \verb'A'
+is $m$-by-$k$ and \verb'B' is $k$-by-$n$ (and thus $b \le k$).
+
+The workspace required by the heap method is $5b$ integers, or $40b$ bytes.
+Gustavson's method requires $(s+1)m$ bytes of workspace where $s$ is the number
+of bytes required for the data type of \verb'C' ($s=8$ if \verb'C' is
+\verb'GrB_FP64', for example).  The workspace of Gustavson's method can be
+prohibitive if the matrices are extremely sparse since $m >> b$ or even $m >>
+|{\bf B}|$ is possible.
+
+When the \verb'GxB_AxB_METHOD' is \verb'GxB_DEFAULT' and the \verb'GxB_AxB_DOT'
+method has not been chosen (see above), then the following rules are used to
+select between the heap method and Gustavson's method.
+
+\begin{itemize}
+
+\item {\bf Rule (1):} If $b<2$ use the heap method.  The heap will be at most 2
+in size, which makes the heap method very fast.  It is typically faster than
+Gustavson's method in this case.  Example \verb'B' matrices that fit Rule (1)
+include diagonal matrices, permutation matrices, or upper/lower bidiagonal
+matrices.
+
+\item {\bf Rule (2):}
+    If $|{\bf B}| \le 3k$, or $|{\bf B}| \le m$,  or if $|{\bf A}| \le
+    \min(k,m)$ then the heap method is used if its memory requirements are much
+    less than Gustavson's method.  The heap method can be slow if $b$ is large,
+    however, since modifying the heap after each operation can take as much as
+    $O(\log b)$ time.  So the heap selection is penalized by a $4 \log_2 b$
+    factor.  Thus, the heap method is used if the condition
+    \[
+        (40b) 4 \log_2 b < (s+1)m
+    \]
+    holds; otherwise Gustavson's method is used.  Rules (1) and (2) mean that
+    the heap rule is used for computing $C=PAQ$ where $P$ and $Q$ are
+    permutation matrices or diagonal scaling matrices, which are common use
+    cases.  The heap method uses very little memory and is faster than
+    Gustavson's method for these cases.
+
+\item {\bf Rule (3):}
+    Otherwise, Gustavson's method is used.  Rules (1) and (2) ensure that the
+    workspace requirement for Gustavson's method will not be prohibitive.
+
+\end{itemize}
+
+The automatic selection applies to any mixture of the format of the
+four matrices (CSR or CSC, and hypersparse or non-hypersparse), and any
+combination of the input descriptors that transpose \verb'A' and \verb'B'.
+Note that if all matrices are CSR format, \verb'C<M>=A*B' does not explicitly
+transpose any matrix.
+
+\paragraph{\bf Performance considerations:}
+With such a large space of combinations, the default meta-algorithm may not
+select the fastest method, which is why the method can be selected via the
+\verb'GxB_AxB_METHOD' field of the descriptor.
+
+The meta-algorithm never transposes the final result (\verb"C=A'*B'" is never
+converted into \verb"C=(B*A)'"), although that strategy can lead to better
+performance.  A different \verb'swap_rule' would allow for the output matrix to
+be transposed (with \verb"C=(B*A)'" being computed); a user descriptor may be
+added in the future to allow for this selection.  The user application can also
+do this by computing \verb"C'=B*A", and then transposing the result via
+\verb'GrB_transpose' to obtain \verb"C=(B*A)'=A'*B'".  This can be faster in
+some cases, depending on the size and sparsity of the three or four matrices
+(\verb'C', \verb'A', \verb'B', and \verb'M' if present).
+
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_vxm:} vector-matrix multiply} %===========================
@@ -3953,18 +5104,13 @@ The last step is ${\bf w \langle m \rangle  = w \odot t}$, as described
 in Section~\ref{accummask}, except that all the
 terms are column vectors instead of matrices.
 
-{\bf Performance considerations:}  Because of the way SuiteSparse:Graph\-BLAS
-stores its matrices and vectors, \verb'GrB_vxm' with its default descriptor can
+\paragraph{\bf Performance considerations:} % u'=u'*A
+If the \verb'GxB_FORMAT' is \verb'GxB_BY_COL',
+\verb'GrB_vxm' with its default descriptor can
 be slower than \verb'GrB_mxv' with its default descriptor, when the vector
 \verb'u' is very sparse.  If the user application needs to use \verb'GrB_vxm'
-repeatedly with very sparse vectors \verb'u', it can be faster to work on
-the transpose of \verb'A' instead.
-
-If the matrix is symmetric, then \verb"u'*A" is the same as \verb"A'*u", except
-that in this case the operands to the semiring's multiplier operator are
-reversed.  This has no effect if the multiplier operator is commutative, but an
-adjustment would need to be made if it were not (such as replacing \verb'FIRST'
-with \verb'SECOND', and \verb'GE' with \verb'LE', for example).
+repeatedly with very sparse vectors \verb'u', it can be faster to
+use a \verb'GxB_FORMAT' of \verb'GxB_BY_ROW'.
 
 Using the non-default \verb'GrB_TRAN' descriptor for \verb'A' makes the
 \verb'GrB_vxm' operation equivalent to \verb'GrB_mxv' with its default
@@ -3972,9 +5118,13 @@ descriptor (with the operands reversed in the multiplier, as well).  The
 reverse is true as well; \verb'GrB_mxv' with \verb'GrB_TRAN' is the same as
 \verb'GrB_vxm' with a default descriptor.
 
-The breadth-first search in Section~\ref{bfs} uses \verb'GrB_mxv'
-instead of \verb'GrB_vxm', since the graph is symmetric and the multiplier
-(\verb'AND') is commutative.
+The breadth-first search presented in Section~\ref{bfs} of this User Guide uses
+\verb'GrB_mxv' instead of \verb'GrB_vxm', since the graph is assumed to be
+symmetric and the multiplier (\verb'AND') is commutative, and since the default
+format in SuiteSparse:GraphBLAS is \verb'GxB_BY_COL'.  For the BFS algorithm in
+the {\em GraphBLAS C API Specification}, which uses \verb'GrB_vxm', best
+performance is obtained in SuiteSparse:GraphBLAS if the format of the \verb'A'
+matrix is \verb'GxB_BY_ROW'.
 
 \newpage
 %===============================================================================
@@ -4013,19 +5163,15 @@ The last step is ${\bf w \langle m \rangle  = w \odot t}$, as described
 in Section~\ref{accummask}, except that all the terms are column vectors instead
 of matrices.
 
-{\bf Performance considerations:}  Refer to the discussion of \verb'GrB_vxm'.
-In SuiteSparse:GraphBLAS, \verb'GrB_mxv' is very efficient when \verb'u' is
-sparse or dense, when the default descriptor is used.  When \verb'u' is very
-sparse and the default descriptor is used, \verb'GrB_mxv' is also
-very efficient.
-
-When \verb'u' is very sparse and \verb'GrB_INP0' is set to its non-default
-\verb'GrB_TRAN', then this method is not efficient.  If an application needs
-to perform \verb"A'*u" repeatedly where \verb'u' is very sparse, then it
-can be faster to explicitly transpose \verb'A' first, and then to use this
-function with its default descriptor on the transpose.  That is, compute
-\verb"C=A'" via \verb'GrB_transpose', and then use this method to 
-repeatedly compute \verb'C*u', without selecting \verb'GrB_TRAN'.
+\paragraph{\bf Performance considerations:} % u=A*u
+Refer to the discussion of \verb'GrB_vxm'.  In SuiteSparse:GraphBLAS,
+\verb'GrB_mxv' is very efficient when \verb'u' is sparse or dense, when the
+default descriptor is used, and when the matrix is \verb'GxB_BY_COL'.  When
+\verb'u' is very sparse and \verb'GrB_INP0' is set to its non-default
+\verb'GrB_TRAN', then this method is not efficient if the matrix is in
+\verb'GxB_BY_COL' format.  If an application needs to perform \verb"A'*u"
+repeatedly where \verb'u' is very sparse, then use the \verb'GxB_BY_ROW' format
+for \verb'A' instead.
 
 \newpage
 %===============================================================================
@@ -4369,9 +5515,9 @@ GrB_Info GrB_extract                // w<mask> = accum (w, u(I))
 \verb'GrB_Vector_extract' extracts a subvector from another vector, identical
 to \verb't = u (I)' in MATLAB where \verb'I' is an integer vector of row
 indices.  Refer to \verb'GrB_Matrix_extract' for further details; vector
-extraction is the same as matrix extraction with \verb'n'-by-1 matrices.  To
-extract all rows of a vector, as in \verb't = u (:)' in MATLAB, use
-\verb'I = GrB_ALL'.  The final step is ${\bf w \langle m \rangle  = w \odot
+extraction is the same as matrix extraction with \verb'n'-by-1 matrices.
+See Section~\ref{colon} for a description of \verb'I' and \verb'ni'.
+The final step is ${\bf w \langle m \rangle  = w \odot
 t}$, as described in Section~\ref{accummask}, except that all the terms are
 column vectors instead of matrices.
 
@@ -4403,11 +5549,12 @@ to \verb'T = A(I,J)' in MATLAB where \verb'I' and \verb'J' are integer vectors
 of row and column indices, respectively, except that indices are zero-based in
 GraphBLAS and one-based in MATLAB.  The input matrix \verb'A' may be transposed
 first, via the descriptor.  The type of \verb'T' and \verb'A' are the same.
-
+The size of \verb'C' is \verb'|I|'-by-\verb'|J|'.
 Entries outside \verb'A(I,J)' are not accessed and do not take part in the
 computation.  More precisely, assuming the matrix \verb'A' is not transposed,
 the matrix \verb'T' is defined as follows:
 
+    \vspace{-0.1in}
     {\footnotesize
     \begin{verbatim}
     T.matrix  = zeros (ni, nj) ;    % a matrix of size ni-by-nj
@@ -4421,14 +5568,21 @@ the matrix \verb'T' is defined as follows:
         end
     end \end{verbatim}}
 
+\vspace{-0.1in}
 If duplicate indices are present in \verb'I' or \verb'J', the above method
 defines the result in \verb'T'.  Duplicates result in the same values of
 \verb'A' being copied into different places in \verb'T'.
-
-To extract all rows of a matrix, as in \verb'T = A (:,J)' in MATLAB, use
-\verb'I = GrB_ALL' as the input argument.  For all columns of a matrix, use
-\verb'J = GrB_ALL'.  The final step is ${\bf C \langle M \rangle  = C \odot
+See Section~\ref{colon} for a description of the row indices 
+\verb'I' and \verb'ni', and the column indices
+\verb'J' and \verb'nj'.
+The final step is ${\bf C \langle M \rangle  = C \odot
 T}$, as described in Section~\ref{accummask}.
+
+\paragraph{\bf Performance considerations:} % C=A(I,J)
+If \verb'A' is not transposed via input descriptor: if \verb'|I|' is small,
+then it is fastest if \verb'A' is \verb'GxB_BY_ROW'; if
+\verb'|J|' is small, then it is fastest if \verb'A' is
+\verb'GxB_BY_COL'.  The opposite is true if \verb'A' is transposed.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -4457,19 +5611,19 @@ GrB_Info GrB_extract                // w<mask> = accum (w, A(I,j))
 and where \verb'j' is a single column index.  The input matrix \verb'A' may be
 transposed first, via the descriptor, which results in the extraction of a
 single row \verb'j' from the matrix \verb'A', the result of which is a column
-vector \verb'w'.  The type of \verb't' and \verb'A' are the same.  To extract
-all rows of a matrix, as in \verb't = A (:,j)' in MATLAB, use
-\verb'I = GrB_ALL' as the input argument.  The final step is ${\bf w \langle m
+vector \verb'w'.  The type of \verb't' and \verb'A' are the same.
+The size of \verb'w' is \verb'|I|'-by-1.
+
+See Section~\ref{colon} for a description of the row indices 
+\verb'I' and \verb'ni'.
+The final step is ${\bf w \langle m
 \rangle  = w \odot t}$, as described in Section~\ref{accummask}, except that
 all the terms are column vectors instead of matrices.
 
-\paragraph{Performance considerations:} Because of the way
-SuiteSparse:Graph\-BLAS stores its matrices, row extraction is more costly than
-column extraction.  That is, using the \verb'GrB_TRAN' option for the \verb'A'
-matrix is slower than the default, which is to extract a column.  If this
-function is to be used many times on the same matrix \verb'A' to extract rows
-with the \verb'GrB_TRAN' option enabled, it can be faster to explicitly
-transpose the matrix \verb'A' once, and then to extract columns instead.
+\paragraph{\bf Performance considerations:} % w = A(I,j)
+If \verb'A' is not transposed: it is fastest if the format of \verb'A' is \verb'GxB_BY_COL'.
+The opposite is true if \verb'A' is transposed.
+
 
 \newpage
 %===============================================================================
@@ -4484,6 +5638,10 @@ methods can be used in their generic form with the single name
 confusion between the different kinds of assignment, the name of the specific
 function is used when describing each variation.  If the discussion applies to
 all variations, the simple name \verb'GxB_subassign' is used.
+
+See Section~\ref{colon} for a description of the row indices 
+\verb'I' and \verb'ni', and the column indices
+\verb'J' and \verb'nj'.
 
 \verb'GxB_subassign' is very similar to \verb'GrB_assign', described in
 Section~\ref{assign}.  The two operations are compared and contrasted in
@@ -4613,7 +5771,7 @@ Step 2 accumulates the results ${\bf S \langle M \rangle  = S \odot T}$,
 exactly as described in Section~\ref{accummask}, but operating on the submatrix
 ${\bf S}$, not ${\bf C}$, using the optional \verb'Mask' and \verb'accum'
 operator.  The matrix ${\bf T}$ is simply ${\bf T}={\bf A}$, or ${\bf T}={\bf
-A}'$ if ${\bf A}$ is transposed via the \verb'desc' descriptor,
+A}^{\sf T}$ if ${\bf A}$ is transposed via the \verb'desc' descriptor,
 \verb'GrB_INP0'.  The \verb'GrB_REPLACE' option in the descriptor clears ${\bf
 S}$ after computing ${\bf Z = T}$ or ${\bf Z = C \odot T}$, not all of ${\bf
 C}$ since this operation can only modify the specified submatrix of ${\bf C}$.
@@ -4636,6 +5794,11 @@ described for matrix extraction:
 
 Results are not defined for any \verb'GxB_subassign' operation if duplicate
 indices appear in \verb'I' or \verb'J'.
+
+\paragraph{\bf Performance considerations:} % C(I,J) = A
+If \verb'A' is not transposed: if \verb'|I|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_ROW';
+                               if \verb'|J|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_COL'.
+The opposite is true if \verb'A' is transposed.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -4668,6 +5831,10 @@ is a single column index (and thus \verb'nj=1'), and where all matrices in
 vector \verb'u' is not transposed.  Refer to \verb'GxB_Matrix_subassign' for
 further details.
 
+\paragraph{\bf Performance considerations:} % C(I,j) = u
+\verb'GxB_Col_subassign' is much faster than \verb'GxB_Row_subassign' if the format of \verb'C' is \verb'GxB_BY_COL'.
+\verb'GxB_Row_subassign' is much faster than \verb'GxB_Col_subassign' if the format of \verb'C' is \verb'GxB_BY_ROW'.
+
 % \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Row\_subassign:} assign to a sub-row of a matrix}
@@ -4699,10 +5866,9 @@ a single row index (and thus \verb'ni=1'), and where all matrices in
 vector \verb'u' is not transposed.  Refer to \verb'GxB_Matrix_subassign' for
 further details.
 
-Sub-row assignment in SuiteSparse:GraphBLAS is not as fast as sub-column
-assignment.  If many of the rows of \verb'C' are to be modified by repeated use
-of \verb'GxB_Row_subassign', it can be faster to transpose \verb'C' first and
-to use \verb'GxB_Matrix_subassign' or \verb'GxB_Col_subassign' instead.
+\paragraph{\bf Performance considerations:} % C(i,J) = u'
+\verb'GxB_Col_subassign' is much faster than \verb'GxB_Row_subassign' if the format of \verb'C' is \verb'GxB_BY_COL'.
+\verb'GxB_Row_subassign' is much faster than \verb'GxB_Col_subassign' if the format of \verb'C' is \verb'GxB_BY_ROW'.
 
 % \newpage
 %-------------------------------------------------------------------------------
@@ -4764,7 +5930,6 @@ MATLAB.  The scalar \verb'x' is implicitly expanded into a matrix \verb'A' of
 size \verb'ni' by \verb'nj', and then the matrix \verb'A' is assigned to
 \verb'C(I,J)' using the same method as in \verb'GxB_Matrix_subassign'.  Refer
 to that function in Section~\ref{subassign_matrix} for further details.
-
 For the accumulation step, the scalar \verb'x' is typecasted directly into the
 type of \verb'C' when the \verb'accum' operator is not applied to it, or into
 the \verb'ytype' of the \verb'accum' operator, if \verb'accum' is not NULL, for
@@ -4783,10 +5948,14 @@ If a \verb'void *' pointer is passed in and the type of the underlying scalar
 does not exactly match the user-defined type of \verb'C', then results are
 undefined.  No error status will be returned since GraphBLAS has no way of
 catching this error.
-
 Unlike \verb'GrB_Matrix_assign_<type>' (see
 Section~\ref{assign_vector_scalar}), results are not defined if \verb'I' or
 \verb'J' contain duplicate indices.
+
+\paragraph{\bf Performance considerations:} % C(I,J) = scalar
+If \verb'A' is not transposed: if \verb'|I|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_ROW';
+                               if \verb'|J|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_COL'.
+The opposite is true if \verb'A' is transposed.
 
 \newpage
 %===============================================================================
@@ -4802,6 +5971,9 @@ methods can be used in their generic form with the single name
 primarily in the size of the \verb'Mask', and how the \verb'GrB_REPLACE' option
 works.  Refer to Section~\ref{compare_assign} for a complete comparison of
 \verb'GxB_subassign' and \verb'GrB_assign'.
+
+See Section~\ref{colon} for a description of
+\verb'I', \verb'ni', \verb'J', and \verb'nj'.
 
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Vector\_assign:} assign to a subvector }
@@ -4830,7 +6002,7 @@ described in Section~\ref{assign_matrix}, where all matrices have a single
 column each.  The only other difference is that the input \verb'u' in this
 method is not transposed via the \verb'GrB_INP0' descriptor.
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_assign:} assign to a submatrix }
 %-------------------------------------------------------------------------------
@@ -4888,7 +6060,12 @@ the Mask/Replace Phase described in Section~\ref{accummask}.  If
 writing ${\bf Z}$ via the mask.  As a result, the \verb'GrB_REPLACE' option can
 delete entries outside the ${\bf C(I,J)}$ submatrix.
 
-% \newpage
+\paragraph{\bf Performance considerations:} % C(I,J) = A
+If \verb'A' is not transposed: if \verb'|I|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_ROW';
+                               if \verb'|J|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_COL'.
+The opposite is true if \verb'A' is transposed.
+
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Col\_assign:} assign to a sub-column of a matrix}
 %-------------------------------------------------------------------------------
@@ -4921,7 +6098,12 @@ as a single column of \verb'C'.
 The input descriptor \verb'GrB_INP0' is ignored; the input vector \verb'u' is
 not transposed.  Refer to \verb'GrB_Matrix_assign' for further details.
 
-% \newpage
+\paragraph{\bf Performance considerations:} % C(I,j) = u
+\verb'GrB_Col_assign' is much faster than \verb'GrB_Row_assign' if the format
+of \verb'C' is \verb'GxB_BY_COL'.  \verb'GrB_Row_assign' is much faster than
+\verb'GrB_Col_assign' if the format of \verb'C' is \verb'GxB_BY_ROW'.
+
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Row\_assign:} assign to a sub-row of a matrix}
 %-------------------------------------------------------------------------------
@@ -4944,9 +6126,9 @@ GrB_Info GrB_assign                 // C<mask'>(i,J) = accum (C(i,J),u')
 \end{verbatim} } \end{mdframed}
 
 \verb'GxB_Row_subassign' modifies a single sub-row of a matrix \verb'C'.  It is
-the same as \verb'GxB_Matrix_subassign' where the index vector \verb'I[0]=i' is a
-single row index, and where all matrices in \verb'GxB_Matrix_subassign' (except
-\verb'C') consist of a single row. 
+the same as \verb'GxB_Matrix_subassign' where the index vector \verb'I[0]=i' is
+a single row index, and where all matrices in \verb'GxB_Matrix_subassign'
+(except \verb'C') consist of a single row. 
 
 Unlike \verb'GrB_Matrix_assign', the \verb'mask' is a vector with the same size
 as a single row of \verb'C'.
@@ -4954,11 +6136,9 @@ as a single row of \verb'C'.
 The input descriptor \verb'GrB_INP0' is ignored; the input vector \verb'u' is
 not transposed.  Refer to \verb'GxB_Matrix_subassign' for further details.
 
-Sub-row assignment in SuiteSparse:GraphBLAS is not as fast as sub-column
-assignment.  If many of the rows of \verb'C' are to be modified by repeated use
-of \verb'GxB_Row_subassign', it can be faster to transpose \verb'C' first and
-to use \verb'GxB_Matrix_subassign' or \verb'GxB_Col_subassign' instead.  See
-\verb'GxB_Matrix_subassign' for further details.
+\paragraph{\bf Performance considerations:} % C(i,J) = u'
+\verb'GrB_Col_assign' is much faster than \verb'GrB_Row_assign' if the format of \verb'C' is \verb'GxB_BY_COL'.
+\verb'GrB_Row_assign' is much faster than \verb'GrB_Col_assign' if the format of \verb'C' is \verb'GxB_BY_ROW'.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -5046,36 +6226,40 @@ In contrast to \verb'GxB_Matrix_subassign_<type>', results are well-defined if
 \verb'I' or \verb'J' contain duplicate indices.  Duplicate indices
 are simply ignored.
 
+\paragraph{\bf Performance considerations:} % C(I,J) = scalar
+If \verb'A' is not transposed: if \verb'|I|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_ROW';
+                               if \verb'|J|' is small, then it is fastest if the format of \verb'C' is \verb'GxB_BY_COL'.
+The opposite is true if \verb'A' is transposed.
+
 \newpage
 %===============================================================================
 \subsection{Comparing {\sf GrB\_assign} and {\sf GxB\_subassign}} %=============
 %===============================================================================
 \label{compare_assign}
 
-\begin{spec}
-{\bf SPEC:} \verb'GxB_subassign' is an extension to the spec.
-\end{spec}
+% \begin{spec}
+% {\bf SPEC:} \verb'GxB_subassign' is an extension to the spec.
+% \end{spec}
 
 The \verb'GxB_subassign' and \verb'GrB_assign' operations are very similar, but
 they differ in three ways:
 
 \begin{enumerate}
-\item
+\item {\bf The Mask has a different size:}
     The mask in \verb'GxB_subassign' has the same dimensions as \verb'w(I)' for
     vectors and \verb'C(I,J)' for matrices.  In \verb'GrB_assign', the mask is
     the same size as \verb'w' or \verb'C', respectively (except for the row/col
     variants).  The two masks are related.  If \verb'M' is the mask for
     \verb'GrB_assign', then \verb'M(I,J)' is the mask for \verb'GxB_subassign'.
     If there is no mask, or if \verb'I' and \verb'J' are both \verb'GrB_ALL',
-    then the two masks are the same.
-
+    the two masks are the same.
     For \verb'GrB_Row_assign' and \verb'GrB_Col_assign', the \verb'mask' vector
-    is the same size as a row or column of C, respectively.  For the
+    is the same size as a row or column of \verb'C', respectively.  For the
     corresponding \verb'GxB_Row_subassign' and \verb'GxB_Col_subassign'
     operations, the \verb'mask' is the same size as the sub-row \verb'C(i,J)' or
     subcolumn \verb'C(I,j)', respectively.
 
-\item
+\item {\bf \verb'GrB_REPLACE' is different:}
     They differ in how \verb'C' is affected in areas outside the \verb'C(I,J)'
     submatrix.  In \verb'GxB_subassign', the \verb'C(I,J)' submatrix is the
     only part of \verb'C' that can be modified, and no part of \verb'C' outside
@@ -5084,10 +6268,10 @@ they differ in three ways:
     manner.  Suppose the mask \verb'M' is present (or, suppose it is not
     present but \verb'GrB_SCMP' is true).  After (optionally) complementing the
     mask, the value of \verb'M(i,j)' can be 0 for some entry outside the
-    \verb'C(I,J)' submatrix.  If the \verb'GrB_REPLACE' descriptor is also
-    true, then \verb'GrB_assign' deletes this entry.
+    \verb'C(I,J)' submatrix.  If the \verb'GrB_REPLACE' descriptor is
+    true, \verb'GrB_assign' deletes this entry.
 
-\item
+\item {\bf Scalar expansion when duplicates appear in \verb'I' or \verb'J':} \\
     They differ in how duplicate indices are treated in \verb'I' and \verb'J'.
     For both \verb'assign' and \verb'subassign', results are not defined for
     \verb'GrB_Matrix_*assign', \verb'GrB_Vector_*assign',
@@ -5101,18 +6285,18 @@ they differ in three ways:
 
 \end{enumerate}
 
-\newpage
+% \newpage
 \verb'GxB_subassign' and \verb'GrB_assign' are identical if \verb'GrB_REPLACE'
 is set to its default value of false, and if the masks happen to be the same.
 The two masks can be the same in two cases:  either the \verb'Mask' input is
 \verb'NULL' (and it is not complemented via \verb'GrB_SCMP'), or \verb'I' and
-\verb'J' are both \verb'GrB_ALL'.  In this case, the two algorithms are
-identical and have the same performance.
-
-\verb'GxB_subassign' is much faster than \verb'GrB_assign', when the latter
+\verb'J' are both \verb'GrB_ALL'.  For scalar expansion, no duplicates can
+appear in the index lists \verb'I' and \verb'J'.  If all these conditions hold,
+the two algorithms are identical and have the same performance.  Otherwise,
+\verb'GxB_subassign' is much faster than \verb'GrB_assign' when the latter
 must examine the entire matrix \verb'C' to delete entries (when
-\verb'GrB_REPLACE' is true), and if it must deal with a much larger
-\verb'Mask' matrix.  However, both methods have specific uses.
+\verb'GrB_REPLACE' is true), and if it must deal with a much larger \verb'Mask'
+matrix.  However, both methods have specific uses.
 
 Consider using \verb'C(I,J)+=F' for many submatrices \verb'F' (for example,
 when assembling a finite-element matrix).  If the \verb'Mask' is meant as a
@@ -5167,36 +6351,38 @@ Step & \verb'GrB_Matrix_assign'                & \verb'GxB_Matrix_subassign'    
 \end{tabular}
 \vspace{0.1in}
 
-The Accumulator Phase (${\bf S} \odot {\bf A}$ in Step 2), described in
-Section~\ref{accummask}, is the same in both operations.  The result is simply
-${\bf A}$ if \verb'accum' is \verb'NULL'.  It only applies to the submatrix
-${\bf S}$, not the whole matrix.
+Step 1 is the same.  In the Accumulator Phase (Step 2), the expression
+${\bf S} \odot {\bf A}$,
+described in Section~\ref{accummask}, is the same in both
+operations.  The result is simply ${\bf A}$ if \verb'accum' is \verb'NULL'.  It
+only applies to the submatrix ${\bf S}$, not the whole matrix.
+The result ${\bf S} \odot {\bf A}$ is used differently in the Mask/Replace phase.
 
 The Mask/Replace Phase, described in Section~\ref{accummask} is different:
 \begin{itemize}
 \item
-    For \verb'GrB_Matrix_assign' (Step 5), the mask is applied to all of ${\bf
+    For \verb'GrB_assign' (Step 5), the mask is applied to all of ${\bf
     C}$.  The mask has the same size as ${\bf C}$.  Just prior to making the
     assignment via the mask, the \verb'GrB_REPLACE' option can be used to clear
     all of ${\bf C}$ first.  This is the only way in which entries in ${\bf C}$ that
     are outside the ${\bf C(I,J)}$ submatrix can be modified by this operation.
 
 \item
-    For \verb'GxB_Matrix_subassign' (Step 2), the mask is applied to just ${\bf
-    S}$.  The mask has the same size as ${\bf C(I,J)}$, ${\bf S}$, and ${\bf A}$.
-    Just prior to making the assignment via the mask, the \verb'GrB_REPLACE'
-    option can be used to clear ${\bf S}$ first.  No entries in ${\bf C}$ that
-    are outside the ${\bf C(I,J)}$ can be modified by this operation.  Thus,
-    \verb'GrB_REPLACE' has no effect on entries in ${\bf C}$ outside the
-    ${\bf C(I,J)}$ submatrix.
+    For \verb'GxB_subassign' (Step 2b), the mask is applied to just
+    ${\bf S}$.  The mask has the same size as ${\bf C(I,J)}$, ${\bf S}$, and
+    ${\bf A}$.  Just prior to making the assignment via the mask, the
+    \verb'GrB_REPLACE' option can be used to clear ${\bf S}$ first.  No entries
+    in ${\bf C}$ that are outside the ${\bf C(I,J)}$ can be modified by this
+    operation.  Thus, \verb'GrB_REPLACE' has no effect on entries in ${\bf C}$
+    outside the ${\bf C(I,J)}$ submatrix.
 
 \end{itemize}
 
-The differences between \verb'GrB_Matrix_assign' and
-\verb'GxB_Matrix_subassign' can be seen in Tables~\ref{insubmatrix} and
+The differences between \verb'GrB_assign' and
+\verb'GxB_subassign' can be seen in Tables~\ref{insubmatrix} and
 \ref{outsubmatrix}.  The first table considers the case when the entry $c_{ij}$
 is in the ${\bf C(I,J)}$ submatrix, and it describes what is computed for both
-\verb'GrB_Matrix_assign' and \verb'GxB_Matrix_subassign'.  They perform the
+\verb'GrB_assign' and \verb'GxB_subassign'.  They perform the
 exact same computation; the only difference is how the value of the mask is
 specified.
 
@@ -5423,40 +6609,43 @@ exploited.
 
 Consider a sequence of $t$ submatrix assignments \verb'C(I,J)=C(I,J)+A' to an
 $n$-by-$n$ matrix \verb'C' where each submatrix \verb'A' has size $a$-by-$a$
-with $s$ entries, and where \verb'C' starts with $k$ entries.
+with $s$ entries, and where \verb'C' starts with $c$ entries.
+Assume the matrices are all stored in non-hypersparse form, by column
+(\verb'GxB_BY_COL').
 
 If blocking mode is enabled, or if the sequence requires the matrix to be
 completed after each assignment, each of the $t$ assignments takes $O(a + s
-\log n)$ time to process the \verb'A' matrix and then $O(n + k + s \log s)$
+\log n)$ time to process the \verb'A' matrix and then $O(n + c + s \log s)$
 time to complete \verb'C'.  The latter step uses \verb'GrB_*_build' to build an
 update matrix and then merge it with \verb'C'.  This step does not occur if the
 sequence of assignments does not add new entries to the pattern of \verb'C',
 however.  Assuming in the worst case that the pattern does change, the total
-time is $O (t \left[ a + s \log n + n + k + s \log s \right] )$.
+time is $O (t \left[ a + s \log n + n + c + s \log s \right] )$.
 
 If the sequence can be computed with all updates postponed until the end of the
 sequence, then the total time is no worse than $O(a + s \log n)$ to process
 each \verb'A' matrix, for $t$ assignments, and then a single \verb'build' at
-the end, taking $O(n + k + st \log st)$ time.  The total time is $O (t \left [a
-+ s \log n \right] + (n + k + st \log st))$.  If no new entries appear in
+the end, taking $O(n + c + st \log st)$ time.
+The total time is $O (t \left [a + s \log n \right] + (n + c + st \log st))$.
+If no new entries appear in
 \verb'C' the time drops to $O (t \left [a + s \log n \right])$, and in this
 case, the time for both methods is the same; both are equally efficient.
 
-A few simplifying assumptions are useful to compare these times.  Nearly all
-graphs of $n$ nodes that arise in practice have $O(n)$ edges, and most graphs
-have a constant bound on the degree of each node.  The asymptotic bounds assume
-a worst-case scenario where \verb'C' has a least some dense columns (thus the
-$\log n$ terms).  If these are not present, if both $t$ and $k$ are $O(n)$, and
-if $a$ and $s$ are constants, then the total time with blocking mode becomes
-$O(n^2)$, assuming the pattern of \verb'C' changes at each assignment.  This
-very high for a sparse graph problem.  In contrast, the non-blocking time
-becomes $O(n \log n)$ under these same assumptions, which is asymptotically
-much faster.
-
-The difference in practice can be very dramatic, since $n$ can be many millions
-for sparse graphs that can be handled on a commodity laptop.
+A few simplifying assumptions are useful to compare these times.  Consider a
+graph of $n$ nodes with $O(n)$ edges, and with a constant bound on the degree
+of each node.  The asymptotic bounds assume a worst-case scenario where
+\verb'C' has a least some dense columns (thus the $\log n$ terms).  If these
+are not present, if both $t$ and $c$ are $O(n)$, and if $a$ and $s$ are
+constants, then the total time with blocking mode becomes $O(n^2)$, assuming
+the pattern of \verb'C' changes at each assignment.  This very high for a
+sparse graph problem.  In contrast, the non-blocking time becomes $O(n \log n)$
+under these same assumptions, which is asymptotically much faster.
 
 \newpage
+The difference in practice can be very dramatic, since $n$ can be many millions
+for sparse graphs with $n$ nodes and $O(n)$, which can be handled on a
+commodity laptop.
+
 The following guidelines should be considered when using
 \verb'GxB_subassign', \verb'GrB_assign' and \verb'GrB_*_setElement'.
 
@@ -5485,11 +6674,11 @@ costly, since the matrix may need to be completed after each assignment.  The
 time complexity can become quadratic in the worst case.
 
 \item However, any single assignment takes no more than $O (a + s \log n + n +
-k + s \log s )$ time, even including the time for a matrix completion, where
-\verb'C' is $n$-by-$n$ with $k$ entries and \verb'A' is $a$-by-$a$ with $s$
+c + s \log s )$ time, even including the time for a matrix completion, where
+\verb'C' is $n$-by-$n$ with $c$ entries and \verb'A' is $a$-by-$a$ with $s$
 entries.  This time is essentially linear in the size of the matrix \verb'C',
 if \verb'A' is relatively small and sparse compared with \verb'C'.  In this
-case, $n+k$ are the two dominant terms.
+case, $n+c$ are the two dominant terms.
 
 \item In general, \verb'GxB_subassign' is faster than \verb'GrB_assign'.
 If \verb'GrB_REPLACE' is used with \verb'GrB_assign', the entire matrix
@@ -5514,10 +6703,53 @@ i7, 16 GB Ram, OSX 10.11.6, clang 8.0.0, MATLAB R2017A.} The same computation
 takes 0.74 seconds in SuiteSparse:GraphBLAS, a speedup of over 100.  This is
 after finishing all pending computations in GraphBLAS and returning result to
 MATLAB as a valid MATLAB sparse matrix.  The dominant time complexity for
-GraphBLAS is $O(n+k)$, where $n$ is the dimension of \verb'C' and $k$ is its
+GraphBLAS is $O(n+c)$, where $n$ is the dimension of \verb'C' and $c$ is its
 number of nonzeros.  As a comparison, MATLAB takes just 0.42 seconds to compute
 \verb"C+C'" for this matrix, which also takes time linear in the size of the
-matrix data structure, $O(n+k)$.
+matrix data structure, $O(n+c)$.
+
+The time for submatrix assignment can be greatly reduced if \verb'C' is
+hypersparse.  Let $\bar{n}$ be the number of non-empty columns, where $\bar{n}<n$, and
+sometimes $\bar{n} << n$.  The $\log n$ terms remain since they reflect the binary
+search inside a column, but the term $n$ by itself is replaced by $\bar{n}$ or $\bar{n}
+\log \bar{n}$.  The term $a$ is replaced by $a \log \bar{n}$.  The total time for a
+sequence of $t$ updates to a hypersparse matrix $C$ takes
+$O (t \left [a \log \bar{n} + s \log n \right] + (\bar{n} + c + st \log st))$ time.  This
+assumes that \verb'C' could include one or more dense columns, with $n$
+entries.  If instead the number of entries in each column of \verb'C' is
+bounded by a constant, the $\log n$ term becomes a constant.
+If \verb'A' is also hypersparse, the value $a$ is removed from the
+expression, replaced with its number of non-empty columns, $\bar{a}$.  Suppose
+also $t$ is a constant, and $s$ is $O(\bar{a})$.  Suppose the pattern of
+\verb'C' changes.  Suppose the number of entries in any one column
+of \verb'C' is bounded by $\bar{n}$, and likewise for \verb'A'.
+Then the time for the non-hypersparse case simplifies to:
+\[ O ( a                    + s \log \bar{n} + (n       + c + s \log s)). \]
+For the hypersparse case it becomes
+\[ O ( \bar{a} \log \bar{n} + s \log \bar{n} + (\bar{n} + c + s \log s)). \]
+Both of these times include the similar terms
+\[ O (                        s \log \bar{n} + (          c + s \log s)), \]
+which reflects the sorting of and searching of the nonzero entries themselves,
+in \verb'C' and \verb'A'.
+Excluding those terms and just considering the additional time,
+the non-hypersparse case takes an extra time of
+\[ O ( a                    +                   n                      ), \]
+whereas the hypersparse case takes only:
+\[ O ( \bar{a} \log \bar{n} +                   \bar{n}                ). \]
+
+The difference is astonishing if $\bar{n} << n$ and $\bar{a} << a$.
+Hypersparse \verb'C' and \verb'A' matrices can be created with $a = n =
+2^{60}$, but suppose $\bar{a} = \bar{n} = 2^{24}$, say, which is 4 million.
+Then $\bar{a} \log_{2} \bar{n} + \bar{n}$ is only about 420 million.  In stark
+contrast, updating the same matrices held in non-hypersparse form would take
+$2^{60}$ time and memory, a number currently beyond the reach of the world's
+largest supercomputer.
+
+If the matrices \verb'C' and \verb'A' have no empty columns or rows, then
+$\bar{a} = a$ and $\bar{n}=n$.  Hypersparse matrices are more costly in this
+case, since they still require an extra $\log n$ term to search for a specific
+column in \verb'C'.  As a result, SuiteSparse:GraphBLAS supports both
+hypersparse and non-hypersparse data structures.
 
 \newpage
 %===============================================================================
@@ -5594,12 +6826,6 @@ The built-in \verb'GrB_IDENTITY_'$T$ operators (one for each built-in type $T$)
 are very useful when combined with this function, enabling it to compute ${\bf
 C \langle M \rangle  = C \odot A}$.  This makes \verb'GrB_apply' a direct
 interface to the accumulator/mask function for both matrices and vectors.
-
-In SuiteSparse:GraphBLAS, this method is particularly efficient with built-in
-types.  If the type of \verb'C' and \verb'A' are the same, and if \verb'A' is
-not transposed via the descriptor, then \verb'T' is a pure shallow copy of
-\verb'A', taking only $O(1)$ time and memory.  The output matrix \verb'C' is
-never a shallow copy of \verb'T' or \verb'A'.
 
 To compute ${\bf C \langle M \rangle = A}$ or ${\bf C \langle M \rangle = C
 \odot A}$ for user-defined types, the user application would need to define an
@@ -5851,7 +7077,7 @@ This cannot be checked by GraphBLAS and thus results are undefined if the
 types are not the same.
 
 The descriptor is unused, but it appears in case it is needed in future
-versions of the GraphBLAS API Specification. 
+versions of the GraphBLAS API. 
 This function has no mask so its accumulator/mask step differs from the other
 GraphBLAS operations.  It does not use the methods described in
 Section~\ref{accummask}, but uses the following method instead.
@@ -5924,7 +7150,7 @@ final step is ${\bf C \langle M \rangle  = C \odot T}$, as described in
 Section~\ref{accummask}, which typecasts \verb'T' as needed and applies the
 mask and accumulator.
 
-To be consistent with the rest of the GraphBLAS API Specification regarding the
+To be consistent with the rest of the GraphBLAS API regarding the
 descriptor, the input matrix \verb'A' may be transposed first.  It may seem
 counter-intuitive, but this has the effect of not doing any transpose at all.
 As a result, \verb'GrB_transpose' is useful for more than just transposing a
@@ -6179,8 +7405,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
-    // making v dense is faster if most of the graph is expected to be searched
-    // for (int32_t i = 0 ; i < n ; i++) GrB_Vector_setElement (v, 0, i) ;
     GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
     GrB_Monoid_new (&Lor, GrB_LOR, (bool) false) ;
     GrB_Semiring_new (&Boolean, Lor, GrB_LAND) ;
@@ -6518,9 +7742,10 @@ GraphBLAS operation (one that normally cannot use a matrix with pending
 computations), the tuples are assembled all at once via
 \verb'GrB_Matrix_build'.
 
-GraphBLAS operations on other matrices have no effect.  Thus, any GraphBLAS
-method or operation can be used to construct the \verb'F' matrix in the example
-above, without affecting when the pending updates to \verb'A' are completed.
+GraphBLAS operations on other matrices have no effect on when the pending
+updates of a matrix are completed.  Thus, any GraphBLAS method or operation can
+be used to construct the \verb'F' matrix in the example above, without
+affecting when the pending updates to \verb'A' are completed.
 
 The MATLAB \verb'wathen.m' script is part of Higham's \verb'gallery' of
 matrices \cite{Higham}.  It creates a finite-element matrix with random
@@ -6744,7 +7969,7 @@ details and derivations on how these methods work.
 When a mask is present and not complemented, \verb'GrB_INP0' is
 \verb'GrB_TRAN', and \verb'GrB_INP1' is \verb'GxB_DEFAULT', the
 SuiteSparse:GraphBLAS implementation of \verb'GrB_mxm' always uses a dot-product
-formulation.  Thus, the ${\bf C \langle L \rangle} = {\bf U}'{\bf L}$ method
+formulation.  Thus, the ${\bf C \langle L \rangle} = {\bf U}^{\sf T}{\bf L}$ method
 uses dot products.  This provides a mechanism for the end-user to select a
 masked dot product matrix multiplication method in SuiteSparse:GraphBLAS, which
 is occasionally faster than the outer product method.
@@ -6756,6 +7981,7 @@ GraphBLAS or by \verb'nnz' or \verb'sum(sum(...))' in MATLAB.
 \noindent
 {\small
 \begin{tabular}{lll}
+\hline 
 method and     & in MATLAB & in GraphBLAS \\
 citation    & & \\
 \hline 
@@ -6768,7 +7994,7 @@ Cohen \cite{AzadBulucGilbert15,Cohen09} & \verb"sum(sum((L*U).*A))/2"
 Sandia \cite{WolfDeveciBerryHammondRajamanickam17} & \verb"sum(sum((U*U).*U))"
     & ${\bf C \langle U \rangle} = {\bf UU}$ (outer product) \\
 SandiaDot & \verb"sum(sum((U'*L).*L))"
-    & ${\bf C \langle L \rangle} = {\bf U}'{\bf L}$ (dot product) \\
+    & ${\bf C \langle L \rangle} = {\bf U}^{\sf T}{\bf L}$ (dot product) \\
 SandiaL  & \verb"sum(sum((L*L).*L))"
     & ${\bf C \langle L \rangle} = {\bf LL}$ (outer product) \\
 \hline 
@@ -6779,20 +8005,21 @@ SandiaL  & \verb"sum(sum((L*L).*L))"
 In general, the Sandia methods are the fastest of the 6 methods when
 implemented in GraphBLAS.  The method in the KokkosKernels paper uses
 \verb'(L*L).*L' via a masked matrix multiplication, but KokkosKernels stores
-its matrices in compressed sparse row form.  GraphBLAS and MATLAB both store
-their matrices in compressed sparse column form, so the Sandia method is
-identical to \verb'(U*U).*U' in MATLAB and ${\bf C \langle U \rangle} = {\bf
-UU}$ in GraphBLAS.  The SandiaDot and SandiaL methods do not appear in
-\cite{WolfDeveciBerryHammondRajamanickam17}, but they are named this way
-because they are simple extensions of the Sandia method.
+its matrices in compressed sparse row form.  SuiteSparse:GraphBLAS (by default)
+and MATLAB both store their matrices in compressed sparse column form, so the
+Sandia method is identical to \verb'(U*U).*U' in MATLAB and ${\bf C \langle U
+\rangle} = {\bf UU}$ in GraphBLAS.  The SandiaDot and SandiaL methods do not
+appear in \cite{WolfDeveciBerryHammondRajamanickam17}, but they are named this
+way because they are simple extensions of the Sandia method.
 
 The methods in MATLAB are slow because the matrix product is formed and then
 its entries are pruned via the element-wise multiplication (\verb'.*').  By
 contrast, \verb'GrB_mxm' only computes the entries residing in the mask, saving
 time and memory.  This optimization is only exploited if the mask present and
 not complemented.  Since the \verb'minitri' method does not use a mask, its
-implementation in GraphBLAS has the same performance and memory requirements as
-the MATLAB version \verb'nnz(A*E==2)/3'.  That is, both are very slow.
+implementation in SuiteSparse:GraphBLAS has the same performance and memory
+requirements as the MATLAB version \verb'nnz(A*E==2)/3'.  That is, both are
+very slow.
 
 Performance results are shown in the following two tables.  The first table is
 a list of matrices from the SuiteSparse Matrix Collection \cite{DavisHu11},
@@ -6806,36 +8033,37 @@ The next table gives performance results on these matrices, with four methods.
 For each method, the run time in seconds and the rate is given, where the rate
 is the number of edges in the graph divided by the run time (listed in millions
 of edges per second).  The first three methods in the table are for MATLAB and
-the two GraphBLAS methods, on a MacBook Pro (Retina, 13inch, Late 2013), 2.8
-Ghz Intel Core i7, 16 GB RAM, OSX 10.11.6, MATLAB 2017a, with the clang 8.0.0
-compiler.  Only a single core was used for these results.  In addition, the
-matrix \verb'L=tril(A)' and/or \verb'U=triu(A)' are used as-is without any
-reordering.  The run times include the time to construct \verb'L' or \verb'U'.
-MATLAB failed on one matrix because \verb'U*U' is too large.
-For the first set of matrices, the outer product formulation (${\bf C \langle U
-\rangle} = {\bf UU}$) is always faster than the dot product formulation, but
-this is not the case for the second set.
+the two SuiteSparse:GraphBLAS methods, on a MacBook Pro (Retina, 13inch, Late
+2013), 2.8 Ghz Intel Core i7, 16 GB RAM, OSX 10.11.6, MATLAB 2017a, with the
+clang 8.0.0 compiler, using SuiteSparse:GraphBLAS Version 1.1.2.  Only a single
+core was used for these results.  In addition, the matrix \verb'L=tril(A)'
+and/or \verb'U=triu(A)' are used as-is without any reordering.  The run times
+include the time to construct \verb'L' or \verb'U'.  MATLAB failed on one
+matrix because \verb'U*U' is too large.  For the first set of matrices, the
+outer product formulation (${\bf C \langle U \rangle} = {\bf UU}$) is always
+faster than the dot product formulation, but this is not the case for the
+second set.
 
 The last column (Kokkos) is copied directly from
 \cite{WolfDeveciBerryHammondRajamanickam17}.  The Kokkos results are from their
 implementation of \verb"sum(sum((L*L).*L))" using a masked sparse matrix-matrix
-multiply in KokkosKernels.  These results were done on an Intel Xeon Haswell
-(E5-2698v3, 2.3GHz), with 512 GB RAM, 32 cores and 2 hyperthreads per core,
-using the Intel \verb'icc' 17.1 compiler.  Unlike the other three methods,
-\verb'L' is sorted by decreasing row degree, which improves the performance.
-The Kokkos time includes the time taken to do the sort.  The run time listed is
-the best time obtained from several runs with 1 to 32 threads.
+multiply in KokkosKernels.  The Kokkos results were done on an Intel Xeon
+Haswell (E5-2698v3, 2.3GHz), with 512 GB RAM, 32 cores and 2 hyperthreads per
+core, using the Intel \verb'icc' 17.1 compiler.  Unlike the other three
+methods, \verb'L' is sorted by decreasing row degree, which improves the
+performance.  The Kokkos time includes the time taken to do the sort.  The run
+time listed is the best time obtained from several runs with 1 to 32 threads.
 
-Comparing GraphBLAS and Kokkos is difficult since these results were obtained
-on different machines.  Also, the results in
+Comparing SuiteSparse:GraphBLAS and Kokkos is difficult since these results
+were obtained on different machines.  Also, the results in
 \cite{WolfDeveciBerryHammondRajamanickam17} provide just the best-obtained
 parallel results, not the results on a single core.  In addition, these results
-are with a reordered \verb'L' in Kokkos, but not in GraphBLAS.  Wolf et al.
-\cite{WolfDeveciBerryHammondRajamanickam17} state that reordering \verb'L'
-improves the run time.  However, with these many caveats, the last column lists
-the speedup of Kokkos over the GraphBLAS outer-product formulation.  Since the
-Kokkos method is parallel these preliminary
-comparisons indicate that the sequential performance of GraphBLAS is
+are with a reordered \verb'L' in Kokkos, but not in SuiteSparse:GraphBLAS.
+Wolf et al.  \cite{WolfDeveciBerryHammondRajamanickam17} state that reordering
+\verb'L' improves the run time.  However, with these many caveats, the last
+column lists the speedup of Kokkos over the SuiteSparse:GraphBLAS outer-product
+formulation.  Since the Kokkos method is parallel these preliminary comparisons
+indicate that the sequential performance of SuiteSparse:GraphBLAS is
 competitive.  Using up to 32 threads, Kokkos is about 3 to 18 faster than
 SuiteSparse:GraphBLAS, which is currently sequential (median speedup of about
 9).  Further comparisons are required, however.  A parallel implementation of
@@ -6895,7 +8123,7 @@ vanHeukelum/cage15 & 5,154,859 & 47,022,346 & 36,106,416 \\
 \hline
 matrix % & $n$  & \# entries & \# triangles
 & \multicolumn{2}{|c|}{MATLAB}  % (U*U).*U
-& \multicolumn{2}{|c|}{${ \bf C \langle U \rangle} = {\bf L}'{\bf U}$}
+& \multicolumn{2}{|c|}{${ \bf C \langle U \rangle} = {\bf L}^{\sf T}{\bf U}$}
 & \multicolumn{2}{|c||}{${\bf C \langle U \rangle} = {\bf UU}$}
 & \multicolumn{3}{|c|}{Kokkos} \\
 & time & rate & time & rate & time & rate & time & rate & speedup \\
@@ -7016,9 +8244,10 @@ vanHeukelum/cage15 & % 5,154,859 & 47,022,346 & 36,106,416 &
 }
 \vspace{0.3in}
 
+\noindent
 The outer product
 ${\bf C \langle U \rangle} = {\bf UU}$
-in GraphBLAS is very simple:
+in SuiteSparse:GraphBLAS is very simple:
 
 {\footnotesize
 \begin{verbatim}
@@ -7044,9 +8273,10 @@ in GraphBLAS is very simple:
 }
 
 \newpage
+\noindent
 The dot product method
-${ \bf C \langle U \rangle} = {\bf L}'{\bf U}$
-in GraphBLAS is similar:
+${ \bf C \langle U \rangle} = {\bf L}^{\sf T}{\bf U}$
+in SuiteSparse:GraphBLAS is similar:
 
 {\footnotesize
 \begin{verbatim}
@@ -7078,6 +8308,9 @@ in GraphBLAS is similar:
         GrB_free (&U) ;
 \end{verbatim}
 }
+
+For more discussion on triangle counting and $k$-truss algorithms,
+and additional results, see \cite{Davis18b}.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -7176,7 +8409,7 @@ the user application does not make multiple simultaneous calls to GraphBLAS.
 
 If \verb'cmake' or \verb'make' fail, it might be that your default compiler
 does not support ANSI C11.  Try another compiler.  For example, try one of
-these options.  Go into the \verb'build' directory and type:
+these options.  Go into the \verb'build' directory and type one of these:
 
     {\small
     \begin{verbatim}
@@ -7184,6 +8417,36 @@ these options.  Go into the \verb'build' directory and type:
     CC=gcc-6 cmake ..
     CC=xlc cmake ..
     CC=icc cmake ..  \end{verbatim} }
+
+By default, SuiteSparse:GraphBLAS stores its matrices by column, using
+the \verb'GxB_BY_COL' format.  You can change the default at compile 
+time to \verb'GxB_BY_ROW' using the \verb'-DBYROW' flag when compiling.
+The advantage to compiling with \verb'-DBYROW' is that a program that
+uses GraphBLAS with no SuiteSparse extensions can be written that allows
+all matrices to be stored by row, instead of using the default
+format by column.  For example:
+
+    {\small
+    \begin{verbatim}
+    CFLAGS=-DBYROW cmake ..  \end{verbatim} }
+
+The user application can also use \verb'GxB_get' to query the global option
+(see also Section~\ref{gxbget}):
+
+    {\small
+    \begin{verbatim}
+    GxB_Format_Value s ;
+    GxB_get (GxB_FORMAT, &s) ;
+    if (s == GxB_BY_COL) printf ("all new matrices are stored by column\n") :
+    else printf ("all new matrices are stored by row\n") ; \end{verbatim} }
+
+These options can also be combined.  For example, to use the \verb'gcc'
+compiler and to change the default format \verb'GxB_FORMAT_DEFAULT'
+to \verb'GxB_BY_ROW', use the following \verb'cmake' command:
+
+    {\small
+    \begin{verbatim}
+    CC=gcc CFLAGS=-DBYROW cmake ..  \end{verbatim} }
 
 Then do \verb'make' in the \verb'build' directory.  If this still fails, see
 the \verb'CMakeLists.txt' file.  You may need to pass compiler-specific options
@@ -7256,6 +8519,14 @@ National Laboratory), Timothy G. Mattson (Intel Corporation) Scott McMillan
 (IBM Corporation), and Carl Yang (UC Davis), for creating the GraphBLAS
 specification and for patiently answering my many questions while I was
 implementing it.
+
+I would like to thank John Gilbert (UC Santa Barbara) for many helpful
+discussions on GraphBLAS, and for our decades-long conversation on sparse
+matrix computations, and sparse matrices in MATLAB in particular.
+
+I would like to thank Cleve Moler (MathWorks) for our many discussions on
+MATLAB, and for creating MATLAB in the first place.  Without MATLAB,
+SuiteSparse:GraphBLAS would have been very difficult to implement and test.
 
 I would also like to thank S\'ebastien Villemot (Debian Developer,
 \url{http://sebastien.villemot.name}) for helping me with various build issues

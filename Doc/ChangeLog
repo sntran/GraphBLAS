@@ -1,3 +1,18 @@
+Version 2.1.0 (BETA), Sept 11, 2018
+
+    * major update: added hypersparse and CSR formats, colon notation, and
+        user selection of the method used by C=A*B.  All changes to the API are
+        backward compatible with Version 2.0, so the SO version does not
+        increase (it is still 2.x).
+    * added GxB_AxB_METHOD: for user selection of C=A*B method
+    * added GxB_RANGE, GxB_STRIDE and GxB_BACKWARDS: for MATLAB-like colon
+        notation: begin:end and begin:inc:end.
+    * added GxB_*Option* functions: to control hypersparsity and CSR/CSC format
+    * added GxB_set and GxB_set: to set/get the descriptor and other options
+    * bug fix: if the accum operator z=f(x,y) was user-defined with different
+        built-in types for x, y, and z, the typecasting was done incorrectly.
+    * GXB_* macros renamed GxB_*: old ones kept for backward compatibility
+
 Version 2.0.3: July 4, 2018
 
     * bug fix to GxB_resize
@@ -21,8 +36,11 @@ Version 2.0.0: Mar 12, 2018
 
     * moved opaque object definitions from Include/GraphBLAS.h to Source/GB.h
     * modifications to meet changes in the Nov 14, 2017, API specification:
-        GrB_Monoid_TYPE_new changed to GrB_Monoid_new_TYPE
-        GrB_Type_new modified: 2nd argument no longer a type, but sizeof(type)
+        GrB_Monoid_TYPE_new changed to GrB_Monoid_new_TYPE.
+        GrB_Type_new modified: 2nd argument no longer a type, but sizeof(type).
+        This change is not backward compatible with Version 1.x, so this
+        required an increase in the SO version, so the version number increased
+        from 1.x to 2.x.
     * to allow non-C applications to access all GraphBLAS functions:
         These were just macros, now defined as both macros and functions:
         GrB_Type_new, GrB_UnaryOp_new, GrB_BinaryOp_new, and GxB_SelectOp_new.

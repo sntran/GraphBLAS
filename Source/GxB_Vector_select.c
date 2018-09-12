@@ -19,19 +19,19 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, select(u,k))
     const void *k,                  // optional input for select operator
     const GrB_Descriptor desc       // descriptor for w and mask
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     WHERE ("GxB_Vector_select (w, mask, accum, op, u, k, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;
-    RETURN_IF_UNINITIALIZED (mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (u) ;
+    RETURN_IF_NULL_OR_FAULTY (w) ;
+    RETURN_IF_FAULTY (mask) ;
+    RETURN_IF_NULL_OR_FAULTY (u) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, ignore0, ignore1) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // select the entries; do not transpose; assemble pending entries

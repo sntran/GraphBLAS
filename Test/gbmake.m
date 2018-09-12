@@ -29,15 +29,19 @@ function gbmake (what, flags, mexfunctions, cfiles, hfiles, inc)
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (~isempty (strfind (pwd, 'Tcov')) && nargin ~= 6)
-    % if the directory is Tcov, and if so assert nargin
+    % if the directory is Tcov, and if so assert nargin == 6
     error ('gbmake should not be used in Tcov directory; use testcov instead') ;
+end
+
+if (isempty (strfind (pwd, 'Test')) && nargin == 0)
+    % gbmake with no arguments should only be done in GraphBLAS/Test
+    error ('gbmake (with no arguments) should be used in Test directory only') ;
 end
 
 fprintf ('\nCompiling GraphBLAS tests\nplease wait [') ;
 
 if (nargin < 2)
     flags = '-O' ;
-    % flags = '-g' ;
 end
 
 flags = [flags ' -largeArrayDims'] ;
@@ -90,6 +94,7 @@ end
 
 %-------------------------------------------------------------------------------
 
+dryrun = false ;
 if (nargin == 1 && ~isempty (what))
     if (isequal (what, 'clean'))
         d = dir ('*.o') ;
@@ -100,6 +105,7 @@ if (nargin == 1 && ~isempty (what))
         for k = 1:length(d)
             delete (d (k).name) ;
         end
+        return
     elseif (isequal (what, 'purge') || isequal (what, 'distclean'))
         gbmake ('clean') ;
         d = dir ('*.mex*') ;
@@ -110,8 +116,10 @@ if (nargin == 1 && ~isempty (what))
         for k = 1:length(d)
             delete (d (k).name) ;
         end
+        return
+    elseif (isequal (what, 'dryrun'))
+        dryrun = true ;
     end
-    return
 end
 
 %-------------------------------------------------------------------------------
@@ -151,10 +159,14 @@ for k = 1:length (cfiles)
     % compile the cfile if it is newer than its object file, or any hfile
     if (tc > tobj || htime > tobj)
         % compile the cfile
-        % fprintf ('.', cfile) ;
-        fprintf ('%s\n', cfile) ;
+        fprintf ('.', cfile) ;
+        % fprintf ('%s\n', cfile) ;
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
-        eval (mexcmd) ;
+        if (dryrun)
+            fprintf ('%s\n', mexcmd) ;
+        else
+            eval (mexcmd) ;
+        end
         any_c_compiled = true ;
     end
 end
@@ -182,9 +194,13 @@ for k = 1:length (mexfunctions)
         % compile the mexFunction
         mexcmd = sprintf ('mex %s -silent %s %s %s', ...
             flags, inc, mexfunction, objlist) ;
-        % fprintf (':') ;
-        fprintf ('%s\n', mexfunction) ;
-        eval (mexcmd) ;
+        fprintf (':') ;
+        % fprintf ('%s\n', mexfunction) ;
+        if (dryrun)
+            fprintf ('%s\n', mexcmd) ;
+        else
+            eval (mexcmd) ;
+        end
     end
 end
 

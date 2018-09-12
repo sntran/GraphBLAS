@@ -285,6 +285,22 @@ switch  method
         t.triangle_count_time = toc ;
         %-----------------------------------------------------------------------
 
+    %===========================================================================
+    case 'SandiaDot'  % sum (sum ((L'*U).*U))
+    %===========================================================================
+
+        % same as Sandia method, but with L' instead of U.  The matrices are
+        % the same but MATLAB might treat the L' differently.
+
+        %-----------------------------------------------------------------------
+        % Sandia method:
+        t.prep_time = triu_time + tril_time ;
+        tic ;
+        ntri = sum (sum ((L' * U) .* U)) ;
+        t.triangle_count_time = toc ;
+        %-----------------------------------------------------------------------
+
+
     otherwise
         error ('unrecognized method') ;
 

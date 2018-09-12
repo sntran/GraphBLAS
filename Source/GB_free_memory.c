@@ -22,7 +22,7 @@ void GB_free_memory
 )
 {
     if (p != NULL)
-    {
+    { 
         // at least one item is always allocated
         nitems = IMAX (1, nitems) ;
         int nmalloc ;
@@ -34,7 +34,7 @@ void GB_free_memory
         }
 
 #ifdef PRINT_MALLOC
-        printf ("free:    %14p %3d %1d n "GBd" size "GBd"\n", 
+        printf ("free:    %14p %3d %1d n "GBd" size "GBd"\n",
             p, nmalloc, GB_Global.malloc_debug,
             (int64_t) nitems, (int64_t) size_of_item) ;
         if (nmalloc < 0)

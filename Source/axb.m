@@ -12,7 +12,7 @@ fprintf (f, '\n') ;
 fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.\n') ;
 fprintf (f, '// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.\n') ;
 fprintf (f, '\n') ;
-fprintf (f, '// This file has been automatically generated from Template/GB_AxB.h') ;
+fprintf (f, '// This file has been automatically generated from Generator/GB_AxB.h') ;
 fprintf (f, '\n\n') ;
 fclose (f) ;
 

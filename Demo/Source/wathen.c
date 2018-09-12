@@ -369,9 +369,9 @@ GrB_Info wathen             // construct a random Wathen matrix
         for (int64_t i = 0 ; i < n ; i++)
         {
             // D (i,i) = 1 / A (i,i) ;
-            double dii ;
-            OK (GrB_Matrix_extractElement (&dii, A, i, i)) ;
-            OK (GrB_Matrix_setElement (D, 1/dii, i, i)) ;
+            double di ;
+            OK (GrB_Matrix_extractElement (&di, A, i, i)) ;
+            OK (GrB_Matrix_setElement (D, 1/di, i, i)) ;
         }
         // A = D*A
         OK (GrB_mxm (A, NULL, NULL, GxB_PLUS_TIMES_FP64, D, A, NULL)) ;

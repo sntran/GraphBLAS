@@ -31,7 +31,7 @@ GrB_Matrix GB_queue_remove_head ( )   // return matrix or NULL if queue empty
             GrB_Matrix Next = (GrB_Matrix) A->queue_next ;
             GB_Global.queue_head = Next ;
             if (Next != NULL)
-            {
+            { 
                 Next->queue_prev = NULL ;
             }
             // A has been removed from the queue

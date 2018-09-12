@@ -14,7 +14,7 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
     GrB_Type *xtype,                // return type of input x
     const GrB_UnaryOp unaryop       // unary operator
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -22,8 +22,8 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
 
     WHERE ("GxB_UnaryOp_xtype (&xtype, unaryop)") ;
     RETURN_IF_NULL (xtype) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (unaryop) ;
-    ASSERT_OK (GB_check (unaryop, "unaryop for xtype", 0)) ;
+    RETURN_IF_NULL_OR_FAULTY (unaryop) ;
+    ASSERT_OK (GB_check (unaryop, "unaryop for xtype", D0)) ;
 
     //--------------------------------------------------------------------------
     // return the xtype

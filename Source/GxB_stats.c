@@ -13,7 +13,7 @@ GrB_Info GxB_stats
 (
     GxB_Statistics *stats
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -23,30 +23,10 @@ GrB_Info GxB_stats
     RETURN_IF_NULL (stats) ;
 
     //--------------------------------------------------------------------------
-    // get memory usage
+    // get statistics
     //--------------------------------------------------------------------------
 
-    #pragma omp critical (GB_memory)
-    {
-        stats->nmalloc = GB_Global.nmalloc ;
-        stats->inuse   = GB_Global.inuse ;
-        stats->maxused = GB_Global.maxused ;
-        GB_Global.maxused = GB_Global.inuse ;
-    }
-
-    //--------------------------------------------------------------------------
-    // clear remainder of stats
-    //--------------------------------------------------------------------------
-
-    // these components are reserved for future use, so that new statistics can
-    // be added without requiring a prior user application to be recompiled.
-
-    for (int i = 0 ; i < 20 ; i++)
-    {
-        stats->future [i] = 0 ;
-        stats->xfuture [i] = 0 ;
-    }
-
+    GB_stats (stats) ;
     return (REPORT_SUCCESS) ;
 }
 

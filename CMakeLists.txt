@@ -41,15 +41,15 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "July 4, 2018" )
+set ( GraphBLAS_DATE "Sept 11, 2018 (BETA1)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
-set ( GraphBLAS_VERSION_MINOR 0 )
-set ( GraphBLAS_VERSION_SUB   3 )
+set ( GraphBLAS_VERSION_MINOR 1 )
+set ( GraphBLAS_VERSION_SUB   0 )
 
 # GraphBLAS C API Specification version, at graphblas.org
-set ( GraphBLAS_API_DATE "Nov 14, 2017" )
+set ( GraphBLAS_API_DATE "May 18, 2018" )
 set ( GraphBLAS_API_VERSION_MAJOR 1 )
-set ( GraphBLAS_API_VERSION_MINOR 1 )
+set ( GraphBLAS_API_VERSION_MINOR 2 )
 set ( GraphBLAS_API_VERSION_SUB   0 )
 
 if ( CMAKE_MAJOR_VERSION GREATER 2 )

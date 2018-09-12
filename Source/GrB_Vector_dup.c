@@ -16,7 +16,7 @@ GrB_Info GrB_Vector_dup     // make an exact copy of a vector
     GrB_Vector *w,          // handle of output vector to create
     const GrB_Vector u      // input vector to copy
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -24,12 +24,13 @@ GrB_Info GrB_Vector_dup     // make an exact copy of a vector
 
     WHERE ("GrB_Vector_dup (&w, u)") ;
     RETURN_IF_NULL (w) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (u) ;
+    RETURN_IF_NULL_OR_FAULTY (u) ;
+    ASSERT (VECTOR_OK (u)) ;
 
     //--------------------------------------------------------------------------
     // duplicate the vector
     //--------------------------------------------------------------------------
 
-    return (GB_Matrix_dup ((GrB_Matrix *) w, (GrB_Matrix) u)) ;
+    return (GB_dup ((GrB_Matrix *) w, (GrB_Matrix) u)) ;
 }
 

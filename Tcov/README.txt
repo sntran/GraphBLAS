@@ -22,7 +22,7 @@ To remove all compiled files, type this in the Unix/Linux shell:
 
 Or, delete these files manually:
 
-    *.o *.obj *.mex* cover_*.c errlog.txt gbstat.mat
+    *.o *.obj *.mex* cover_*.c errlog.txt gbstat.mat tmp*/*
 
 To also remove the log.txt file:
 
@@ -34,16 +34,18 @@ Files in GraphBLAS/Tcov:
 
     Contents.m     for 'help Tcov' in MATLAB; list of files
 
+    gbcmake.m      compile GraphBLAS for statement coverage testing
     gbcover.m      compile GraphBLAS for statement coverage testing
     gbcover_edit.m create a version of GraphBLAS for statement coverage tests
     testcov.m      run all GraphBLAS tests, with statement coverage
-    gbshow.m       create a test coverage report in cover_gb_report.c
+    gbshow.m       create a test coverage report in tmp_cover/
     Makefile       just for 'make clean' and 'make purge'
     README.txt     this file
 
-    gbcover.h           test coverage include file
-    gbcover_finish.c    save the last test coverage counter
-    gbcover_start.c     declare the test coverage counter array
     gbcover_util.c      get/put the coverage to/from MATLAB
-    log_*.txt           100% test coverage certificate
+    log_*.txt           100% test coverage certificates
+
+    tmp_cover       where coverage reports are placed
+    tmp_include     for include files augmented with coverate tests
+    tmp_source      for source files augmented with coverate tests
 

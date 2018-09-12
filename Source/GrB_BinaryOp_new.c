@@ -24,7 +24,7 @@ GrB_Info GrB_BinaryOp_new
     const GrB_Type xtype,           // type of input x
     const GrB_Type ytype            // type of input y
 )
-{
+{ 
     return (GB_BinaryOp_new (binaryop, function, ztype, xtype, ytype, "f")) ;
 }
 

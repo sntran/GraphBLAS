@@ -29,13 +29,13 @@ void GB_queue_insert            // insert matrix at the head of queue
     // insert the matrix at the head of the queue
     //--------------------------------------------------------------------------
 
-    if ((A->npending > 0 || A->nzombies > 0) && !(A->enqueued))
+    if ((A->n_pending > 0 || A->nzombies > 0) && !(A->enqueued))
     {
         // A is not in the queue yet, but needs to be there
         #pragma omp critical (GB_queue)
         {
             // check again to be safe, then add A to the head of the queue
-            if ((A->npending > 0 || A->nzombies > 0) && !(A->enqueued))
+            if ((A->n_pending > 0 || A->nzombies > 0) && !(A->enqueued))
             {
                 // add the matrix to the head of the queue
                 GrB_Matrix Head = (GrB_Matrix) (GB_Global.queue_head) ;
@@ -43,7 +43,7 @@ void GB_queue_insert            // insert matrix at the head of queue
                 A->queue_prev = NULL ;
                 A->enqueued = true ;
                 if (Head != NULL)
-                {
+                { 
                     Head->queue_prev = A ;
                 }
                 GB_Global.queue_head = A ;

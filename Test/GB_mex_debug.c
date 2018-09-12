@@ -9,6 +9,8 @@
 
 #include "GB_mex.h"
 
+#define USAGE "[debug compact malloc cover] = GB_mex_debug"
+
 void mexFunction
 (
     int nargout,
@@ -17,11 +19,13 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (false) ;
 
+    // check inputs
+    WHERE (USAGE) ;
     if (nargout > 4 || nargin != 0)
     {
-        mexErrMsgTxt ("usage: [debug compact malloc cover] = GB_mex_debug") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     bool pr = (nargout == 0) ;
@@ -73,6 +77,6 @@ void mexFunction
         printf ("-------------------------------------------------------\n\n") ;
     }
 
-    GB_mx_put_global (malloc_debug) ;
+    GB_mx_put_global (false) ;
 }
 

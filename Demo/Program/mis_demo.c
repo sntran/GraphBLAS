@@ -77,7 +77,7 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
 
     OK (GrB_Descriptor_new (&dt)) ;
-    OK (GrB_Descriptor_set (dt, GrB_INP0, GrB_TRAN)) ;
+    OK (GxB_set (dt, GrB_INP0, GrB_TRAN)) ;
     OK (GrB_Matrix_new (&C, GrB_BOOL, n, n)) ;
     OK (GrB_transpose (C, NULL, NULL, A, dt)) ;
     GrB_free (&dt) ;

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GrB_Matrix_setElement: set an entry in a matrix, C(i,j) = x
+// GrB_Matrix_setElement: set an entry in a matrix, C(row,col) = x
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,25 +7,24 @@
 
 //------------------------------------------------------------------------------
 
-// Set a single entry in a matrix, C(i,j) = x in MATLAB notation, typecasting
-// from the type of x to the type of C, as needed.
+// Set a single entry in a matrix, C(row,col) = x in MATLAB notation,
+// typecasting from the type of x to the type of C, as needed.
 
 #include "GB.h"
 
 #define SET(type,T,ampersand)                                               \
-GrB_Info GrB_Matrix_setElement_ ## T    /* C (i,j) = x */                   \
+GrB_Info GrB_Matrix_setElement_ ## T    /* C (row,col) = x */               \
 (                                                                           \
-    GrB_Matrix C,                       /* matrix to modify           */    \
-    const type x,                       /* scalar to assign to C(i,j) */    \
-    const GrB_Index i,                  /* row index                  */    \
-    const GrB_Index j                   /* column index               */    \
+    GrB_Matrix C,                       /* matrix to modify               */\
+    const type x,                       /* scalar to assign to C(row,col) */\
+    GrB_Index row,                      /* row index                      */\
+    GrB_Index col                       /* column index                   */\
 )                                                                           \
 {                                                                           \
-    WHERE ("GrB_Matrix_setElement_" GB_STR(T) " (C, i, j, x)") ;            \
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;                                   \
-    return (GB_setElement (C, ampersand x, i, j, GB_ ## T ## _code)) ;      \
+    WHERE ("GrB_Matrix_setElement_" GB_STR(T) " (C, row, col, x)") ;        \
+    RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
+    return (GB_setElement (C, ampersand x, row, col, GB_ ## T ## _code)) ;  \
 }
-
 
 SET (bool     , BOOL   , &) ;
 SET (int8_t   , INT8   , &) ;

@@ -67,7 +67,7 @@ static inline int64_t partition
 
         // However, if the two sides have met, the partition is finished.
         if (left >= right)
-        {
+        { 
             // A has been partitioned into A [0:right] and A [right+1:n-1].
             // k = right+1, so A is split into A [0:k-1] and A [k:n-1].
             return (right + 1) ;
@@ -98,14 +98,14 @@ static void quicksort       // sort A [0:n-1]
         for (int64_t k = 1 ; k < n ; k++)
         {
             for (int64_t j = k ; j > 0 && lt (A, j, A, j-1) ; j--)
-            {
+            { 
                 // swap A [j-1] and A [j]
                 swap (A, j-1, j) ;
             }
         }
     }
     else
-    {
+    { 
         // partition A [0:n-1] into A [0:k-1] and A [k:n-1]
         int64_t k = partition (arg (A), n) ;
 

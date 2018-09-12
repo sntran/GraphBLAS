@@ -14,7 +14,7 @@ GrB_Info GrB_Matrix_ncols   // get the number of columns of a matrix
     GrB_Index *ncols,       // matrix has ncols columns
     const GrB_Matrix A      // matrix to query
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -22,16 +22,13 @@ GrB_Info GrB_Matrix_ncols   // get the number of columns of a matrix
 
     WHERE ("GrB_Matrix_ncols (&ncols, A)") ;
     RETURN_IF_NULL (ncols) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
-
-    // zombies and pending tuples have no effect on nrows
-    // but don't bother asserting that fact here
+    RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // return the number of columns
     //--------------------------------------------------------------------------
 
-    (*ncols) = A->ncols ;
+    (*ncols) = NCOLS (A) ;
     return (REPORT_SUCCESS) ;
 }
 

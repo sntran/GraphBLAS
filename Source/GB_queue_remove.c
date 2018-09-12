@@ -36,17 +36,17 @@ void GB_queue_remove            // remove matrix from queue
                 GrB_Matrix Prev = (GrB_Matrix) (A->queue_prev) ;
                 GrB_Matrix Next = (GrB_Matrix) (A->queue_next) ;
                 if (Prev == NULL)
-                {
+                { 
                     // matrix is at the head of the queue; update the head
                     GB_Global.queue_head = Next ;
                 }
                 else
-                {
+                { 
                     // matrix is not the first in the queue
                     Prev->queue_next = Next ;
                 }
                 if (Next != NULL)
-                {
+                { 
                     // update the previous link of the next matrix, if any
                     Next->queue_prev = Prev ;
                 }

@@ -62,6 +62,8 @@ int main (int argc, char **argv)
     GrB_Index n ;
     OK (GrB_Matrix_nrows (&n, A)) ;
 
+    printf ("number of nodes: %g\n", (double) n) ;
+
     // typecast A to boolean, if needed.  This is not required but it
     // speeds up the BFS
     A2 = A ;
@@ -129,7 +131,8 @@ int main (int argc, char **argv)
 
         OK (GrB_Vector_new (&is_reachable, GrB_BOOL, n)) ;
         OK (GrB_apply (is_reachable, NULL, NULL, GrB_IDENTITY_BOOL, v, NULL)) ;
-        OK (GrB_reduce (&nreachable, NULL, GxB_PLUS_INT32_MONOID, is_reachable, NULL)) ;
+        OK (GrB_reduce (&nreachable, NULL, GxB_PLUS_INT32_MONOID,
+            is_reachable, NULL)) ;
         OK (GrB_free (&is_reachable)) ;
         // OK (GrB_Vector_nvals (&nreachable, v)) ;
         printf ("nodes reachable from node %.16g: %.16g out of %.16g\n",

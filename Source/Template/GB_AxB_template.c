@@ -20,9 +20,9 @@
 // There are 40 non-boolean monoids and 4 boolean monoids defined here.
 
 // NO_BOOLEAN is #defined for 12 of these multiply operators in the
-// #include'ing file, GB_AxB_builtin.c (min, max, plus, minus, times, div, is*)
-// since those 12 multiply operators are redundant and have been renamed.  For
-// these 12, the boolean monoids are not needed.
+// #include'ing file, GB_AxB_Gustavson_builtin.c (min, max, plus, minus, times,
+// div, is*) since those 12 multiply operators are redundant and have been
+// renamed.  For these 12, the boolean monoids are not needed.
 
 ASSERT (zcode == xycode) ;
 
@@ -31,8 +31,9 @@ if (zcode != GB_BOOL_code)
     switch (add_opcode)
     {
 
-        case GB_MIN_opcode     :   // w = min (w,t), identity is +inf
+        case GB_MIN_opcode:
 
+            // w = min (w,t), identity is +inf
             switch (zcode)
             {
                 case GB_INT8_code   : AxB (_min, mult, _int8  )
@@ -49,8 +50,9 @@ if (zcode != GB_BOOL_code)
             }
             break ;
 
-        case GB_MAX_opcode     :   // w = max (w,t), identity is -inf
+        case GB_MAX_opcode:
 
+            // w = max (w,t), identity is -inf
             switch (zcode)
             {
                 case GB_INT8_code   : AxB (_max, mult, _int8  )
@@ -67,8 +69,9 @@ if (zcode != GB_BOOL_code)
             }
             break ;
 
-        case GB_PLUS_opcode    :   // w += t, identity is 0
+        case GB_PLUS_opcode:
 
+            // w += t, identity is 0
             switch (zcode)
             {
                 case GB_INT8_code   : AxB (_plus, mult, _int8  )
@@ -85,8 +88,9 @@ if (zcode != GB_BOOL_code)
             }
             break ;
 
-        case GB_TIMES_opcode   :   // w *= t, identity is 1
+        case GB_TIMES_opcode:
 
+            // w *= t, identity is 1
             switch (zcode)
             {
                 case GB_INT8_code   : AxB (_times, mult, _int8  )

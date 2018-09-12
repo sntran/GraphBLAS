@@ -15,31 +15,33 @@ GrB_Info GB_Mask_compatible     // check type and dimensions of mask
 (
     const GrB_Matrix Mask,      // mask to check
     const GrB_Matrix C,         // C<Mask>= ...
-    const GrB_Index nrows,      // size of output if C is NULL
+    const GrB_Index nrows,      // size of output if C is NULL (see GB*assign)
     const GrB_Index ncols
 )
-{
+{ 
+
+    ASSERT (ALIAS_OK (C, Mask)) ;
 
     if (Mask != NULL)
-    {
+    { 
 
         // Mask is typecast to boolean
         if (!GB_Type_compatible (Mask->type, GrB_BOOL))
-        {
+        { 
             return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
                 "Mask of type [%s] cannot be typecast to boolean",
                 Mask->type->name))) ;
         }
 
         // check the Mask dimensions
-        GrB_Index Mask_nrows = (C == NULL) ? nrows : C->nrows ;
-        GrB_Index Mask_ncols = (C == NULL) ? ncols : C->ncols ;
-        if (Mask->nrows != Mask_nrows || Mask->ncols != Mask_ncols)
-        {
+        GrB_Index cnrows = (C == NULL) ? nrows : NROWS (C) ;
+        GrB_Index cncols = (C == NULL) ? ncols : NCOLS (C) ;
+        if (NROWS (Mask) != cnrows || NCOLS (Mask) != cncols)
+        { 
             return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
                 "Mask is "GBd"-by-"GBd"; "
                 "does not match output dimensions ("GBd"-by-"GBd")",
-                Mask->nrows, Mask->ncols, Mask_nrows, Mask_ncols))) ;
+                NROWS (Mask), NCOLS (Mask), cnrows, cncols))) ;
         }
     }
 

@@ -87,7 +87,7 @@ void GB_qsort_3         // sort array A of size 3-by-n, using 3 keys (A [0:2][])
     int64_t A_2 [ ],      // size n array
     const int64_t n
 )
-{
+{ 
     quicksort (arg (A), n) ;
 }
 

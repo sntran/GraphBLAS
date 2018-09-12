@@ -15,14 +15,17 @@ GrB_Info GrB_Vector_build_ ## T     /* build a vector from (I,X) tuples   */  \
     GrB_Vector w,                   /* vector to build                    */  \
     const GrB_Index *I,             /* array of row indices of tuples     */  \
     const type *X,                  /* array of values of tuples          */  \
-    const GrB_Index nvals,          /* number of tuples                   */  \
+    GrB_Index nvals,                /* number of tuples                   */  \
     const GrB_BinaryOp dup          /* binary op to assemble duplicates   */  \
 )                                                                             \
 {                                                                             \
     WHERE ("GrB_Vector_build_" GB_STR(T) " (w, I, X, nvals, dup)") ;          \
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;                                     \
-    return (GB_build ((GrB_Matrix) w, I, NULL, X, nvals, dup,                 \
-        GB_ ## T ## _code)) ;                                                 \
+    RETURN_IF_NULL_OR_FAULTY (w) ;                                            \
+    ASSERT (VECTOR_OK (w)) ;                                                  \
+    GrB_Info info = GB_user_build ((GrB_Matrix) w, I, NULL, X, nvals, dup,    \
+        GB_ ## T ## _code, false) ;                                           \
+    ASSERT (IMPLIES (info == GrB_SUCCESS, VECTOR_OK (w))) ;                   \
+    return (info) ;                                                           \
 }
 
 BUILD (bool     , BOOL   ) ;

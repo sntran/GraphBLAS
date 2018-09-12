@@ -9,6 +9,8 @@
 
 #include "GB_mex.h"
 
+#define USAGE "GB_mex_init"
+
 void mexFunction
 (
     int nargout,
@@ -17,6 +19,7 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+    WHERE (USAGE) ;
     GrB_init (GrB_NONBLOCKING) ;
 }
 

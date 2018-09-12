@@ -22,7 +22,7 @@ GrB_Info GxB_SelectOp_new       // create a new user-defined select operator
     void *function,             // pointer to the select function
     const GrB_Type xtype        // type of input x, or NULL if type-generic
 )
-{
+{ 
     return (GB_SelectOp_new (selectop, function, xtype, "f")) ;
 }
 

@@ -22,19 +22,22 @@ void GB_code_print              // print an entry using a type code
 
     switch (code)
     {
-        case GB_BOOL_code  : printf ((*((bool *) x)) ? "true" : "false"); break;
-        case GB_INT8_code  : printf ("int8 %d",      *((int8_t   *) x)) ; break;
-        case GB_UINT8_code : printf ("uint8 %u",     *((uint8_t  *) x)) ; break;
-        case GB_INT16_code : printf ("int16 %d",     *((int16_t  *) x)) ; break;
-        case GB_UINT16_code: printf ("uint16 %u",    *((uint16_t *) x)) ; break;
-        case GB_INT32_code : printf ("int32 %d",     *((int32_t  *) x)) ; break;
-        case GB_UINT32_code: printf ("uint32 %u",    *((uint32_t *) x)) ; break;
-        case GB_INT64_code : printf ("int64 "GBd,    *((int64_t  *) x)) ; break;
-        case GB_UINT64_code: printf ("uint64 "GBu,   *((uint64_t *) x)) ; break;
-        case GB_FP32_code  : printf ("float %.6g",   *((float    *) x)) ; break;
-        case GB_FP64_code  : printf ("double %.15g", *((double   *) x)) ; break;
-        case GB_UDT_code   :
-            {
+        /*
+        old case GB_BOOL_code printf ((*((bool *) x)) ? "true":"false");break;
+        */
+        case GB_BOOL_code   : printf ("bool %d",      *((int8_t   *) x)) ;break;
+        case GB_INT8_code   : printf ("int8 %d",      *((int8_t   *) x)) ;break;
+        case GB_UINT8_code  : printf ("uint8 %u",     *((uint8_t  *) x)) ;break;
+        case GB_INT16_code  : printf ("int16 %d",     *((int16_t  *) x)) ;break;
+        case GB_UINT16_code : printf ("uint16 %u",    *((uint16_t *) x)) ;break;
+        case GB_INT32_code  : printf ("int32 %d",     *((int32_t  *) x)) ;break;
+        case GB_UINT32_code : printf ("uint32 %u",    *((uint32_t *) x)) ;break;
+        case GB_INT64_code  : printf ("int64 "GBd,    *((int64_t  *) x)) ;break;
+        case GB_UINT64_code : printf ("uint64 "GBu,   *((uint64_t *) x)) ;break;
+        case GB_FP32_code   : printf ("float %.6g",   *((float    *) x)) ;break;
+        case GB_FP64_code   : printf ("double %.15g", *((double   *) x)) ;break;
+        case GB_UDT_code    :
+            { 
                 printf ("[user-defined value]") ;
                 // GraphBLAS does not have a method for the user to register
                 // a 'printf' function for a user-defined type.  This can be

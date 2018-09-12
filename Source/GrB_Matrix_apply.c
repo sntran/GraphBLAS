@@ -20,19 +20,19 @@ GrB_Info GrB_Matrix_apply           // C<Mask> = accum (C, op(A)) or op(A')
     const GrB_Matrix A,             // first input:  matrix A
     const GrB_Descriptor desc       // descriptor for C, Mask, and A
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     WHERE ("GrB_Matrix_apply (C, Mask, accum, op, A, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;
-    RETURN_IF_UNINITIALIZED (Mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
+    RETURN_IF_NULL_OR_FAULTY (C) ;
+    RETURN_IF_FAULTY (Mask) ;
+    RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, ignore) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
 
     //--------------------------------------------------------------------------
     // apply the operator and optionally transpose; assemble pending tuples

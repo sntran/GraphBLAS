@@ -20,12 +20,12 @@ bool GB_Type_compatible             // check if two types can be typecast
 {
 
     if (atype->code == GB_UDT_code || btype->code == GB_UDT_code)
-    {
+    { 
         // two user types must be identical to be compatible
         return (atype == btype) ;
     }
     else
-    {
+    { 
         // any built-in domain is compatible with any other built-in domain
         return (true) ;
     }

@@ -14,7 +14,7 @@ GrB_Info GxB_Semiring_multiply      // return multiply operator of a semiring
     GrB_BinaryOp *multiply,         // returns multiply operator of the semiring
     const GrB_Semiring semiring     // semiring to query
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -22,8 +22,8 @@ GrB_Info GxB_Semiring_multiply      // return multiply operator of a semiring
 
     WHERE ("GxB_Semiring_multiply (&multiply, semiring)") ;
     RETURN_IF_NULL (multiply) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (semiring) ;
-    ASSERT_OK (GB_check (semiring, "semiring for mult", 0)) ;
+    RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    ASSERT_OK (GB_check (semiring, "semiring for mult", D0)) ;
 
     //--------------------------------------------------------------------------
     // return the ztype

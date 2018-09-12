@@ -29,8 +29,9 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
 )                                                                             \
 {                                                                             \
     WHERE ("GrB_Vector_extractTuples_" GB_STR(T) " (I, X, nvals, v)") ;       \
-    RETURN_IF_NULL_OR_UNINITIALIZED (v) ;                                     \
+    RETURN_IF_NULL_OR_FAULTY (v) ;                                            \
     RETURN_IF_NULL (p_nvals) ;                                                \
+    ASSERT (VECTOR_OK (v)) ;                                                  \
     return (GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code,         \
         (GrB_Matrix) v)) ;                                                    \
 }

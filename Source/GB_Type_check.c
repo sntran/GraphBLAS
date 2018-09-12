@@ -18,19 +18,20 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
     const GrB_Type type,    // GraphBLAS type to print and check
     const char *name,       // name of the type from the caller; optional
-    const GB_diagnostic pr  // 0: print nothing, 1: print header and errors,
+    int pr                  // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    if (pr > 0) printf ("GraphBLAS type: %s ", NAME) ;
+    if (pr > 0) printf ("GraphBLAS type: ") ;
+    if (pr > 0 && name != NULL) printf ("%s ", name) ;
 
     if (type == NULL)
-    {
+    { 
         // GrB_error status not modified since this may be an optional argument
         if (pr > 0) printf ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
@@ -66,8 +67,8 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 
     if (pr > 0) printf (" size: %zu\n", type->size) ;
 
-    if (type->size == 0 || type->size != GB_Type_size (type->code, type->size))
-    {
+    if (type->size == 0 || type->size != GB_code_size (type->code, type->size))
+    { 
         if (pr > 0) printf ("Type has an invalid size\n") ;
         return (ERROR (GrB_INVALID_OBJECT, (LOG,
             "Type has an invalid size: %s [%s]", NAME, type->name))) ;

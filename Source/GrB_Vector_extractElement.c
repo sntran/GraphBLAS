@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GrB_Vector_extractElement: extract a single entry from a vector, x = v(i,j)
+// GrB_Vector_extractElement: extract a single entry from a vector
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,26 +7,27 @@
 
 //------------------------------------------------------------------------------
 
-// Extract a single entry, x = v(i), typecasting from the type
+// Extract a single entry, x = v(row), typecasting from the type
 // of v to the type of x, as needed.
 
-// Returns GrB_SUCCESS if A(i,j) is present, and sets x to its value.
-// Returns GrB_NO_VALUE if A(i,j) is not present, and x is unmodified.
+// Returns GrB_SUCCESS if v(row) is present, and sets x to its value.
+// Returns GrB_NO_VALUE if v(row) is not present, and x is unmodified.
 
 #include "GB.h"
 
 #define EXTRACT(type,T)                                                       \
-GrB_Info GrB_Vector_extractElement_ ## T     /* x = v(i) */                   \
+GrB_Info GrB_Vector_extractElement_ ## T     /* x = v(row) */                 \
 (                                                                             \
     type *x,                            /* extracted scalar                */ \
     const GrB_Vector v,                 /* vector to extract a scalar from */ \
-    const GrB_Index i                   /* row index                       */ \
+    GrB_Index row                       /* row index                       */ \
 )                                                                             \
 {                                                                             \
-    RETURN_IF_NULL_OR_UNINITIALIZED (v) ;                                     \
-    WHERE ("GrB_Vector_extractElement_" GB_STR(T) " (x, v, i)") ;             \
+    WHERE ("GrB_Vector_extractElement_" GB_STR(T) " (x, v, row)") ;           \
+    RETURN_IF_NULL_OR_FAULTY (v) ;                                            \
+    ASSERT (VECTOR_OK (v)) ;                                                  \
     GrB_Info info = GB_extractElement (x, GB_ ## T ## _code,                  \
-       (GrB_Matrix) v, i, 0) ;                                                \
+       (GrB_Matrix) v, row, 0) ;                                              \
     REPORT_VECTOR (info) ;                                                    \
     return (info) ;                                                           \
 }

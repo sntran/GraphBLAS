@@ -50,13 +50,28 @@ a wildtype scalar:  [here is scalar2]
 
 ============= that was the WildType matrix input B
 [this was multiplied] = [this is from scalar1] * [here is scalar2]
-[this was added] = [identity] + [this was multiplied]
 
 ============= printing the WildType matrix: output C (10-by-10 with 1 entries)
 
 ----------- output C(2,2):
 
-a wildtype scalar:  [this was added]
+a wildtype scalar:  [this was multiplied]
+     -11.0       -5.0        1.0        7.0 
+    -411.0       -5.0      401.0      807.0 
+    -811.0       -5.0      801.0     1607.0 
+   -1211.0       -5.0     1201.0     2407.0 
+
+============= that was the WildType matrix output C
+
+C is now stored by row, but it looks just the same to the
+GraphBLAS user application.  The difference is opaque, in the
+internal data structure.
+
+============= printing the WildType matrix: output C (10-by-10 with 1 entries)
+
+----------- output C(2,2):
+
+a wildtype scalar:  [this was multiplied]
      -11.0       -5.0        1.0        7.0 
     -411.0       -5.0      401.0      807.0 
     -811.0       -5.0      801.0     1607.0 

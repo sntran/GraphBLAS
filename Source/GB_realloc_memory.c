@@ -54,26 +54,25 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
     // make sure at least one byte is allocated
     size_of_item = IMAX (1, size_of_item) ;
 
-
     (*ok) = GB_size_t_multiply (&size, nitems_new, size_of_item) ;
     if (!(*ok) || nitems_new > GB_INDEX_MAX || size_of_item > GB_INDEX_MAX)
-    {
+    { 
         // overflow
         (*ok) = false ;
     }
     else if (p == NULL)
-    {
+    { 
         // a fresh object is being allocated
         GB_MALLOC_MEMORY (p, nitems_new, size_of_item) ;
         (*ok) = (p != NULL) ;
     }
     else if (nitems_old == nitems_new)
-    {
+    { 
         // the object does not change; do nothing
         (*ok) = true ;
     }
     else
-    {
+    { 
         // change the size of the object from nitems_old to nitems_new
         void *pnew ;
 
@@ -93,6 +92,9 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
         if (pretend_to_fail)
         {
             // brutal malloc debug; pretend to fail if the count <= 0,
+#ifdef PRINT_MALLOC
+            printf ("pretend to fail: realloc\n") ;
+#endif
             pnew = NULL ;
         }
         else

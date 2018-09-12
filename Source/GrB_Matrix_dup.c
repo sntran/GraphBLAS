@@ -16,7 +16,7 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     GrB_Matrix *C,          // handle of output matrix to create
     const GrB_Matrix A      // input matrix to copy
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -24,12 +24,12 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
 
     WHERE ("GrB_Matrix_dup (&C, A)") ;
     RETURN_IF_NULL (C) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
+    RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // duplicate the matrix
     //--------------------------------------------------------------------------
 
-    return (GB_Matrix_dup (C, A)) ;
+    return (GB_dup (C, A)) ;
 }
 

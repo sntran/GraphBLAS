@@ -17,7 +17,7 @@ void GB_queue_check
     GrB_Matrix *next,       // next after A
     bool *enqd              // true if A is in the queue
 )
-{
+{ 
 
     #pragma omp critical (GB_queue)
     {

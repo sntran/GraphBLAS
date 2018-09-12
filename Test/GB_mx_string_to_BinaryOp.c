@@ -700,7 +700,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
 
 
     // return the binary operator to the caller
-    ASSERT_OK_OR_NULL (GB_check (op, "got binary op", 0)) ;
+    ASSERT_OK_OR_NULL (GB_check (op, "got binary op", D0)) ;
     (*handle) = op ;
     return (true) ;
 }

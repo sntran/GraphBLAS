@@ -20,11 +20,19 @@
 #define PARGIN(k) ((nargin > (k)) ? pargin [k] : NULL)
 
 #define GET_SCALAR(arg,type,n,n_default)    \
-    type n = n_default ;                    \
+    n = n_default ;                    \
     if (nargin > arg) n = (type) mxGetScalar (pargin [arg]) ;
 
 // MATCH(s,t) compares two strings and returns true if equal
 #define MATCH(s,t) (strcmp(s,t) == 0)
+
+// timer functions, and result statistics
+extern double gbtime, tic [2] ;
+extern int gb_AxB_selected ;
+void GB_mx_put_time ( ) ;               // return the time to MATLAB
+void GB_mx_clear_time ( ) ;             // clear the time and start the tic
+#define TIC { GB_mx_clear_time ( ) ; }
+#define TOC { gbtime = simple_toc (tic) ; }
 
 bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 (
@@ -100,18 +108,22 @@ mxArray *GB_mx_object_to_mxArray    // returns the MATLAB mxArray
     const bool create_struct        // if true, then return a struct
 ) ;
 
-GrB_Matrix GB_mx_mxArray_to_Matrix      // returns GraphBLAS version of A
+GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 (
     const mxArray *A_matlab,            // MATLAB version of A
     const char *name,                   // name of the argument
-    bool deep_copy                      // if true, return a deep copy
+    bool deep_copy,                     // if true, return a deep copy
+    const bool empty    // if false, 0-by-0 matrices are returned as NULL.
+                        // if true, a 0-by-0 matrix is returned.
 ) ;
 
-GrB_Vector GB_mx_mxArray_to_Vector      // returns GraphBLAS version of A
+GrB_Vector GB_mx_mxArray_to_Vector     // returns GraphBLAS version of V
 (
-    const mxArray *A_matlab,            // MATLAB version of A
+    const mxArray *V_matlab,            // MATLAB version of V
     const char *name,                   // name of the argument
-    const bool deep_copy                // if true, return a deep copy
+    const bool deep_copy,               // if true, return a deep copy
+    const bool empty    // if false, 0-by-0 matrices are returned as NULL.
+                        // if true, a 0-by-0 matrix is returned.
 ) ;
 
 mxClassID GB_mx_string_to_classID       // returns the MATLAB class ID
@@ -183,7 +195,9 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
 (
     GrB_Index **handle,             // index array returned
     const mxArray *I_matlab,        // MATLAB mxArray to get
-    GrB_Index *ni                   // length of the array
+    GrB_Index *ni,                  // length of I, or special
+    GrB_Index Icolon [3],           // for all but GB_LIST
+    bool *I_is_list                 // true if I is an explicit list
 ) ;
 
 bool GB_mx_Monoid               // true if successful, false otherwise
@@ -193,12 +207,9 @@ bool GB_mx_Monoid               // true if successful, false otherwise
     const bool malloc_debug     // true if malloc debug should be done
 ) ;
 
-bool GB_mx_get_global ( ) ;
+bool GB_mx_get_global (bool cover) ;
 
-void GB_mx_put_global
-(
-    bool malloc_debug
-) ;
+void GB_mx_put_global (bool cover) ;
 
 void GB_mx_complex_merge    // merge real/imag parts of MATLAB array
 (
@@ -240,6 +251,8 @@ bool GB_mx_isequal  // true if A and B are exactly the same
     GrB_Matrix B
 ) ;
 
+//------------------------------------------------------------------------------
+
 #ifdef PRINT_MALLOC
 
 #define AS_IF_FREE(p)           \
@@ -270,7 +283,7 @@ bool GB_mx_isequal  // true if A and B are exactly the same
     printf ("================================================================================\n") ;
 
 #define METHOD_TRY \
-    printf ("\n--------------------------------------------------------------------- try %%\n", tries) ;
+    printf ("\n--------------------------------------------------------------------- try %d\n", tries) ;
 
 #define METHOD_FINAL(OP) \
     printf ("\n================================================================================\n") ; \
@@ -292,7 +305,9 @@ bool GB_mx_isequal  // true if A and B are exactly the same
     if (!malloc_debug)                                                      \
     {                                                                       \
         /* no malloc debugging; just call the method */                     \
+        TIC ;                                                               \
         GrB_Info info = GRAPHBLAS_OPERATION ;                               \
+        TOC ;                                                               \
         if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                \
         {                                                                   \
             FREE_ALL ;                                                      \
@@ -315,8 +330,11 @@ bool GB_mx_isequal  // true if A and B are exactly the same
             /* call the method with malloc debug enabled */                 \
             GB_Global.malloc_debug = true ;                                 \
             GB_thread_local.info = GrB_SUCCESS ;                            \
+            TIC ;                                                           \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
+            TOC ;                                                           \
             GB_Global.malloc_debug = false ;                                \
+            if (tries > 1000000) mexErrMsgTxt ("infinite loop!") ;          \
             if (info == GrB_SUCCESS || info == GrB_NO_VALUE)                \
             {                                                               \
                 /* finally gave GraphBLAS enough malloc's to do the work */ \
@@ -348,15 +366,29 @@ bool GB_mx_isequal  // true if A and B are exactly the same
             else                                                            \
             {                                                               \
                 /* another error has occurred */                            \
-                printf ("an error: %s\n", GrB_error ()) ;                   \
+                printf ("an error: %s line %d\n%s\n", __FILE__, __LINE__,   \
+                    GrB_error ()) ;                                         \
                 FREE_ALL ;                                                  \
                 mexErrMsgTxt (GrB_error ( )) ;                              \
             }                                                               \
         }                                                                   \
     }
 
-#ifdef GBCOVER
-#include "gbcover.h"
-#endif
+//------------------------------------------------------------------------------
+// statement coverage
+//------------------------------------------------------------------------------
+
+// gbcover_get copies GraphBLAS_gbcov from the MATLAB global workspace into
+// the internal gbcov array.  The MATLAB array is created if it doesn't exist.
+// Thus, to clear the counts simply clear GraphBLAS_gbcov from the MATLAB
+// global workpace.
+void gbcover_get ( ) ;
+
+// gbcover_put copies the internal gbcov array back into the MATLAB
+// GraphBLAS_gbcov array, for analysis and for subsequent statement counting.
+// This way, multiple tests in MATLAB can be accumulated into a single array
+// of counters.
+void gbcover_put ( ) ;
+
 #endif
 

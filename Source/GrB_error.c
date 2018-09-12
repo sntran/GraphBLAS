@@ -17,20 +17,20 @@ static const char *status_code ( )
 {
     switch (GB_thread_local.info)
     {
-        case GrB_SUCCESS             : return ("GrB_SUCCESS") ;
-        case GrB_NO_VALUE            : return ("GrB_NO_VALUE") ;
-        case GrB_UNINITIALIZED_OBJECT: return ("GrB_UNINITIALIZED_OBJECT") ;
-        case GrB_INVALID_OBJECT      : return ("GrB_INVALID_OBJECT") ;
-        case GrB_NULL_POINTER        : return ("GrB_NULL_POINTER") ;
-        case GrB_INVALID_VALUE       : return ("GrB_INVALID_VALUE") ;
-        case GrB_INVALID_INDEX       : return ("GrB_INVALID_INDEX") ;
-        case GrB_DOMAIN_MISMATCH     : return ("GrB_DOMAIN_MISMATCH") ;
-        case GrB_DIMENSION_MISMATCH  : return ("GrB_DIMENSION_MISMATCH") ;
-        case GrB_OUTPUT_NOT_EMPTY    : return ("GrB_OUTPUT_NOT_EMPTY") ;
-        case GrB_OUT_OF_MEMORY       : return ("GrB_OUT_OF_MEMORY") ;
-        case GrB_INDEX_OUT_OF_BOUNDS : return ("GrB_INDEX_OUT_OF_BOUNDS") ;
-        case GrB_PANIC               : return ("GrB_PANIC") ;
-        default                      : return ("unknown!") ;
+        case GrB_SUCCESS              : return ("GrB_SUCCESS") ;
+        case GrB_NO_VALUE             : return ("GrB_NO_VALUE") ;
+        case GrB_UNINITIALIZED_OBJECT : return ("GrB_UNINITIALIZED_OBJECT") ;
+        case GrB_INVALID_OBJECT       : return ("GrB_INVALID_OBJECT") ;
+        case GrB_NULL_POINTER         : return ("GrB_NULL_POINTER") ;
+        case GrB_INVALID_VALUE        : return ("GrB_INVALID_VALUE") ;
+        case GrB_INVALID_INDEX        : return ("GrB_INVALID_INDEX") ;
+        case GrB_DOMAIN_MISMATCH      : return ("GrB_DOMAIN_MISMATCH") ;
+        case GrB_DIMENSION_MISMATCH   : return ("GrB_DIMENSION_MISMATCH") ;
+        case GrB_OUTPUT_NOT_EMPTY     : return ("GrB_OUTPUT_NOT_EMPTY") ;
+        case GrB_OUT_OF_MEMORY        : return ("GrB_OUT_OF_MEMORY") ;
+        case GrB_INDEX_OUT_OF_BOUNDS  : return ("GrB_INDEX_OUT_OF_BOUNDS") ;
+        case GrB_PANIC                : return ("GrB_PANIC") ;
+        default                       : return ("unknown!") ;
     }
 }
 
@@ -46,7 +46,7 @@ const char *GrB_error ( )       // return a string describing the last error
     //--------------------------------------------------------------------------
 
     if (GB_thread_local.info == GrB_SUCCESS)
-    {
+    { 
 
         //----------------------------------------------------------------------
         // status is OK, print information about GraphBLAS
@@ -65,17 +65,17 @@ const char *GrB_error ( )       // return a string describing the last error
         #endif
         "GraphBLAS status: %s\n"
         "=================================================================\n",
-        GXB_ABOUT,
-        GXB_IMPLEMENTATION_MAJOR,
-        GXB_IMPLEMENTATION_MINOR,
-        GXB_IMPLEMENTATION_SUB,
-        GXB_DATE,
-        GXB_LICENSE,
-        GXB_MAJOR,
-        GXB_MINOR,
-        GXB_SUB,
-        GXB_SPEC_DATE,
-        GXB_SPEC,
+        GxB_ABOUT,
+        GxB_IMPLEMENTATION_MAJOR,
+        GxB_IMPLEMENTATION_MINOR,
+        GxB_IMPLEMENTATION_SUB,
+        GxB_DATE,
+        GxB_LICENSE,
+        GxB_MAJOR,
+        GxB_MINOR,
+        GxB_SUB,
+        GxB_SPEC_DATE,
+        GxB_SPEC,
         status_code ( )) ;
 
     }
@@ -87,7 +87,7 @@ const char *GrB_error ( )       // return a string describing the last error
         //----------------------------------------------------------------------
 
         if (GB_thread_local.is_matrix)
-        {
+        { 
 
         snprintf (GB_thread_local.report, GB_RLEN,
         "\n=================================================================\n"
@@ -99,7 +99,7 @@ const char *GrB_error ( )       // return a string describing the last error
         }
 
         else
-        {
+        { 
 
         snprintf (GB_thread_local.report, GB_RLEN,
         "\n=================================================================\n"
@@ -112,7 +112,7 @@ const char *GrB_error ( )       // return a string describing the last error
 
     }
     else
-    {
+    { 
 
         //----------------------------------------------------------------------
         // error status

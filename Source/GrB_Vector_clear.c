@@ -13,21 +13,20 @@ GrB_Info GrB_Vector_clear   // clear a vector of all entries;
 (                           // type and dimension remain unchanged
     GrB_Vector v            // vector to clear
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     WHERE ("GrB_Vector_clear (v)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (v) ;
+    RETURN_IF_NULL_OR_FAULTY (v) ;
+    ASSERT (VECTOR_OK (v)) ;
 
     //--------------------------------------------------------------------------
     // clear the vector
     //--------------------------------------------------------------------------
 
-    GB_Matrix_clear ((GrB_Matrix) v) ;
-
-    return (REPORT_SUCCESS) ;
+    return (GB_clear ((GrB_Matrix) v)) ;
 }
 

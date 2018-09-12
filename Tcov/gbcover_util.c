@@ -19,7 +19,7 @@
 
 // This function is called when a GraphBLAS mexFunction starts.
 // GraphBLAS_gbcov is an int64 MATLAB array in the global MATLAB workspace.
-// It's size is controlled by gbcover_max, defined in gbcover_finish.c.  If the
+// Its size is controlled by gbcover_max, defined in gbcover_finish.c.  If the
 // array is empty in the workspace, or if it doesn't exist, it is created with
 // the correct size.  Then the internal gbcov array is copied into it.
 
@@ -51,6 +51,7 @@ void gbcover_get ( )
 
     // getting paranoid here; this should never happen
     if (g == NULL) mexErrMsgTxt ("g null!") ;
+    // if (gbcov == NULL) mexErrMsgTxt ("gbcov is NULL!") ;
 
     // copy the count from the MATLAB GraphBLAS_gbcov into gbcov
     memcpy (gbcov, g, gbcover_max * sizeof (int64_t)) ;
@@ -67,6 +68,7 @@ void gbcover_get ( )
 
 void gbcover_put ( )
 {
+    // printf ("gbcover_put: %d\n", gbcover_max) ;
 
     // create a MATLAB array with the right size
     mxArray * gbcov_matlab = mxCreateNumericMatrix (1, gbcover_max,

@@ -45,6 +45,11 @@
 #include <omp.h>
 #endif
 
+#if defined ( __MACH__ )
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 void simple_tic         /* returns current time in seconds and nanoseconds */
 (
     double tic [2]      /* tic [0]: seconds, tic [1]: nanoseconds */

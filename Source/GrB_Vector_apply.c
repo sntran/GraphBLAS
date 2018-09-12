@@ -18,19 +18,23 @@ GrB_Info GrB_Vector_apply           // w<mask> = accum (w, op(u))
     const GrB_Vector u,             // first input:  vector u
     const GrB_Descriptor desc       // descriptor for w and mask
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     WHERE ("GrB_Vector_apply (w, mask, accum, op, u, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;
-    RETURN_IF_UNINITIALIZED (mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (u) ;
+    RETURN_IF_NULL_OR_FAULTY (w) ;
+    RETURN_IF_FAULTY (mask) ;
+    RETURN_IF_NULL_OR_FAULTY (u) ;
+
+    ASSERT (VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
+    ASSERT (VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, ignore0, ignore1) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // apply the operator; do not transpose

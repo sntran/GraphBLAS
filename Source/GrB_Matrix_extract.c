@@ -9,19 +9,19 @@
 
 #include "GB.h"
 
-GrB_Info GrB_Matrix_extract         // C<Mask> = accum (C, A(I,J))
+GrB_Info GrB_Matrix_extract     // C<Mask> = accum (C, A(I,J))
 (
-    GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
-    const GrB_Matrix A,             // first input:  matrix A
-    const GrB_Index *I,             // row indices
-    const GrB_Index ni,             // number of row indices
-    const GrB_Index *J,             // column indices
-    const GrB_Index nj,             // number of column indices
-    const GrB_Descriptor desc       // descriptor for C, Mask, and A
+    GrB_Matrix C,               // input/output matrix for results
+    const GrB_Matrix Mask,      // optional mask for C, unused if NULL
+    const GrB_BinaryOp accum,   // optional accum for Z=accum(C,T)
+    const GrB_Matrix A,         // first input:  matrix A
+    const GrB_Index *I,         // row indices
+    GrB_Index ni,               // number of row indices
+    const GrB_Index *J,         // column indices
+    GrB_Index nj,               // number of column indices
+    const GrB_Descriptor desc   // descriptor for C, Mask, and A
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -29,12 +29,12 @@ GrB_Info GrB_Matrix_extract         // C<Mask> = accum (C, A(I,J))
 
     WHERE ("GrB_Matrix_extract (C, Mask, accum, A, I, ni, J, nj, desc)") ;
 
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;
-    RETURN_IF_UNINITIALIZED (Mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
+    RETURN_IF_NULL_OR_FAULTY (C) ;
+    RETURN_IF_FAULTY (Mask) ;
+    RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, ignore) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
 
     //--------------------------------------------------------------------------
     // do the work in GB_extract

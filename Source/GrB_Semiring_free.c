@@ -21,7 +21,7 @@ GrB_Info GrB_Semiring_free          // free a user-created semiring
         if (s != NULL && s->user_defined)
         {
             if (s->magic == MAGIC)
-            {
+            { 
                 // only user-defined semirings are freed.  predefined semirings
                 // are statically allocated and cannot be freed.
                 s->magic = FREED ; // to help detect dangling pointers

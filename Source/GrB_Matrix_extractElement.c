@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GrB_Matrix_extractElement: extract a single entry from a matrix, x = A(i,j)
+// GrB_Matrix_extractElement: extract a single entry from a matrix
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,26 +7,26 @@
 
 //------------------------------------------------------------------------------
 
-// Extract the value of single scalar, x = A(i,j), typecasting from the type of
-// A to the type of x, as needed.
+// Extract the value of single scalar, x = A(row,col), typecasting from the
+// type of A to the type of x, as needed.
 
-// Returns GrB_SUCCESS if A(i,j) is present, and sets x to its value.
-// Returns GrB_NO_VALUE if A(i,j) is not present, and x is unmodified.
+// Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
+// Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
 
 #include "GB.h"
 
 #define EXTRACT(type,T)                                                       \
-GrB_Info GrB_Matrix_extractElement_ ## T     /* x = A(i,j) */                 \
+GrB_Info GrB_Matrix_extractElement_ ## T     /* x = A(row,col) */             \
 (                                                                             \
     type *x,                            /* extracted scalar                */ \
     const GrB_Matrix A,                 /* matrix to extract a scalar from */ \
-    const GrB_Index i,                  /* row index                       */ \
-    const GrB_Index j                   /* column index                    */ \
+    GrB_Index row,                      /* row index                       */ \
+    GrB_Index col                       /* column index                    */ \
 )                                                                             \
 {                                                                             \
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;                                     \
-    WHERE ("GrB_Matrix_extractElement_" GB_STR(T) " (x, A, i, j)") ;          \
-    GrB_Info info = GB_extractElement (x, GB_ ## T ## _code, A, i, j) ;       \
+    WHERE ("GrB_Matrix_extractElement_" GB_STR(T) " (x, A, row, col)") ;      \
+    RETURN_IF_NULL_OR_FAULTY (A) ;                                            \
+    GrB_Info info = GB_extractElement (x, GB_ ## T ## _code, A, row, col) ;   \
     REPORT_MATRIX (info) ;                                                    \
     return (info) ;                                                           \
 }

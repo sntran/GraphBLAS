@@ -19,7 +19,7 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
     const GrB_Matrix B,             // second input: matrix B
     const GrB_Descriptor desc       // descriptor for C, Mask, A, and B
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -28,9 +28,11 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
     WHERE ("GxB_kron (C, Mask, accum, op, A, B, desc)") ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran) ;
+    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ;
 
-    // printf ("go go go\n") ;
+    //--------------------------------------------------------------------------
+    // C = kron(A,B)
+    //--------------------------------------------------------------------------
 
     // C<Mask> = accum (C,T) where T = kron(A,B), or with A' and/or B'
     return (GB_kron (

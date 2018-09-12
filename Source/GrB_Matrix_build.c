@@ -16,13 +16,13 @@ GrB_Info GrB_Matrix_build_ ## T     /* build a matrix from (I,J,X) tuples */  \
     const GrB_Index *I,             /* array of row indices of tuples     */  \
     const GrB_Index *J,             /* array of column indices of tuples  */  \
     const type *X,                  /* array of values of tuples          */  \
-    const GrB_Index nvals,          /* number of tuples                   */  \
+    GrB_Index nvals,                /* number of tuples                   */  \
     const GrB_BinaryOp dup          /* binary op to assemble duplicates   */  \
 )                                                                             \
 {                                                                             \
     WHERE ("GrB_Matrix_build_" GB_STR(T) " (C, I, J, X, nvals, dup)") ;       \
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;                                     \
-    return (GB_build (C, I, J, X, nvals, dup, GB_ ## T ## _code)) ;           \
+    RETURN_IF_NULL_OR_FAULTY (C) ;                                            \
+    return (GB_user_build (C, I, J, X, nvals, dup, GB_ ## T ## _code, true)) ;\
 }
 
 BUILD (bool     , BOOL   ) ;

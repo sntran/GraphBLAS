@@ -41,6 +41,11 @@ void wildtype_print (const wildtype *x, const char *name)
 // wildtype_print_matrix: print a matrix of wildtype scalars
 //------------------------------------------------------------------------------
 
+// This examines each entry of A, which is costly if A is very large.  A better
+// method would extract all the tuples via GrB_Matrix_extractTuples, and then
+// to print those.  This function is just to illustrate the
+// GrB_Matrix_extractElement_UDT method.
+
 void wildtype_print_matrix (GrB_Matrix A, char *name)
 {
     GrB_Type type ;
@@ -205,9 +210,18 @@ int main (void)
     wildtype_print_matrix (B, "input B") ;
 
     // C = A*B
-    GrB_Matrix_clear (C) ;
+    // Since there is no accum operator, this overwrites C with A*B; the old
+    // content of C is gone, just like the statement "C=A*B" in MATLAB, for
+    // example (except MATLAB can't handle the WildType...).
     GrB_mxm (C, NULL, NULL, InTheWild, A, B, NULL) ;
 
+    wildtype_print_matrix (C, "output C") ;
+
+    // set C to row-oriented format
+    GxB_set (C, GxB_FORMAT, GxB_BY_ROW) ;
+    printf ("\nC is now stored by row, but it looks just the same to the\n"
+            "GraphBLAS user application.  The difference is opaque, in the\n"
+            "internal data structure.\n") ;
     wildtype_print_matrix (C, "output C") ;
 
     // do something invalid

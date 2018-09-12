@@ -27,7 +27,7 @@ void GB_cast_array              // typecast an array
     //--------------------------------------------------------------------------
 
     if (n == 0)
-    {
+    { 
         // no work to do, and the A and C pointer may be NULL as well
         return ;
     }
@@ -37,7 +37,7 @@ void GB_cast_array              // typecast an array
     ASSERT (n > 0) ;
     ASSERT (code1 < GB_UDT_code) ;
     ASSERT (code2 < GB_UDT_code) ;
-    ASSERT (GB_Type_code_compatible (code1, code2)) ;
+    ASSERT (GB_code_compatible (code1, code2)) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory

@@ -11,6 +11,8 @@
 
 #include "GB_mex.h"
 
+#define USAGE "C = GB_mex_AdotB (A,B,Mask)"
+
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
@@ -20,8 +22,52 @@
     GB_MATRIX_FREE (&Mask) ;            \
     GrB_free (&add) ;                   \
     GrB_free (&semiring) ;              \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true) ;           \
 }
+
+GrB_Matrix A = NULL, B = NULL, C = NULL, Aconj = NULL, Mask = NULL ;
+GrB_Monoid add = NULL ;
+GrB_Semiring semiring = NULL ;
+
+//------------------------------------------------------------------------------
+
+GrB_Info adotb_complex ( )
+{
+    GrB_Info info = GrB_Matrix_new (&Aconj, Complex, A->vlen, A->vdim) ;
+    if (info != GrB_SUCCESS) return (info) ;
+    info = GrB_apply (Aconj, NULL, NULL, Complex_conj, A, NULL) ;
+    if (info != GrB_SUCCESS)
+    {
+        GrB_free (&Aconj) ;
+        return (info) ;
+    }
+    info = GB_AxB_dot (&C, Mask, Aconj, B, Complex_plus_times,false) ;
+    GrB_free (&Aconj) ;
+    return (info) ;
+}
+
+//------------------------------------------------------------------------------
+
+GrB_Info adotb ( ) 
+{
+    // create the Semiring for regular z += x*y
+    GrB_Info info = GrB_Monoid_new (&add, GrB_PLUS_FP64, (double) 0) ;
+    if (info != GrB_SUCCESS) return (info) ;
+    info = GrB_Semiring_new (&semiring, add, GrB_TIMES_FP64) ;
+    if (info != GrB_SUCCESS)
+    {
+        GrB_free (&add) ;
+        return (info) ;
+    }
+    // C = A'*B
+    info = GB_AxB_dot (&C, Mask, A, B,
+        semiring /* GrB_PLUS_TIMES_FP64 */, false) ;
+    GrB_free (&add) ;
+    GrB_free (&semiring) ;
+    return (info) ;
+}
+
+//------------------------------------------------------------------------------
 
 void mexFunction
 (
@@ -32,15 +78,14 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
-    GrB_Matrix A = NULL, B = NULL, C = NULL, Aconj = NULL, Mask = NULL ;
-    GrB_Monoid add = NULL ;
-    GrB_Semiring semiring = NULL ;
+    bool malloc_debug = GB_mx_get_global (true) ;
+
+    WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 2 || nargin > 3)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_AdotB (A, B, Mask)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY ;
@@ -48,8 +93,8 @@ void mexFunction
 
     GET_DEEP_COPY ;
     // get A and B (shallow copies)
-    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", false) ;
-    B = GB_mx_mxArray_to_Matrix (pargin [1], "B input", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", false, true) ;
+    B = GB_mx_mxArray_to_Matrix (pargin [1], "B input", false, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
@@ -64,10 +109,10 @@ void mexFunction
     // get Mask (shallow copy)
     if (nargin > 2)
     {
-        Mask = GB_mx_mxArray_to_Matrix (pargin [2], "Mask input", false) ;
+        Mask = GB_mx_mxArray_to_Matrix (pargin [2], "Mask input", false, false);
     }
 
-    if (A->nrows != B->nrows)
+    if (A->vlen != B->vlen)
     {
         FREE_ALL ;
         mexErrMsgTxt ("inner dimensions of A'*B do not match") ;
@@ -76,24 +121,26 @@ void mexFunction
     if (A->type == Complex)
     {
         // C = A'*B, complex case
-        METHOD (GrB_Matrix_new (&Aconj, Complex, A->nrows, A->ncols)) ;
+        METHOD (adotb_complex ( )) ;
+        /*
+        METHOD (GrB_Matrix_new (&Aconj, Complex, A->vlen, A->vdim)) ;
         METHOD (GrB_apply (Aconj, NULL, NULL, Complex_conj, A, NULL)) ;
-        METHOD (GrB_Matrix_new (&C, Complex, A->ncols, B->ncols)) ;
-        METHOD (GB_Matrix_AdotB (C, Mask, Aconj, B, Complex_plus_times, false));
+        METHOD (GB_AxB_dot (&C, Mask, Aconj, B, Complex_plus_times,false));
+        */
     }
     else
     {
+        METHOD (adotb ( )) ;
 
+        #if 0
         // create the Semiring for regular z += x*y
         METHOD (GrB_Monoid_new (&add, GrB_PLUS_FP64, (double) 0)) ;
         METHOD (GrB_Semiring_new (&semiring, add, GrB_TIMES_FP64)) ;
-
-        // create the GraphBLAS output matrix C
-        METHOD (GrB_Matrix_new (&C, GrB_FP64, A->ncols, B->ncols)) ;
-
         // C = A'*B
-        METHOD (GB_Matrix_AdotB (C, Mask, A, B, semiring
+        METHOD (GB_AxB_dot (&C, Mask, A, B, semiring
             /* GrB_PLUS_TIMES_FP64 */, false)) ;
+        #endif
+
     }
 
     // return C to MATLAB

@@ -66,8 +66,10 @@ _Thread_local GB_thread_local_struct GB_thread_local =
     .Flag_size = 0,             // size of Flag array
 
     // random seed for each thread
-    .seed = 1
+    .seed = 1,
 
+    // last method used in C=A*B
+    .AxB_method = GxB_DEFAULT
 } ;
 
 //------------------------------------------------------------------------------
@@ -86,6 +88,13 @@ GB_Global_struct GB_Global =
     // GraphBLAS mode
     .mode = GrB_NONBLOCKING,    // default is nonblocking
 
+    // initialization flag
+    .GrB_init_called = false,   // GrB_init has not yet been called
+
+    // default format
+    .hyper_ratio = GB_HYPER_DEFAULT,
+    .is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW),    // default is GxB_BY_COL
+
     // malloc tracking, for testing, statistics, and debugging only
     .nmalloc = 0,               // memory block counter
     .malloc_debug = false,      // do not test memory handling
@@ -97,6 +106,8 @@ GB_Global_struct GB_Global =
 //------------------------------------------------------------------------------
 // GrB_init
 //------------------------------------------------------------------------------
+
+// If GraphBLAS is used by multiple user threads, only one can call GrB_init.
 
 GrB_Info GrB_init           // start up GraphBLAS
 (
@@ -111,17 +122,21 @@ GrB_Info GrB_init           // start up GraphBLAS
     WHERE ("GrB_init (mode)") ;
 
     if (! (mode == GrB_BLOCKING || mode == GrB_NONBLOCKING))
-    {
+    { 
         return (ERROR (GrB_INVALID_VALUE, (LOG,
             "Unknown mode: %d; must be %d (GrB_NONBLOCKING) or %d"
             " (GrB_BLOCKING)", mode, GrB_NONBLOCKING, GrB_BLOCKING))) ;
     }
 
     //--------------------------------------------------------------------------
-    // initialize GraphBLAS
+    // initialize per-thread workspace
     //--------------------------------------------------------------------------
 
-    // error status
+    // GrB_init should be called at least once by the user application.  It is
+    // safe for any thread to skip this, since the settings are properly
+    // defined above.
+
+    // per-thread error status
     GB_thread_local.info = GrB_SUCCESS ;
     GB_thread_local.row = 0 ;
     GB_thread_local.col = 0 ;
@@ -130,26 +145,6 @@ GrB_Info GrB_init           // start up GraphBLAS
     GB_thread_local.line = __LINE__ ;
     GB_thread_local.details [0] = '\0' ;
     GB_thread_local.report  [0] = '\0' ;
-
-    // queue of matrices for nonblocking mode and set the mode
-    #pragma omp critical (GB_queue)
-    {
-        // clear the queue
-        GB_Global.queue_head = NULL ;
-
-        // set the mode: blocking or nonblocking
-        GB_Global.mode = mode ;             // default is non-blocking
-    }
-
-    // malloc tracking
-    #pragma omp critical (GB_memory)
-    {
-        GB_Global.nmalloc = 0 ;
-        GB_Global.malloc_debug = false ;
-        GB_Global.malloc_debug_count = 0 ;
-        GB_Global.inuse = 0 ;
-        GB_Global.maxused = 0 ;
-    }
 
     // workspace
     GB_thread_local.Mark = NULL ;       // initialized space
@@ -163,6 +158,57 @@ GrB_Info GrB_init           // start up GraphBLAS
     // random seed
     GB_thread_local.seed = 1 ;
 
+    // last method used in C=A*B
+    GB_thread_local.AxB_method = GxB_DEFAULT ;
+
+    //--------------------------------------------------------------------------
+    // initialize GraphBLAS global status
+    //--------------------------------------------------------------------------
+
+    // Only one thread should initialize these settings.  If multiple threads
+    // call GrB_init, only the first thread does this work.
+
+    bool I_was_first = false ;
+
+    // queue of matrices for nonblocking mode and set the mode.  The queue
+    // must be protected and can be initialized only once by any thread.
+    #pragma omp critical (GB_queue)
+    {
+        if (!GB_Global.GrB_init_called)
+        { 
+            I_was_first = true ;
+
+            // clear the queue
+            GB_Global.queue_head = NULL ;
+
+            // set the mode: blocking or nonblocking
+            GB_Global.mode = mode ;             // default is non-blocking
+
+            // first thread has called GrB_init
+            GB_Global.GrB_init_called = true ;
+        }
+    }
+
+    if (! I_was_first)
+    { 
+        return (ERROR (GrB_INVALID_VALUE, (LOG,
+            "GrB_init must not be called twice"))) ;
+    }
+
+    // set the default hypersparsity ratio and CSR/CSC format;  any thread
+    // can do this later as well, so there is no race condition danger.
+    GB_global_option_set (true, GB_HYPER_DEFAULT, true, GB_FORMAT_DEFAULT) ;
+
+    // malloc tracking.  This is only for statistics and development.
+    // FUTURE: these statistics could be per-thread.
+    #pragma omp critical (GB_memory)
+    {
+        GB_Global.nmalloc = 0 ;
+        GB_Global.malloc_debug = false ;
+        GB_Global.malloc_debug_count = 0 ;
+        GB_Global.inuse = 0 ;
+        GB_Global.maxused = 0 ;
+    }
     return (REPORT_SUCCESS) ;
 }
 

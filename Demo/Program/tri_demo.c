@@ -97,6 +97,7 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
 
     // L = tril (A,-1), for method 4
+    printf ("\n------------------------------------- dot product method:\n") ;
     simple_tic (tic) ;
     OK (GrB_Matrix_new (&L, GrB_UINT32, n, n)) ;
     k = -1 ;
@@ -136,6 +137,8 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
     // count the triangles via C<L> = L*L (outer-product)
     //--------------------------------------------------------------------------
+
+    printf ("\n----------------------------------- outer product method:\n") ;
 
     double t_mark [2] = { 0, 0 } ;
     int64_t ntri1 ;
