@@ -160,7 +160,6 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     int    zcode = reduce->ztype->code ;
     char awork [zsize] ;
     char zwork [zsize] ;
-    char wwork [zsize] ;
 
     //--------------------------------------------------------------------------
     // T = reduce(A) or reduce(A')
@@ -282,10 +281,8 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                 { 
                     // awork = (ztype) Ax [p]
                     cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
-                    // wwork = zwork
-                    memcpy (wwork, zwork, zsize) ;
-                    // zwork = wwork "+" awork
-                    freduce (zwork, wwork, awork) ;
+                    // zwork += awork
+                    freduce (zwork, zwork, awork) ;         // (z x alias)
                 }
                 Ti [tnz] = j ;
                 // Tx [tnz] = zwork ;
@@ -461,12 +458,9 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                     { 
                         // awork = (ztype) Ax [p]
                         cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
-                        // wwork = work [i]
-                        memcpy (wwork, work +(i*zsize), zsize) ;
-                        // zwork = wwork "+" awork
-                        freduce (zwork, wwork, awork) ;
-                        // work [i] = zwork
-                        memcpy (work +(i*zsize), zwork, zsize) ;
+                        // work [i] += awork
+                        void *restrict worki = work +(i*zsize) ;
+                        freduce (worki, worki, awork) ;     // (z x alias)
                     }
                 }
             }

@@ -85,7 +85,6 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     int64_t zsize = ztype->size ;
 
     char awork [zsize] ;
-    char wwork [zsize] ;
     char twork [zsize] ;
 
     //--------------------------------------------------------------------------
@@ -175,10 +174,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 { 
                     // twork += A(i,j)
                     ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
-                    // wwork = twork
-                    memcpy (wwork, twork, zsize) ;
-                    // twork = wwork + Ax [p]
-                    freduce (twork, wwork, Ax +(p*asize)) ;
+                    // twork += Ax [p]
+                    freduce (twork, twork, Ax +(p*asize)) ; // (z x alias)
                 }
             }
             else
@@ -188,10 +185,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                     // twork += A(i,j) if not a zombie
                     if (IS_NOT_ZOMBIE (Ai [p]))
                     { 
-                        // wwork = twork
-                        memcpy (wwork, twork, zsize) ;
-                        // twork = wwork + Ax [p]
-                        freduce (twork, wwork, Ax +(p*asize)) ;
+                        // twork += Ax [p]
+                        freduce (twork, twork, Ax +(p*asize)) ; // (z x alias)
                     }
                 }
             }
@@ -217,10 +212,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
                 // awork = (ztype) Ax [p]
                 cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
-                // wwork = twork
-                memcpy (wwork, twork, zsize) ;
-                // twork = wwork + awork
-                freduce (twork, wwork, awork) ;
+                // twork += awork
+                freduce (twork, twork, awork) ; // (z x alias)
             }
         }
         else
@@ -232,10 +225,9 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 { 
                     // awork = (ztype) Ax [p]
                     cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
-                    // wwork = twork
-                    memcpy (wwork, twork, zsize) ;
-                    // twork = wwork + awork
-                    freduce (twork, wwork, awork) ;
+
+                    // twork += awork
+                    freduce (twork, twork, awork) ;     // (z x alias)
                 }
             }
         }

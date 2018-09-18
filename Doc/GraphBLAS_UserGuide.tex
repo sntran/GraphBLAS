@@ -1517,8 +1517,13 @@ user-defined function with the following signature:
 When the function \verb'f' is called, the arguments \verb'z' and \verb'x' are
 passed as \verb'(void *)' pointers, but they will be pointers to values of the
 correct type, defined by \verb'ztype' and \verb'xtype', respectively, when the
-operator was created.  The pointers will be unique.  That is, the user function
-is never called with pointers that point to the same space.
+operator was created.
+% V2.1 and later:
+{\bf NOTE:}
+Currently, the pointers will be unique.  That is, the user function is not
+called with pointers that point to the same space.  Future versions of
+SuiteSparse:GraphBLAS may call the function with the pointers \verb'z' and
+\verb'x' equal to one another, in which case \verb'z=f(z)' should be computed. 
 
 % SPEC: the spec is silent on aliasing in user-defined functions
 
@@ -1811,9 +1816,15 @@ function with the following signature:
 When the function \verb'f' is called, the arguments \verb'z', \verb'x', and
 \verb'y' are passed as \verb'(void *)' pointers, but they will be pointers to
 values of the correct type, defined by \verb'ztype', \verb'xtype', and
-\verb'ytype', respectively, when the operator was created.  The pointers will
-be unique.  That is, the user function is never called with pointers that point
-to the same space.
+\verb'ytype', respectively, when the operator was created.
+% V2.1 and later:
+{\bf NOTE:} SuiteSparse:GraphBLAS may call the function with the pointers
+\verb'z' and \verb'x' equal to one another, in which case \verb'z=f(z,y)'
+should be computed.  Future versions may use additional pointer aliasing.
+
+% V2.0.3 and earlier:
+% The pointers will be unique.  That is, the user function is never called with
+% pointers that point to the same space.
 
 % \newpage
 %-------------------------------------------------------------------------------
@@ -8502,10 +8513,6 @@ tests.
 
 To remove all compiled files, type \verb'make' \verb'distclean' in the top-level
 GraphBLAS folder.
-
-{\bf NOTE: SuiteSparse:GraphBLAS has not yet been ported to Windows.}
-However, with \verb'cmake' the port to Windows should be straight-forward
-(this is in progress).
 
 \newpage
 %-------------------------------------------------------------------------------

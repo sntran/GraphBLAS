@@ -148,6 +148,7 @@
 %   test86   - performance test of of GrB_Matrix_extract
 %   test87   - performance test of GrB_mxm
 %   test88   - test hypersparse matrices with heap-based method
+%   test89   - performance test of complex A*B
 %   test97   - test GB_assign, scalar expansion and zombies
 %   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask

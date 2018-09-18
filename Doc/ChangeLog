@@ -1,4 +1,11 @@
-Version 2.1.0 (BETA), Sept 11, 2018
+Version 2.1.0 (BETA2), Sept 17, 2018
+
+    * user function z=f(x,y): passed to GrB_BinaryOp_new, may now be called as
+        z=f(z,y), with x and z aliased.  This is permitted by the API
+        specification, and greatly improves performance of user-defined
+        semirings.
+
+Version 2.1.0 (BETA1), Sept 11, 2018
 
     * major update: added hypersparse and CSR formats, colon notation, and
         user selection of the method used by C=A*B.  All changes to the API are

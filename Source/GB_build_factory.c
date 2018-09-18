@@ -199,9 +199,9 @@ GrB_Info GB_build_factory           // build a matrix
         // 8 associative operators: min, max, plus, times for all types;
         // or, and, xor, eq for boolean.
 
-        // In addition, the FIRST and SECOND operators hard-coded, for another
-        // 22 workers, since SECOND is used by GB_wait and since FIRST is
-        // useful for keeping the first tuple seen.  It is controlled by the
+        // In addition, the FIRST and SECOND operators are hard-coded, for
+        // another 22 workers, since SECOND is used by GB_wait and since FIRST
+        // is useful for keeping the first tuple seen.  It is controlled by the
         // #define, so they do not appear in GB_reduce_to_* where the FIRST and
         // SECOND operators are not needed.
 
@@ -298,11 +298,9 @@ GrB_Info GB_build_factory           // build a matrix
                         tnz++ ;
                     }
                 }
-
             }
             else
             {
-                char zwork [size] ;
                 for (int64_t t = 0 ; t < len ; t++)
                 {
                     // get the (i,k) or (j,i,k) tuple and check if duplicate
@@ -312,8 +310,8 @@ GrB_Info GB_build_factory           // build a matrix
                     { 
                         // duplicate entry: assemble it with the dup operator
                         // Tx [tnz-1] '+=' S [k]
-                        fdup (zwork, Tx +((tnz-1)*size), S +(k*size)) ;
-                        memcpy (Tx +((tnz-1)*size), zwork, size) ;
+                        void *restrict txt = Tx +((tnz-1)*size) ;
+                        fdup (txt, txt, S +(k*size)) ;  // (z x alias)
                     }
                     else
                     { 

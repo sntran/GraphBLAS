@@ -168,7 +168,6 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     size_t zsize = mult->ztype->size ;
 
     char zwork [zsize] ;
-    char cwork [zsize] ;
 
     GB_MALLOC_MEMORY (C->x, C->nzmax, zsize) ;
     if (C->x == NULL)
@@ -299,7 +298,7 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     // x [i] = y [j]
     #define COPY_ARRAY_TO_ARRAY(x,i,y,j,s)          \
-        memcpy (x +((i)*s), y +((j)*s), s);
+        memcpy (x +((i)*s), y +((j)*s), s) ;
 
     // generic multiply-add operation (with no mask)
     #define MULTADD_NOMASK                          \
@@ -315,41 +314,33 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
             /* zwork = A(i,k) * bkj */              \
             fmult (zwork, Ax +(pA*asize), bkj) ;    \
         }                                           \
-        /* cwork = w [i] */                         \
-        memcpy (cwork, w +(i*zsize), zsize) ;       \
-        /* w [i] = cwork + zwork */                 \
-        fadd (w +(i*zsize), cwork, zwork) ;         \
+        fadd (w +(i*zsize), w +(i*zsize), zwork) ; /* (z x alias) */ \
     }
 
     // generic multiply-add operation (with mask)
-    #define MULTADD_WITH_MASK                       \
-    {                                               \
-        /* w [i] += A(i,k) * B(k,j) */              \
-        if (flipxy)                                 \
-        {                                           \
-            /* zwork = bkj * A(i,k) */              \
-            fmult (zwork, bkj, Ax +(pA*asize)) ;    \
-        }                                           \
-        else                                        \
-        {                                           \
-            /* zwork = A(i,k) * bkj */              \
-            fmult (zwork, Ax +(pA*asize), bkj) ;    \
-        }                                           \
-        if (flag > 0)                               \
-        {                                           \
-            /* first time C(i,j) seen */            \
-            Flag [i] = -1 ;                         \
-            /* w [i] = zwork */                     \
-            memcpy (w +(i*zsize), zwork, zsize) ;   \
-        }                                           \
-        else                                        \
-        {                                           \
-            /* C(i,j) seen before, update it */     \
-            /* cwork = w [i] */                     \
-            memcpy (cwork, w +(i*zsize), zsize) ;   \
-            /* w [i] = cwork + zwork */             \
-            fadd (w +(i*zsize), cwork, zwork) ;     \
-        }                                           \
+    #define MULTADD_WITH_MASK                                   \
+    {                                                           \
+        /* w [i] += A(i,k) * B(k,j) */                          \
+        if (flag > 0)                                           \
+        {                                                       \
+            if (flipxy)                                         \
+            {                                                   \
+                /* w [i] = bkj * A(i,k) */                      \
+                fmult (w +(i*zsize), bkj, Ax +(pA*asize)) ;     \
+            }                                                   \
+            else                                                \
+            {                                                   \
+                /* w [i] = A(i,k) * bkj */                      \
+                fmult (w +(i*zsize), Ax +(pA*asize), bkj) ;     \
+            }                                                   \
+            /* first time C(i,j) seen */                        \
+            Flag [i] = -1 ;                                     \
+        }                                                       \
+        else                                                    \
+        {                                                       \
+            /* C(i,j) seen before, update it */                 \
+            MULTADD_NOMASK ;                                    \
+        }                                                       \
     }
 
     // asize is the size of x, or y if flipxy is true, for z=mult(x,y)

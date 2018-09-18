@@ -169,7 +169,6 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         char bkj [bkj_size]  ;
 
         char zwork [csize] ;
-        char cwork [csize] ;
 
         const void *restrict Ax = A->x ;
         const void *restrict Bx = B->x ;
@@ -228,10 +227,8 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         // cij += zwork
         #define DOT_ADD                                                 \
         {                                                               \
-            /* cwork = cij */                                           \
-            memcpy (cwork, cij, csize) ;                                \
-            /* cij = cwork + zwork */                                   \
-            fadd (cij, cwork, zwork) ;                                  \
+            /* cij = cij + zwork */                                     \
+            fadd (cij, cij, zwork) ;  /* (z x alias) */                 \
         }
 
         // cij = zwork

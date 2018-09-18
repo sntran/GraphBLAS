@@ -176,7 +176,6 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         char aik [flipxy ? ysize : xsize] ;
         char bkj [flipxy ? xsize : ysize] ;
         char zwork [csize] ;
-        char cwork [csize] ;
 
         const void *Ax = A->x ;
         const void *Bx = B->x ;
@@ -245,10 +244,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
                 /* zwork = aik * bkj */                                 \
                 fmult (zwork, aik, bkj) ;                               \
             }                                                           \
-            /* cwork = cij */                                           \
-            memcpy (cwork, cij, csize) ;                                \
-            /* cij = cwork + zwork */                                   \
-            fadd (cij, cwork, zwork) ;                                  \
+            /* cij = cij + zwork */                                     \
+            fadd (cij, cij, zwork) ; /* (z x alias) */                  \
         }
 
         // C->x has moved so the pointer to cij needs to be recomputed

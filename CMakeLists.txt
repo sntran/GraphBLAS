@@ -41,7 +41,7 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Sept 11, 2018 (BETA1)" )
+set ( GraphBLAS_DATE "Sept 17, 2018 (BETA2)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
 set ( GraphBLAS_VERSION_MINOR 1 )
 set ( GraphBLAS_VERSION_SUB   0 )
