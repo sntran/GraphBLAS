@@ -41,27 +41,6 @@ framework for creating graph algorithms based on the elegant mathematics of
 sparse matrix operations on a semiring.
 \end{abstract}
 
-\maketitle
-
-{\tt NOTE: Version 2.1 is a major update with support for new matrix formats
-(by row or column, and hypersparse matrices), and MATLAB-like colon notation
-(\verb'I=begin:end' or \verb'I=begin:inc:end').  Some graph algorithms are more
-naturally expressed with matrices stored by row, and this version includes the
-new \verb'GxB_BY_ROW' format.  If you want the default format to be by row,
-just compile with \verb'-DBYROW', or add the following after calling
-\verb'GrB_init':
-
-    {\footnotesize
-    \begin{verbatim}
-    GxB_set (GxB_FORMAT, GxB_BY_ROW) ; \end{verbatim}}
-
-This BETA1 version has been fully tested and is ready to use, but the
-\verb'GxB_*' extensions added to Version 2.1 may change as feedback from the
-GraphBLAS community is received.  These include \verb'GxB_get', \verb'GxB_set',
-and \verb'GxB_AxB_METHOD', \verb'GxB_RANGE', \verb'GxB_STRIDE', and
-\verb'GxB_BACKWARDS', and their related definitions, described in
-Sections~\ref{descriptor},~\ref{options},~and~\ref{colon}}.
-
 \newpage
 {\small
 \tableofcontents
@@ -110,6 +89,29 @@ particular implementation are referred to as SuiteSparse:GraphBLAS.
 They are also placed in text boxes like this one.  All functions, objects, and
 macros with a name of the form \verb'GxB_*' are extensions to the spec.
 \end{spec}
+
+\newpage
+\subsection{Release Notes}
+
+Version 2.1 is a major update with support for new matrix formats
+(by row or column, and hypersparse matrices), and MATLAB-like colon notation
+(\verb'I=begin:end' or \verb'I=begin:inc:end').  Some graph algorithms are more
+naturally expressed with matrices stored by row, and this version includes the
+new \verb'GxB_BY_ROW' format.  If you want the default format to be by row,
+just compile with \verb'-DBYROW', or add the following after calling
+\verb'GrB_init':
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_set (GxB_FORMAT, GxB_BY_ROW) ; \end{verbatim}}
+
+The next version of SuiteSparse:GraphBLAS (Version 2.2) will use
+\verb'GxB_BY_ROW' as its default format.
+
+New extensions to GraphBLAS in this version include \verb'GxB_get',
+\verb'GxB_set', and \verb'GxB_AxB_METHOD', \verb'GxB_RANGE', \verb'GxB_STRIDE',
+and \verb'GxB_BACKWARDS', and their related definitions, described in
+Sections~\ref{descriptor},~\ref{options},~and~\ref{colon}.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3922,7 +3924,8 @@ If this is done, and no other \verb'GxB_set' calls are made with
 \verb'GxB_FORMAT', all matrices will be stored by row.  Alternatively,
 SuiteSparse:GraphBLAS can be compiled with \verb'-DBYROW', which changes the
 default format to \verb'GxB_BY_ROW', with no calls to any \verb'GxB_*'
-function.
+function. {\bf NOTE: the default format will change to
+\verb'GxB_BY_ROW' in the next release.}
 
 %-------------------------------------------------------------------------------
 \subsection{Hypersparse matrices}
@@ -4039,7 +4042,11 @@ typedef enum
 GxB_Format_Value ;
 \end{verbatim} }
 
-The default format is by column, just like MATLAB.  This is given by the
+The current default format is by column, just like MATLAB
+({\bf note this will change in GraphBLAS Version 2.2, and
+\verb'GxB_BY_ROW' will become the default format}).
+
+The default format is given by the
 predefined value \verb'GxB_FORMAT_DEFAULT', which is equal to \verb'GxB_BY_COL'
 if default compile-time options are used.  To change the default at compile
 time to \verb'GxB_BY_ROW', compile the SuiteSparse:GraphBLAS library with

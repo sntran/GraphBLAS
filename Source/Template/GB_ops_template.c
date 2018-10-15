@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// This file is #include'd many times in GB_builtin.c to define the built-in
+// This file is #include'd many times in GB_ops.c to define the built-in
 // unary and binary operators.  In that file, TYPE is a built-in C type (bool,
 // int8_t, uint64_t, double, etc), and GB(x) is the corresponding macro that
 // creates the function name (GB_*_BOOL, GB_*_INT8, etc).
