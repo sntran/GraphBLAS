@@ -121,13 +121,13 @@ const char *GrB_error ( )       // return a string describing the last error
         snprintf (GB_thread_local.report, GB_RLEN,
         "\n=================================================================\n"
         "GraphBLAS error: %s\nfunction: %s\n%s\n"
-        #ifdef DEVELOPER
+        #ifdef GB_DEVELOPER
         "Line: %d in file: %s\n"
         #endif
         "=================================================================\n",
         status_code ( ),
         GB_thread_local.where, GB_thread_local.details
-        #ifdef DEVELOPER
+        #ifdef GB_DEVELOPER
         , GB_thread_local.line, GB_thread_local.file
         #endif
         ) ;

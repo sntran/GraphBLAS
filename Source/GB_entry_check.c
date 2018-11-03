@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_Entry_print: print a single entry for a built-in type
+// GB_entry_check: print a single entry for a built-in type
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -9,10 +9,11 @@
 
 #include "GB.h"
 
-GrB_Info GB_Entry_print     // print a single value
+GrB_Info GB_entry_check     // print a single value
 (
     const GrB_Type type,    // type of value to print
-    const void *x           // value to print
+    const void *x,          // value to print
+    FILE *f                 // file to print to
 )
 { 
 
@@ -20,15 +21,13 @@ GrB_Info GB_Entry_print     // print a single value
     // check inputs
     //--------------------------------------------------------------------------
 
-    RETURN_IF_NULL (x) ;
-    RETURN_IF_NULL_OR_FAULTY (type) ;
+    GB_RETURN_IF_NULL (x) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (type) ;
 
     //--------------------------------------------------------------------------
     // print the value
     //--------------------------------------------------------------------------
 
-    GB_code_print (type->code, x) ;
-
-    return (REPORT_SUCCESS) ;
+    return (GB_code_check (type->code, x, f)) ;
 }
 

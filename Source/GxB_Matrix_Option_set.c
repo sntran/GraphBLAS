@@ -21,11 +21,11 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Matrix_Option_set (A, field, value)") ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-    ASSERT_OK (GB_check (A, "A to set option", D0)) ;
+    GB_WHERE ("GxB_Matrix_Option_set (A, field, value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT_OK (GB_check (A, "A to set option", GB0)) ;
 
-    WAIT (A) ;
+    GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // set the matrix option
@@ -68,14 +68,15 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
                 // A = A', done in place, and change to the new format.
                 // transpose: output not shallow, in place of A, no cast, no op
                 info = GB_transpose (NULL, NULL, new_csc, A, NULL) ;
-                ASSERT (IMPLIES (info == GrB_SUCCESS, A->is_csc == new_csc)) ;
+                ASSERT (GB_IMPLIES (info == GrB_SUCCESS,
+                    A->is_csc == new_csc)) ;
             }
 
             break ;
 
         default : 
 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
                     field, GxB_HYPER, GxB_FORMAT))) ;

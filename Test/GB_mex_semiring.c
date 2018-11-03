@@ -29,7 +29,7 @@ void mexFunction
     GrB_Semiring semiring = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -38,7 +38,7 @@ void mexFunction
     GB_mx_mxArray_to_Semiring (&semiring, pargin [0], "semiring",
         mxDOUBLE_CLASS) ;
 
-    GrB_Info info = GB_check (semiring, "semiring", D3) ;
+    GrB_Info info = GB_check (semiring, "semiring", GB3) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt (GrB_error ( )) ;

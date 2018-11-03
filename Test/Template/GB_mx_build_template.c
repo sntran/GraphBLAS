@@ -139,8 +139,8 @@ GrB_Info builder
     #define BUILD(type) info = GrB_Vector_build (C,I,  (const type *)X,ni,dup)
     #endif
 
-    ASSERT_OK (GB_check (ctype, "ctype for build", D0)) ;
-    ASSERT_OK (GB_check (dup, "dup for build", D0)) ;
+    ASSERT_OK (GB_check (ctype, "ctype for build", GB0)) ;
+    ASSERT_OK (GB_check (dup, "dup for build", GB0)) ;
     // printf ("code %d biulding ni "GBd"\n", ctype->code, ni) ;
 
     switch (xclass)
@@ -170,7 +170,7 @@ GrB_Info builder
 
     if (info == GrB_SUCCESS)
     {
-        ASSERT_OK (GB_check (C, "C built", D0)) ;
+        ASSERT_OK (GB_check (C, "C built", GB0)) ;
     }
     else
     {
@@ -202,7 +202,7 @@ void mexFunction
     GrB_Vector C = NULL ;
     #endif
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < MIN_NARGIN || nargin > MAX_NARGIN)
@@ -275,7 +275,7 @@ void mexFunction
     {
         for (int64_t k = 0 ; k < ni ; k++)
         {
-            nrows = IMAX (nrows, I [k]) ;
+            nrows = GB_IMAX (nrows, I [k]) ;
         }
         nrows++ ;
     }
@@ -292,7 +292,7 @@ void mexFunction
         ncols = 0 ;
         for (int64_t k = 0 ; k < ni ; k++)
         {
-            ncols = IMAX (ncols, J [k]) ;
+            ncols = GB_IMAX (ncols, J [k]) ;
         }
         ncols++ ;
     }
@@ -323,7 +323,7 @@ void mexFunction
     METHOD (builder (&C, ctype, nrows, ncols, I, J, X, ni, dup,
         C_is_csc, xclass)) ;
 
-    ASSERT_OK (GB_check (C, "C built", D0)) ;
+    ASSERT_OK (GB_check (C, "C built", GB0)) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     #ifdef MATRIX

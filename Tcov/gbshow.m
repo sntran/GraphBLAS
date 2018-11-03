@@ -27,7 +27,9 @@ for k = 1:nfiles
 
     while (ischar (cline))
 
-        if (~isempty (strfind (cline, 'gbcov[')) && ...
+        fprintf (f_output, '%s\n', cline) ;
+
+        if (~isempty (strfind (cline, 'GB_cov[')) && ...
             ~isempty (strfind (cline, '++')))
             % got one; get the count
             k1 = strfind (cline, '[') ;
@@ -36,13 +38,11 @@ for k = 1:nfiles
             i = str2num (s) + 1 ;
             c = GraphBLAS_gbcov (i) ;
             if (c == 0)
-                fprintf (f_output, '// NOT COVERED (%d):\n', i) ;
+                fprintf (f_output, '// NOT COVERED (%d):\n', i-1) ;
             else
-                fprintf (f_output, '// covered (%d): %d\n', i, c) ;
+                fprintf (f_output, '// covered (%d): %d\n', i-1, c) ;
             end
         end
-
-        fprintf (f_output, '%s\n', cline) ;
 
         cline = fgetl (f_input) ;
     end

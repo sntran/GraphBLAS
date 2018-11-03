@@ -36,12 +36,12 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A to duplicate", D0)) ;
+    ASSERT_OK (GB_check (A, "A to duplicate", GB0)) ;
 
     (*Chandle) = NULL ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (A) ;
+    GB_WAIT (A) ;
 
     // It would also be possible to copy the pending tuples instead.  This
     // might be useful if the input matrix has just a few of them, and then
@@ -59,10 +59,10 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     // [ create C; malloc C->p and do not initialize it
     // C has the exact same hypersparsity as A.
     GrB_Info info ;
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, A->type, A->vlen, A->vdim, GB_Ap_malloc, A->is_csc,
-        SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, A->plen, anz, true) ;
+        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, A->plen, anz, true) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -76,17 +76,17 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     { 
         memcpy (C->h, A->h, A->nvec * sizeof (int64_t)) ;
     }
-    C->magic = MAGIC ;      // C->p and C->h are now initialized ]
+    C->magic = GB_MAGIC ;      // C->p and C->h are now initialized ]
     memcpy (C->i, A->i, anz * sizeof (int64_t)) ;
     memcpy (C->x, A->x, anz * A->type->size) ;
 
-    ASSERT_OK (GB_check (C, "C duplicate of A", D0)) ;
+    ASSERT_OK (GB_check (C, "C duplicate of A", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the result
     //--------------------------------------------------------------------------
 
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

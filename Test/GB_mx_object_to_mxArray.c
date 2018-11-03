@@ -43,7 +43,7 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
     GrB_Matrix C = *handle ;
 
     // may have pending tuples
-    ASSERT_OK (GB_check (C, name, D0)) ;
+    ASSERT_OK (GB_check (C, name, GB0)) ;
 
     // C must not be shallow
     ASSERT (!C->i_shallow && !C->x_shallow && !C->p_shallow && !C->h_shallow) ;
@@ -52,14 +52,14 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
     GB_wait (C) ;
 
     // must be done after GB_wait:
-    int64_t cnz = NNZ (C) ;
+    int64_t cnz = GB_NNZ (C) ;
 
-    ASSERT_OK (GB_check (C, "TO MATLAB, after assembling pending tuples", D0)) ;
+    ASSERT_OK (GB_check (C, "TO MATLAB after assembling pending tuples", GB0)) ;
 
     // convert C to non-hypersparse
     GxB_set (C, GxB_HYPER, GxB_NEVER_HYPER) ;
 
-    ASSERT_OK (GB_check (C, "TO MATLAB, non-hyper", D0)) ;
+    ASSERT_OK (GB_check (C, "TO MATLAB, non-hyper", GB0)) ;
     ASSERT (!C->is_hyper) ;
     ASSERT (C->h == NULL) ;
 
@@ -70,7 +70,7 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
         GxB_set (C, GxB_FORMAT, GxB_BY_COL) ;
     }
 
-    ASSERT_OK (GB_check (C, "TO MATLAB, non-hyper CSC", D0)) ;
+    ASSERT_OK (GB_check (C, "TO MATLAB, non-hyper CSC", GB0)) ;
     ASSERT (!C->is_hyper) ;
     ASSERT (C->is_csc) ;
 
@@ -101,12 +101,12 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
     for (int64_t kk = 0 ; kk < cnz ;  kk++)
     {
         printf (GBd": ", kk) ;
-        GB_code_print (C->type->code, C->x +kk*(C->type->size)) ;
+        GB_code_check (C->type->code, C->x +kk*(C->type->size), stdout) ;
         printf ("\n") ;
     }
     */
 
-    C->nzmax = IMAX (C->nzmax, 1) ;
+    C->nzmax = GB_IMAX (C->nzmax, 1) ;
 
     // create the MATLAB matrix A and link in the numerical values of C
     if (C->type->code == GB_BOOL_code)
@@ -133,7 +133,11 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
         AS_IF_FREE (C->x) ;   // unlink C->x from C since it's now in MATLAB C
 
     }
-    else if (C->type == Complex)
+    else if (C->type == Complex
+        #ifdef MY_COMPLEX
+        || C->type == My_Complex
+        #endif
+        )
     {
 
         // user-defined Complex type

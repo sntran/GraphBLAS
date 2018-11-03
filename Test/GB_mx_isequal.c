@@ -25,8 +25,9 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A->type  != B->type ) return (false) ;
     if (A->vlen  != B->vlen ) return (false) ;
     if (A->vdim  != B->vdim ) return (false) ;
-    if (NNZ (A)  != NNZ (B) ) return (false) ;
     if (A->nvec  != B->nvec ) return (false) ;
+
+    if (GB_NNZ (A)  != GB_NNZ (B) ) return (false) ;
 
     if (A->is_hyper != B->is_hyper) return (false) ;
     if (A->is_csc   != B->is_csc  ) return (false) ;
@@ -49,7 +50,7 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A->nzombies         != B->nzombies         ) return (false) ;
 
     int64_t n = A->nvec ;
-    int64_t nnz = NNZ (A) ;
+    int64_t nnz = GB_NNZ (A) ;
     size_t s = sizeof (int64_t) ;
     size_t asize = A->type->size ;
     size_t psize = (A->type_pending == NULL) ? 0 : A->type_pending->size ;

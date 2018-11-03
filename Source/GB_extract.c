@@ -39,16 +39,16 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (C, M, A)) ;
+    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
 
-    RETURN_IF_NULL (Rows) ;
-    RETURN_IF_NULL (Cols) ;
-    RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL (Rows) ;
+    GB_RETURN_IF_NULL (Cols) ;
+    GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_Matrix_extract", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_Matrix_extract", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_Matrix_extract", D0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_Matrix_extract", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_Matrix_extract", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_Matrix_extract", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_Matrix_extract", GB0)) ;
+    ASSERT_OK (GB_check (A, "A input for GB_Matrix_extract", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info = GB_compatible (C->type, C, M, accum, A->type) ;
@@ -58,8 +58,8 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     }
 
     // check the dimensions of C
-    int64_t cnrows = NROWS (C) ;
-    int64_t cncols = NCOLS (C) ;
+    int64_t cnrows = GB_NROWS (C) ;
+    int64_t cncols = GB_NCOLS (C) ;
 
     int64_t nRows, nCols, RowColon [3], ColColon [3] ;
     int RowsKind, ColsKind ;
@@ -67,19 +67,19 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     if (!A_transpose)
     { 
         // T = A(Rows,Cols)
-        GB_ijlength (Rows, nRows_in, NROWS (A), &nRows, &RowsKind, RowColon) ;
-        GB_ijlength (Cols, nCols_in, NCOLS (A), &nCols, &ColsKind, ColColon) ;
+        GB_ijlength (Rows, nRows_in, GB_NROWS (A), &nRows, &RowsKind, RowColon);
+        GB_ijlength (Cols, nCols_in, GB_NCOLS (A), &nCols, &ColsKind, ColColon);
     }
     else
     { 
         // T = A(Cols,Rows)
-        GB_ijlength (Rows, nRows_in, NCOLS (A), &nRows, &RowsKind, RowColon) ;
-        GB_ijlength (Cols, nCols_in, NROWS (A), &nCols, &ColsKind, ColColon) ;
+        GB_ijlength (Rows, nRows_in, GB_NCOLS (A), &nRows, &RowsKind, RowColon);
+        GB_ijlength (Cols, nCols_in, GB_NROWS (A), &nCols, &ColsKind, ColColon);
     }
 
     if (cnrows != nRows || cncols != nCols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "required size of output is "GBd"-by-"GBd"\n"
             "but actual size output is  "GBd"-by-"GBd"\n",
@@ -87,12 +87,12 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format and transpose; T = A (I,J) or T = A (J,I)
@@ -171,11 +171,11 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
 
     if (must_sort)
     { 
-        ASSERT_OK (GB_check (T, "T extracted", D0)) ;
+        ASSERT_OK (GB_check (T, "T extracted", GB0)) ;
     }
     else
     { 
-        ASSERT_OK_OR_JUMBLED (GB_check (T, "T extracted (jumbled OK)", D0)) ;
+        ASSERT_OK_OR_JUMBLED (GB_check (T, "T extracted (jumbled OK)", GB0)) ;
     }
 
     //--------------------------------------------------------------------------

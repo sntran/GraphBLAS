@@ -30,20 +30,20 @@
 // #undef NDEBUG
 
 // to turn on malloc debug printing, uncomment this line:
-// #define PRINT_MALLOC
+// #define GB_PRINT_MALLOC
 
 // to reduce code size and for faster time to compile, uncomment this line;
 // GraphBLAS will be slower:
 // #define GBCOMPACT
 
 // uncomment this for code development (additional diagnostics are printed):
-// #define DEVELOPER
+// #define GB_DEVELOPER
 
 // for coverage tests
 #ifdef GBCOVER
 #define GBCOVER_MAX 10000
-extern int64_t gbcov [GBCOVER_MAX] ;
-extern int gbcover_max ;
+extern int64_t GB_cov [GBCOVER_MAX] ;
+extern int GB_cover_max ;
 #endif
 
 //------------------------------------------------------------------------------
@@ -90,12 +90,21 @@ struct GB_SelectOp_opaque   // content of GxB_SelectOp
     int opcode ;            // operator opcode
 } ;
 
+// codes used in GrB_Monoid and GrB_Semiring objects
+typedef enum
+{
+    GB_BUILTIN,             // 0: built-in monoid or semiring
+    GB_USER_COMPILED,       // 1: pre-compiled user monoid or semiring
+    GB_USER_RUNTIME         // 2: user monoid or semiring created a run-time
+}
+GB_object_code ;
+
 struct GB_Monoid_opaque     // content of GrB_Monoid
 {
     int64_t magic ;         // for detecting uninitialized objects
     GrB_BinaryOp op ;       // binary operator of the monoid
     void *identity ;        // identity of the monoid; size is op->ztype->size
-    bool user_defined ;     // true if monoid is user-defined
+    GB_object_code object_kind ;   // built-in, user pre-compiled, or run-time
 } ;
 
 struct GB_Semiring_opaque   // content of GrB_Semiring
@@ -103,7 +112,7 @@ struct GB_Semiring_opaque   // content of GrB_Semiring
     int64_t magic ;         // for detecting uninitialized objects
     GrB_Monoid add ;        // add operator of the semiring
     GrB_BinaryOp multiply ; // multiply operator of the semiring
-    bool user_defined ;     // true if semiring is user-defined
+    GB_object_code object_kind ;   // built-in, user pre-compiled, or run-time
 } ;
 
 struct GB_Vector_opaque     // content of GrB_Vector: m-by-1 standard CSC matrix
@@ -133,16 +142,17 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 // These parameters define the content of extern const values that can be
 // used as inputs to GxB_*Option_set.
 
-// The default format is by column (CSC), with a hyper_ratio of 1/16.
+// The default format is by row (CSR), with a hyper_ratio of 1/16.
+// In Versions 2.1 and earlier, the default was GxB_BY_COL (CSC format).
 
 #define GB_HYPER_DEFAULT (0.0625)
 
-// compile SuiteSparse:GraphBLAS with "-DBYROW" to make GxB_BY_ROW the default
+// compile SuiteSparse:GraphBLAS with "-DBYCOL" to make GxB_BY_COL the default
 // format
-#ifdef BYROW
-#define GB_FORMAT_DEFAULT GxB_BY_ROW
-#else
+#ifdef BYCOL
 #define GB_FORMAT_DEFAULT GxB_BY_COL
+#else
+#define GB_FORMAT_DEFAULT GxB_BY_ROW
 #endif
 
 // these parameters define the hyper_ratio needed to ensure matrix stays
@@ -154,12 +164,12 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 #define GB_FORCE_NONHYPER 0
 #define GB_AUTO_HYPER (-1)
 
-#define SAME_HYPER_AS(A_is_hyper) \
+#define GB_SAME_HYPER_AS(A_is_hyper) \
     ((A_is_hyper) ? GB_FORCE_HYPER : GB_FORCE_NONHYPER)
 
 // if A is hypersparse but all vectors are present, then
 // treat A as if it were non-hypersparse
-#define IS_HYPER(A) \
+#define GB_IS_HYPER(A) \
     (((A) != NULL) && ((A)->is_hyper && ((A)->nvec < (A)->vdim)))
 
 //------------------------------------------------------------------------------
@@ -168,28 +178,28 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 
 // If A->nzmax is zero, then A->p might not be allocated.
 // Note that this function does not count pending tuples;
-// use WAIT(A) first, if needed.
-#define NNZ(A) (((A)->nzmax > 0) ? (A)->p [(A)->nvec] : 0)
+// use GB_WAIT(A) first, if needed.
+#define GB_NNZ(A) (((A)->nzmax > 0) ? (A)->p [(A)->nvec] : 0)
 
 // A is nrows-by-ncols, in either CSR or CSC format
-#define NROWS(A) (A->is_csc ? A->vlen : A->vdim)
-#define NCOLS(A) (A->is_csc ? A->vdim : A->vlen)
+#define GB_NROWS(A) (A->is_csc ? A->vlen : A->vdim)
+#define GB_NCOLS(A) (A->is_csc ? A->vdim : A->vlen)
 
 // The internal content of a GrB_Matrix and GrB_Vector are identical, and
 // inside SuiteSparse:GraphBLAS, they can be typecasted between each other.
 // This typecasting feature should not be done in user code, however, since it
 // is not supported in the API.  All GrB_Vector objects can be safely
 // typecasted into a GrB_Matrix, but not the other way around.  The GrB_Vector
-// object is more restrictive.  The VECTOR_OK(v) macro defines the content that
-// all GrB_Vector objects must have.
+// object is more restrictive.  The GB_VECTOR_OK(v) macro defines the content
+// that all GrB_Vector objects must have.
 
-// VECTOR_OK(v) is used mainly for assertions, but also to determine when it is
-// safe to typecast an n-by-1 GrB_Matrix (in standard CSC format) into a
+// GB_VECTOR_OK(v) is used mainly for assertions, but also to determine when it
+// is safe to typecast an n-by-1 GrB_Matrix (in standard CSC format) into a
 // GrB_Vector.  This is not done in the main SuiteSparse:GraphBLAS library, but
 // in the GraphBLAS/Test directory only.  The macro is also used in
 // GB_Vector_check, to ensure the content of a GrB_Vector is valid.
 
-#define VECTOR_OK(v)                \
+#define GB_VECTOR_OK(v)             \
 (                                   \
     ((v) != NULL) &&                \
     ((v)->is_hyper == false) &&     \
@@ -228,121 +238,6 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 #define GBd "%" PRId64
 
 //------------------------------------------------------------------------------
-// GraphBLAS check functions: check and optionally print an object
-//------------------------------------------------------------------------------
-
-// pr values for *_check functions
-#define D3 3
-#define D2 2
-#define D1 1
-#define D0 0
-
-GrB_Info GB_Type_check      // check a GraphBLAS Type
-(
-    const GrB_Type type,    // GraphBLAS type to print and check
-    const char *name,       // name of the type
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
-(
-    const GrB_BinaryOp op,  // GraphBLAS operator to print and check
-    const char *name,       // name of the operator
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
-(
-    const GrB_UnaryOp op,   // GraphBLAS operator to print and check
-    const char *name,       // name of the operator
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
-(
-    const GxB_SelectOp op,  // GraphBLAS operator to print and check
-    const char *name,       // name of the operator
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
-(
-    const GrB_Monoid monoid,    // GraphBLAS monoid to print and check
-    const char *name,           // name of the monoid
-    int pr                      // 0: print nothing, 1: print header and errors,
-                                // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
-(
-    const GrB_Semiring semiring,    // GraphBLAS semiring to print and check
-    const char *name,               // name of the semiring
-    int pr                          // 0: print nothing, 1: print header and
-                                    // errors, 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
-(
-    const GrB_Descriptor D,     // GraphBLAS descriptor to print and check
-    const char *name,           // name of the descriptor
-    int pr                      // 0: print nothing, 1: print header and
-                                // errors, 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
-(
-    const GrB_Matrix A,     // GraphBLAS matrix to print and check
-    const char *name,       // name of the matrix
-    int pr,                 // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-    const char *kind        // "matrix" or "vector"
-) ;
-
-GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
-(
-    const GrB_Matrix A,     // GraphBLAS matrix to print and check
-    const char *name,       // name of the matrix
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-GrB_Info GB_Vector_check    // check a GraphBLAS vector
-(
-    const GrB_Vector A,     // GraphBLAS vector to print and check
-    const char *name,       // name of the vector
-    int pr                  // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-) ;
-
-#define GB_check(x,name,pr)                             \
-    _Generic                                            \
-    (                                                   \
-        (x),                                            \
-        const GrB_Type       : GB_Type_check       ,    \
-              GrB_Type       : GB_Type_check       ,    \
-        const GrB_BinaryOp   : GB_BinaryOp_check   ,    \
-              GrB_BinaryOp   : GB_BinaryOp_check   ,    \
-        const GxB_SelectOp   : GB_SelectOp_check   ,    \
-              GxB_SelectOp   : GB_SelectOp_check   ,    \
-        const GrB_UnaryOp    : GB_UnaryOp_check    ,    \
-              GrB_UnaryOp    : GB_UnaryOp_check    ,    \
-        const GrB_Monoid     : GB_Monoid_check     ,    \
-              GrB_Monoid     : GB_Monoid_check     ,    \
-        const GrB_Semiring   : GB_Semiring_check   ,    \
-              GrB_Semiring   : GB_Semiring_check   ,    \
-        const GrB_Matrix     : GB_Matrix_check     ,    \
-              GrB_Matrix     : GB_Matrix_check     ,    \
-        const GrB_Vector     : GB_Vector_check     ,    \
-              GrB_Vector     : GB_Vector_check     ,    \
-        const GrB_Descriptor : GB_Descriptor_check ,    \
-              GrB_Descriptor : GB_Descriptor_check      \
-    ) (x, name, pr)
-
-//------------------------------------------------------------------------------
 // debugging definitions
 //------------------------------------------------------------------------------
 
@@ -350,19 +245,24 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
 // compiling GraphBLAS in a MATLAB mexFunction.  Use mxMalloc, mxFree, etc.
 #include "mex.h"
 #include "matrix.h"
-#undef MALLOC
-#undef FREE
-#undef CALLOC
-#undef REALLOC
-#define MALLOC  mxMalloc
-#define FREE    mxFree
-#define CALLOC  mxCalloc
-#define REALLOC mxRealloc
+#undef GB_MALLOC
+#undef GB_FREE
+#undef GB_CALLOC
+#undef GB_REALLOC
+#define GB_MALLOC  mxMalloc
+#define GB_FREE    mxFree
+#define GB_CALLOC  mxCalloc
+#define GB_REALLOC mxRealloc
 #define malloc  mxMalloc
 #define free    mxFree
 #define calloc  mxCalloc
 #define realloc mxRealloc
 #endif
+
+#undef ASSERT
+#undef ASSERT_OK
+#undef ASSERT_OK_OR_NULL
+#undef ASSERT_OK_OR_JUMBLED
 
 #ifndef NDEBUG
 
@@ -405,18 +305,18 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
 
 #endif
 
-#define IMPLIES(p,q) (!(p) || (q))
+#define GB_IMPLIES(p,q) (!(p) || (q))
 
 // for finding tests that trigger statement coverage
 #ifdef MATLAB_MEX_FILE
-#define GOTCHA \
+#define GB_GOTCHA \
 mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 #else
-#define GOTCHA \
+#define GB_GOTCHA \
 { printf ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)"\n") ; abort () ; }
 #endif
 
-#define Here printf (" Here: %s line: %d\n",  __FILE__, __LINE__) ;
+#define GB_HERE printf (" Here: %s line: %d\n",  __FILE__, __LINE__) ;
 
 //------------------------------------------------------------------------------
 // aliased objects
@@ -427,18 +327,20 @@ mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 // restrictive.
 
 // true if C and X are aliased and not NULL
-#define ALIASED(C,X)            ((C) == (X) && (C) != NULL)
+#define GB_ALIASED(C,X)            ((C) == (X) && (C) != NULL)
 
 // C may not be aliased with X, Y, or Z.  But X, Y and/or Z may be aliased
 // with each other.
-#define NOT_ALIASED(C,X)        (!ALIASED (C,X))
-#define NOT_ALIASED_2(C,X,Y)     (NOT_ALIASED (C,X) && NOT_ALIASED  (C,Y))
-#define NOT_ALIASED_3(C,X,Y,Z)   (NOT_ALIASED (C,X) && NOT_ALIASED_2 (C,Y,Z))
+#define GB_NOT_ALIASED(C,X)        (!GB_ALIASED (C,X))
+#define GB_NOT_ALIASED_2(C,X,Y)    \
+    (GB_NOT_ALIASED (C,X) && GB_NOT_ALIASED  (C,Y))
+#define GB_NOT_ALIASED_3(C,X,Y,Z)  \
+    (GB_NOT_ALIASED (C,X) && GB_NOT_ALIASED_2 (C,Y,Z))
 
 // these macros are always true but are used just for commenting the code
-#define ALIAS_OK(C,X)           (ALIASED (C,X) || NOT_ALIASED (C,X))
-#define ALIAS_OK2(C,X,Y)        (ALIAS_OK (C,X) && ALIAS_OK  (C,Y))
-#define ALIAS_OK3(C,X,Y,Z)      (ALIAS_OK (C,X) && ALIAS_OK2 (C,Y,Z))
+#define GB_ALIAS_OK(C,X)           (GB_ALIASED (C,X) || GB_NOT_ALIASED (C,X))
+#define GB_ALIAS_OK2(C,X,Y)        (GB_ALIAS_OK (C,X) && GB_ALIAS_OK  (C,Y))
+#define GB_ALIAS_OK3(C,X,Y,Z)      (GB_ALIAS_OK (C,X) && GB_ALIAS_OK2 (C,Y,Z))
 
 //------------------------------------------------------------------------------
 // GraphBLAS memory manager
@@ -447,20 +349,20 @@ mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 // GraphBLAS can be compiled with -DMALLOC=mymallocfunc to redefine
 // the malloc function and other memory management functions.
 // By default, these are simply the system malloc, free, etc, routines.
-#ifndef MALLOC
-#define MALLOC malloc
+#ifndef GB_MALLOC
+#define GB_MALLOC malloc
 #endif
 
-#ifndef CALLOC
-#define CALLOC calloc
+#ifndef GB_CALLOC
+#define GB_CALLOC calloc
 #endif
 
-#ifndef REALLOC
-#define REALLOC realloc
+#ifndef GB_REALLOC
+#define GB_REALLOC realloc
 #endif
 
-#ifndef FREE
-#define FREE free
+#ifndef GB_FREE
+#define GB_FREE free
 #endif
 
 #define GBYTES(n,s)  ((((double) (n)) * ((double) (s))) / 1e9)
@@ -469,18 +371,18 @@ mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 // internal GraphBLAS type and operator codes
 //------------------------------------------------------------------------------
 
-// MAGIC is an arbitrary number that is placed inside each object when it is
+// GB_MAGIC is an arbitrary number that is placed inside each object when it is
 // initialized, as a way of detecting uninitialized objects.
-#define MAGIC  0x00981B0787374E72
+#define GB_MAGIC  0x00981B0787374E72
 
-// The magic number is set to FREED when the object is freed, as a way of
+// The magic number is set to GB_FREED when the object is freed, as a way of
 // helping to detect dangling pointers.
-#define FREED  0x0911911911911911
+#define GB_FREED  0x0911911911911911
 
-// The value is set to MAGIC2 when the object has been allocated but cannot yet
-// be used in most methods and operations.  Currently this is used only for
+// The value is set to GB_MAGIC2 when the object has been allocated but cannot
+// yet be used in most methods and operations.  Currently this is used only for
 // when A->p array is allocated but not initialized.
-#define MAGIC2 0x10981B0787374E72
+#define GB_MAGIC2 0x10981B0787374E72
 
 typedef enum
 {
@@ -496,25 +398,26 @@ typedef enum
     GB_UINT64_code,             // 8: uint64_t
     GB_FP32_code,               // 9: float
     GB_FP64_code,               // 10: double
-    GB_UDT_code,                // 11: void *, user-defined type
+    GB_UCT_code,                // 11: void *, compile-time user-defined type
+    GB_UDT_code                 // 12: void *, run-time user-defined type
 }
 GB_Type_code ;                  // enumerated type code
 
 // predefined type objects
 extern struct GB_Type_opaque
-    GB_opaque_BOOL   ,  // GrB_BOOL is a pointer to this object, etc.
-    GB_opaque_INT8   ,
-    GB_opaque_UINT8  ,
-    GB_opaque_INT16  ,
-    GB_opaque_UINT16 ,
-    GB_opaque_INT32  ,
-    GB_opaque_UINT32 ,
-    GB_opaque_INT64  ,
-    GB_opaque_UINT64 ,
-    GB_opaque_FP32   ,
-    GB_opaque_FP64   ;
+    GB_opaque_GrB_BOOL   ,  // GrB_BOOL is a pointer to this object, etc.
+    GB_opaque_GrB_INT8   ,
+    GB_opaque_GrB_UINT8  ,
+    GB_opaque_GrB_INT16  ,
+    GB_opaque_GrB_UINT16 ,
+    GB_opaque_GrB_INT32  ,
+    GB_opaque_GrB_UINT32 ,
+    GB_opaque_GrB_INT64  ,
+    GB_opaque_GrB_UINT64 ,
+    GB_opaque_GrB_FP32   ,
+    GB_opaque_GrB_FP64   ;
 
-// operator codes used in GrB_BinaryOp and GrB_UnaryOp structures
+// operator codes used in GrB_BinaryOp, GrB_UnaryOp, and GxB_SelectOp
 typedef enum
 {
     //--------------------------------------------------------------------------
@@ -576,70 +479,85 @@ typedef enum
     GB_LE_opcode,       // 29: z = (x <= y)
 
     //--------------------------------------------------------------------------
-    // user-defined, both unary and binary
+    // user-defined: unary, binary, and select operators
     //--------------------------------------------------------------------------
 
-    // all user-defined operators are given this code (both unary and binary)
-    GB_USER_opcode      // 30: user defined operator
+    GB_USER_C_opcode,   // 30: compile-time user-defined operator
+    GB_USER_R_opcode    // 31: run-time user-defined operator
 }
 GB_Opcode ;
 
-#define NAME ((name != NULL) ? name : "")
+//------------------------------------------------------------------------------
+// monoid structs
+//------------------------------------------------------------------------------
 
-#define TYPE            bool
-#define GB(x)           GB_ ## x ## _BOOL
-#define CAST_NAME(x)    GB_cast_bool_ ## x
-#include "GB_ops_template.h"
+extern struct GB_Monoid_opaque
 
-#define TYPE            int8_t
-#define GB(x)           GB_ ## x ## _INT8
-#define CAST_NAME(x)    GB_cast_int8_t_ ## x
-#include "GB_ops_template.h"
+    // MIN monoids:
+    GB_opaque_GxB_MIN_INT8_MONOID,          // identity: INT8_MAX
+    GB_opaque_GxB_MIN_UINT8_MONOID,         // identity: UINT8_MAX
+    GB_opaque_GxB_MIN_INT16_MONOID,         // identity: INT16_MAX
+    GB_opaque_GxB_MIN_UINT16_MONOID,        // identity: UINT16_MAX
+    GB_opaque_GxB_MIN_INT32_MONOID,         // identity: INT32_MAX
+    GB_opaque_GxB_MIN_UINT32_MONOID,        // identity: UINT32_MAX
+    GB_opaque_GxB_MIN_INT64_MONOID,         // identity: INT64_MAX
+    GB_opaque_GxB_MIN_UINT64_MONOID,        // identity: UINT64_MAX
+    GB_opaque_GxB_MIN_FP32_MONOID,          // identity: INFINITY
+    GB_opaque_GxB_MIN_FP64_MONOID,          // identity: INFINITY
 
-#define TYPE            uint8_t
-#define GB(x)           GB_ ## x ## _UINT8
-#define CAST_NAME(x)    GB_cast_uint8_t_ ## x
-#include "GB_ops_template.h"
+    // MAX monoids:
+    GB_opaque_GxB_MAX_INT8_MONOID,          // identity: INT8_MIN
+    GB_opaque_GxB_MAX_UINT8_MONOID,         // identity: 0
+    GB_opaque_GxB_MAX_INT16_MONOID,         // identity: INT16_MIN
+    GB_opaque_GxB_MAX_UINT16_MONOID,        // identity: 0
+    GB_opaque_GxB_MAX_INT32_MONOID,         // identity: INT32_MIN
+    GB_opaque_GxB_MAX_UINT32_MONOID,        // identity: 0
+    GB_opaque_GxB_MAX_INT64_MONOID,         // identity: INT64_MIN
+    GB_opaque_GxB_MAX_UINT64_MONOID,        // identity: 0
+    GB_opaque_GxB_MAX_FP32_MONOID,          // identity: -INFINITY
+    GB_opaque_GxB_MAX_FP64_MONOID,          // identity: -INFINITY
 
-#define TYPE            int16_t
-#define GB(x)           GB_ ## x ## _INT16
-#define CAST_NAME(x)    GB_cast_int16_t_ ## x
-#include "GB_ops_template.h"
+    // PLUS monoids:
+    GB_opaque_GxB_PLUS_INT8_MONOID,         // identity: 0
+    GB_opaque_GxB_PLUS_UINT8_MONOID,        // identity: 0
+    GB_opaque_GxB_PLUS_INT16_MONOID,        // identity: 0
+    GB_opaque_GxB_PLUS_UINT16_MONOID,       // identity: 0
+    GB_opaque_GxB_PLUS_INT32_MONOID,        // identity: 0
+    GB_opaque_GxB_PLUS_UINT32_MONOID,       // identity: 0
+    GB_opaque_GxB_PLUS_INT64_MONOID,        // identity: 0
+    GB_opaque_GxB_PLUS_UINT64_MONOID,       // identity: 0
+    GB_opaque_GxB_PLUS_FP32_MONOID,         // identity: 0
+    GB_opaque_GxB_PLUS_FP64_MONOID,         // identity: 0
 
-#define TYPE            uint16_t
-#define GB(x)           GB_ ## x ## _UINT16
-#define CAST_NAME(x)    GB_cast_uint16_t_ ## x
-#include "GB_ops_template.h"
+    // TIMES monoids:
+    GB_opaque_GxB_TIMES_INT8_MONOID,        // identity: 1
+    GB_opaque_GxB_TIMES_UINT8_MONOID,       // identity: 1
+    GB_opaque_GxB_TIMES_INT16_MONOID,       // identity: 1
+    GB_opaque_GxB_TIMES_UINT16_MONOID,      // identity: 1
+    GB_opaque_GxB_TIMES_INT32_MONOID,       // identity: 1
+    GB_opaque_GxB_TIMES_UINT32_MONOID,      // identity: 1
+    GB_opaque_GxB_TIMES_INT64_MONOID,       // identity: 1
+    GB_opaque_GxB_TIMES_UINT64_MONOID,      // identity: 1
+    GB_opaque_GxB_TIMES_FP32_MONOID,        // identity: 1
+    GB_opaque_GxB_TIMES_FP64_MONOID,        // identity: 1
 
-#define TYPE            int32_t
-#define GB(x)           GB_ ## x ## _INT32
-#define CAST_NAME(x)    GB_cast_int32_t_ ## x
-#include "GB_ops_template.h"
+    // Boolean monoids:
+    GB_opaque_GxB_LOR_BOOL_MONOID,          // identity: false
+    GB_opaque_GxB_LAND_BOOL_MONOID,         // identity: true
+    GB_opaque_GxB_LXOR_BOOL_MONOID,         // identity: false
+    GB_opaque_GxB_EQ_BOOL_MONOID ;          // identity: true
 
-#define TYPE            uint32_t
-#define GB(x)           GB_ ## x ## _UINT32
-#define CAST_NAME(x)    GB_cast_uint32_t_ ## x
-#include "GB_ops_template.h"
+//------------------------------------------------------------------------------
+// built-in semirings
+//------------------------------------------------------------------------------
 
-#define TYPE            int64_t
-#define GB(x)           GB_ ## x ## _INT64
-#define CAST_NAME(x)    GB_cast_int64_t_ ## x
-#include "GB_ops_template.h"
+// Using built-in types and operators, 960 unique semirings can be built.  This
+// count excludes redundant Boolean operators (for example GxB_TIMES_BOOL and
+// GxB_LAND_BOOL are different operators but they are redundant since they
+// always return the same result):
 
-#define TYPE            uint64_t
-#define GB(x)           GB_ ## x ## _UINT64
-#define CAST_NAME(x)    GB_cast_uint64_t_ ## x
-#include "GB_ops_template.h"
+// 680 semirings with a multiply operator TxT -> T where T is non-Boolean, from
 
-#define TYPE            float
-#define GB(x)           GB_ ## x ## _FP32
-#define CAST_NAME(x)    GB_cast_float_ ## x
-#include "GB_ops_template.h"
-
-#define TYPE            double
-#define GB(x)           GB_ ## x ## _FP64
-#define CAST_NAME(x)    GB_cast_double_ ## x
-#include "GB_ops_template.h"
 
 //------------------------------------------------------------------------------
 // select opcodes
@@ -656,9 +574,202 @@ typedef enum
     GB_NONZERO_opcode,
 
     // for all user-defined select operators:
-    GB_USER_SELECT_opcode
+    GB_USER_SELECT_C_opcode,    // defined at compile-time
+    GB_USER_SELECT_R_opcode     // defined at run-time
 }
 GB_Select_Opcode ;
+
+extern struct GB_SelectOp_opaque
+    GB_opaque_GxB_TRIL,
+    GB_opaque_GxB_TRIU,
+    GB_opaque_GxB_DIAG,
+    GB_opaque_GxB_OFFDIAG,
+    GB_opaque_GxB_NONZERO ;
+
+//------------------------------------------------------------------------------
+// GraphBLAS check functions: check and optionally print an object
+//------------------------------------------------------------------------------
+
+// pr values for *_check functions
+#define GB0 GxB_SILENT
+#define GB1 GxB_SUMMARY
+#define GB2 GxB_SHORT
+#define GB3 GxB_COMPLETE
+
+// a NULL name is treated as the empty string
+#define GB_NAME ((name != NULL) ? name : "")
+
+// print to a file f, and check the result
+#define GBPR(...)                                                           \
+{                                                                           \
+    if (f != NULL)                                                          \
+    {                                                                       \
+        if (fprintf (f, __VA_ARGS__) < 0)                                   \
+        {                                                                   \
+            int err = errno ;                                               \
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,                   \
+                "File output error (%d): %s", err, strerror (err)))) ;      \
+        }                                                                   \
+    }                                                                       \
+}
+
+// check object->magic and print an error if invalid 
+#define GB_CHECK_MAGIC(object,kind)                                     \
+{                                                                       \
+    switch (object->magic)                                              \
+    {                                                                   \
+        case GB_MAGIC :                                                 \
+            /* the object is valid */                                   \
+            break ;                                                     \
+                                                                        \
+        case GB_FREED :                                                 \
+            /* dangling pointer! */                                     \
+            if (pr > 0) GBPR ("already freed!\n") ;                     \
+            return (GB_ERROR (GrB_UNINITIALIZED_OBJECT, (GB_LOG,        \
+                "%s is freed: [%s]", kind, name))) ;                    \
+                                                                        \
+        case GB_MAGIC2 :                                                \
+            /* invalid */                                               \
+            if (pr > 0) GBPR ("invalid\n") ;                            \
+            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,              \
+                "%s is invalid: [%s]", kind, name))) ;                  \
+                                                                        \
+        default :                                                       \
+            /* uninitialized */                                         \
+            if (pr > 0) GBPR ("uninititialized\n") ;                    \
+            return (GB_ERROR (GrB_UNINITIALIZED_OBJECT, (GB_LOG,        \
+                "%s is uninitialized: [%s]", kind, name))) ;            \
+    }                                                                   \
+}
+
+GrB_Info GB_entry_check     // print and check a single value
+(
+    const GrB_Type type,    // type of value to print
+    const void *x,          // value to print
+    FILE *f                 // file to print to
+) ;
+
+GrB_Info GB_code_check          // print and check an entry using a type code
+(
+    const GB_Type_code code,    // type code of value to print
+    const void *x,              // entry to print
+    FILE *f                     // file to print to
+) ;
+
+GrB_Info GB_Type_check      // check a GraphBLAS Type
+(
+    const GrB_Type type,    // GraphBLAS type to print and check
+    const char *name,       // name of the type
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
+(
+    const GrB_BinaryOp op,  // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
+(
+    const GrB_UnaryOp op,   // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
+(
+    const GxB_SelectOp op,  // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
+(
+    const GrB_Monoid monoid,    // GraphBLAS monoid to print and check
+    const char *name,           // name of the monoid
+    int pr,                     // 0: print nothing, 1: print header and errors,
+                                // 2: print brief, 3: print all
+    FILE *f                     // file for output
+) ;
+
+GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
+(
+    const GrB_Semiring semiring,    // GraphBLAS semiring to print and check
+    const char *name,               // name of the semiring
+    int pr,                         // 0: print nothing, 1: print header and
+                                    // errors, 2: print brief, 3: print all
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
+(
+    const GrB_Descriptor D,     // GraphBLAS descriptor to print and check
+    const char *name,           // name of the descriptor
+    int pr,                     // 0: print nothing, 1: print header and
+                                // errors, 2: print brief, 3: print all
+    FILE *f                     // file for output
+) ;
+
+GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
+(
+    const GrB_Matrix A,     // GraphBLAS matrix to print and check
+    const char *name,       // name of the matrix
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f,                // file for output
+    const char *kind        // "matrix" or "vector"
+) ;
+
+GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
+(
+    const GrB_Matrix A,     // GraphBLAS matrix to print and check
+    const char *name,       // name of the matrix
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+GrB_Info GB_Vector_check    // check a GraphBLAS vector
+(
+    const GrB_Vector A,     // GraphBLAS vector to print and check
+    const char *name,       // name of the vector
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f                 // file for output
+) ;
+
+#define GB_check(x,name,pr)                             \
+    _Generic                                            \
+    (                                                   \
+        (x),                                            \
+        const GrB_Type       : GB_Type_check       ,    \
+              GrB_Type       : GB_Type_check       ,    \
+        const GrB_BinaryOp   : GB_BinaryOp_check   ,    \
+              GrB_BinaryOp   : GB_BinaryOp_check   ,    \
+        const GxB_SelectOp   : GB_SelectOp_check   ,    \
+              GxB_SelectOp   : GB_SelectOp_check   ,    \
+        const GrB_UnaryOp    : GB_UnaryOp_check    ,    \
+              GrB_UnaryOp    : GB_UnaryOp_check    ,    \
+        const GrB_Monoid     : GB_Monoid_check     ,    \
+              GrB_Monoid     : GB_Monoid_check     ,    \
+        const GrB_Semiring   : GB_Semiring_check   ,    \
+              GrB_Semiring   : GB_Semiring_check   ,    \
+        const GrB_Matrix     : GB_Matrix_check     ,    \
+              GrB_Matrix     : GB_Matrix_check     ,    \
+        const GrB_Vector     : GB_Vector_check     ,    \
+              GrB_Vector     : GB_Vector_check     ,    \
+        const GrB_Descriptor : GB_Descriptor_check ,    \
+              GrB_Descriptor : GB_Descriptor_check      \
+    ) (x, name, pr, stdout)
 
 //------------------------------------------------------------------------------
 // internal GraphBLAS functions
@@ -746,7 +857,7 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 GrB_Info GB_ix_resize           // resize a matrix
 (
     GrB_Matrix A,
-    const int64_t anz_new       // required new NNZ(A)
+    const int64_t anz_new       // required new nnz of A
 ) ;
 
 void GB_ix_free                 // free A->i and A->x of a matrix
@@ -880,8 +991,6 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     const GB_Type_code code2       // the type of x, the input value
 ) ;
 
-void GB_copy_user_user (void *z, const void *x, size_t size) ;
-
 GrB_Info GB_add             // C = A+B
 (
     GrB_Matrix *Chandle,    // output matrix (unallocated on input)
@@ -919,7 +1028,7 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 size_t GB_code_size             // return the size of a type, given its code
 (
     const GB_Type_code code,    // input code of the type to find the size of
-    const size_t user_size      // known size of user-defined type
+    const size_t usize          // known size of user-defined type
 ) ;
 
 void *GB_calloc_memory      // pointer to allocated block of memory
@@ -955,10 +1064,10 @@ void GB_free_memory
 // macros to create/free matrices, vectors, and generic memory
 //------------------------------------------------------------------------------
 
-// if PRINT_MALLOC is #define'd above, these macros print diagnostic
+// if GB_PRINT_MALLOC is define above, these macros print diagnostic
 // information, meant for development of SuiteSparse:GraphBLAS only
 
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
 
 #define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen)                 \
 {                                                                             \
@@ -1075,25 +1184,13 @@ void GB_free_memory
 
 //------------------------------------------------------------------------------
 
-GrB_Info GB_Entry_print     // print a single value
-(
-    const GrB_Type type,    // type of value to print
-    const void *x           // value to print
-) ;
-
-void GB_code_print              // print an entry using a type code
-(
-    const GB_Type_code code,    // type code of value to print
-    const void *x               // entry to print
-) ;
-
 GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
 (
     const GB_Type_code code,    // type code to convert
     const GrB_Type type         // user type if code is GB_UDT_code
 ) ;
 
-GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
+GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
 (
     GrB_Matrix *Chandle,        // output matrix
     const GrB_Type ctype,       // type of C
@@ -1103,7 +1200,7 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess   // rough estimate of NNZ(C)
+    const int64_t rough_guess   // rough estimate of nnz(C)
 ) ;
 
 GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
@@ -1124,6 +1221,15 @@ typedef struct
     int64_t end ;                   // last entry of A(:,k) is at Ai [end-1]
 }
 GB_pointer_pair ;
+
+// used in GB_heap_*
+typedef struct
+{
+    int64_t key ;       // the key for this element, for ordering in the Heap
+    int64_t name ;      // the name of the element; not used in these functions
+                        // but required by the caller
+}
+GB_Element ;
 
 GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
 (
@@ -1330,6 +1436,20 @@ GrB_Info GB_subref_symbolic     // C = A (I,J), extract the pattern
     int64_t nj                  // length of J
 ) ;
 
+GrB_Info GB_I_inverse
+(
+    const GrB_Index *I,         // list of indices, duplicates OK
+    int64_t nI,                 // length of I
+    int64_t avlen,              // length of the vectors of A
+    bool need_Iwork1,           // true if Iwork1 of size nI needed for sorting
+    // outputs:
+    int64_t **p_Mark,
+    int64_t **p_Inext,
+    int64_t **p_Iwork1,
+    int64_t *p_nduplicates,     // number of duplicate entires in I
+    int64_t *p_flag
+) ;
+
 GrB_Info GB_extract                 // C<Mask> = accum (C, A(I,J))
 (
     GrB_Matrix C,                   // input/output matrix for results
@@ -1473,7 +1593,7 @@ GrB_Info GB_builder
 GrB_Info GB_build_factory           // build a matrix
 (
     GrB_Matrix *Thandle,            // matrix T to build
-    const int64_t tnz0,             // final NNZ(T)
+    const int64_t tnz0,             // final nnz(T)
     int64_t **iwork_handle,         // for (i,k) or (j,i,k) tuples
     int64_t **kwork_handle,         // for (i,k) or (j,i,k) tuples
     const void *S,                  // array of values of tuples
@@ -1517,7 +1637,7 @@ void GB_queue_insert            // insert matrix at the head of queue
 
 GrB_Matrix GB_queue_remove_head ( ) ; // return matrix or NULL if queue empty
 
-void GB_queue_check
+void GB_queue_status
 (
     GrB_Matrix A,           // matrix to check
     GrB_Matrix *head,       // head of the queue
@@ -1708,17 +1828,17 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
     GrB_Matrix A            // matrix to convert to hypersparse
 ) ;
 
-bool GB_to_nonhyper_check   // check for conversion to hypersparse
+bool GB_to_nonhyper_test    // test for conversion to hypersparse
 (
-    GrB_Matrix A,           // matrix to check
+    GrB_Matrix A,           // matrix to test
     int64_t k,              // # of non-empty vectors of A, an estimate is OK,
                             // but normally A->nvec_nonempty
     int64_t vdim            // normally A->vdim
 ) ;
 
-bool GB_to_hyper_check      // check for conversion to hypersparse
+bool GB_to_hyper_test       // test for conversion to hypersparse
 (
-    GrB_Matrix A,           // matrix to check
+    GrB_Matrix A,           // matrix to test
     int64_t k,              // # of non-empty vectors of A, an estimate is OK,
                             // but normally A->nvec_nonempty
     int64_t vdim            // normally A->vdim
@@ -1921,14 +2041,15 @@ static inline GrB_Index GB_rand ( )
 // error logging
 //------------------------------------------------------------------------------
 
-// The ERROR and LOG macros work together.  If an error occurs, the ERROR macro
-// records the details in thread local storage (GB_thread_local), and returns
-// the GrB_info to its 'caller'.  This value can then be returned, or set to
-// an info variable of type GrB_Info.  For example:
+// The GB_ERROR and GB_LOG macros work together.  If an error occurs, the
+// GB_ERROR macro records the details in thread local storage
+// (GB_thread_local), and returns the GrB_info to its 'caller'.  This value can
+// then be returned, or set to an info variable of type GrB_Info.  For example:
+//
 //
 //  if (i >= nrows)
 //  {
-//      return (ERROR (GrB_INDEX_OUT_OF_BOUNDS, (LOG,
+//      return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
 //          "Row index %d out of bounds; must be < %d", i, nrows))) ;
 //  }
 //
@@ -1941,8 +2062,8 @@ static inline GrB_Index GB_rand ( )
 // details ("Row index 102 out of bounds, must be < 100"), and finally the
 // exact GraphBLAS filename and line number where the error was caught.
 
-#define LOG GB_thread_local.details, GB_DLEN
-#define ERROR(f,s)                          \
+#define GB_LOG GB_thread_local.details, GB_DLEN
+#define GB_ERROR(f,s)                       \
 (                                           \
         snprintf s ,                        \
         (GB_thread_local.file = __FILE__ ), \
@@ -1950,16 +2071,16 @@ static inline GrB_Index GB_rand ( )
         (GB_thread_local.info = f)          \
 )
 
-// return (OUT_OF_MEMORY (mem)) ; reports an out-of-memory error, including
+// return (GB_OUT_OF_MEMORY (mem)) ; reports an out-of-memory error, including
 // the amount of memory needed for this phase of computation
-#define OUT_OF_MEMORY(mem) ERROR (GrB_OUT_OF_MEMORY, (LOG,  \
+#define GB_OUT_OF_MEMORY(mem) GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG,  \
     "out of memory, %g GBytes required", (double) (mem)))
 
-// return (NO_MEMORY) ; reports an out-of-memory error, but does not pring
+// return (GB_NO_MEMORY) ; reports an out-of-memory error, but does not print
 // the memory needed (normally very small)
-#define NO_MEMORY ERROR (GrB_OUT_OF_MEMORY, (LOG, "out of memory"))
+#define GB_NO_MEMORY GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG, "out of memory"))
 
-// The WHERE macro keeps track of the currently running user-callable function.
+// GB_WHERE keeps track of the currently running user-callable function.
 // User-callable functions in this implementation are written so that they do
 // not call other unrelated user-callable functions (except for GrB_*free).
 // Related user-callable functions can call each other since they all report
@@ -1967,35 +2088,35 @@ static inline GrB_Index GB_rand ( )
 // different user-callable functions, directly or indirectly.  It would not be
 // helpful to report the name of an internal function that flagged an error
 // condition.  Thus, each time a user-callable function is entered (except
-// GrB_*free), it logs the name of the function with the WHERE macro.
+// GrB_*free), it logs the name of the function with the GB_WHERE macro.
 // GrB_*free does not encounter error conditions so it doesn't need to be
-// logged by the WHERE macro.
+// logged by the GB_WHERE macro.
 
-#define WHERE(w) { GB_thread_local.where = w ; }
+#define GB_WHERE(w) { GB_thread_local.where = w ; }
 
-// The REPORT_NO_VALUE macro is used only by GB_extractElement, to report
+// The GB_REPORT_NO_VALUE macro is used only by GB_extractElement, to report
 // the last A(i,j) that was searched but which was not present in the matrix.
 // In the interest of speed, no other action is taken.   If A(i,j) is found,
-// then the status is set to GrB_SUCCESS via the REPORT_SUCCESS macro.
+// then the status is set to GrB_SUCCESS via the GB_REPORT_SUCCESS macro.
 
-#define REPORT_NO_VALUE(i,j)                    \
+#define GB_REPORT_NO_VALUE(i,j)                 \
 (                                               \
     GB_thread_local.row = i,                    \
     GB_thread_local.col = j,                    \
     GB_thread_local.info = GrB_NO_VALUE         \
 )
 
-// REPORT_MATRIX and REPORT_VECTOR is only used in GrB_*_extractElement_*
+// GB_REPORT_MATRIX and GB_REPORT_VECTOR is only used in GrB_*_extractElement_*
 // to allow the error reporting to distinguish between the GrB_Matrix_* and
 // GrB_Vector_* versions of the functions.
-#define REPORT_MATRIX(info)                                             \
+#define GB_REPORT_MATRIX(info)                                          \
     if (info != GrB_SUCCESS) GB_thread_local.is_matrix = true ;         \
 
-#define REPORT_VECTOR(info)                                             \
+#define GB_REPORT_VECTOR(info)                                          \
     if (info != GrB_SUCCESS) GB_thread_local.is_matrix = false ;        \
 
 // All methods and operations use this macro for a successful return
-#define REPORT_SUCCESS                          \
+#define GB_REPORT_SUCCESS                       \
 (                                               \
     GB_thread_local.info = GrB_SUCCESS          \
 )
@@ -2068,39 +2189,39 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // if something has gone wrong.
 
 // check if a required arg is NULL
-#define RETURN_IF_NULL(arg)                                             \
+#define GB_RETURN_IF_NULL(arg)                                          \
     if ((arg) == NULL)                                                  \
     {                                                                   \
         /* the required arg is NULL */                                  \
-        return (ERROR (GrB_NULL_POINTER, (LOG,                          \
+        return (GB_ERROR (GrB_NULL_POINTER, (GB_LOG,                    \
             "Required argument is null: [%s]", GB_STR(arg)))) ;         \
     }
 
 // arg may be NULL, but if non-NULL then it must be initialized
-#define RETURN_IF_FAULTY(arg)                                           \
-    if ((arg) != NULL && (arg)->magic != MAGIC)                         \
+#define GB_RETURN_IF_FAULTY(arg)                                        \
+    if ((arg) != NULL && (arg)->magic != GB_MAGIC)                      \
     {                                                                   \
-        if ((arg)->magic == MAGIC2)                                     \
+        if ((arg)->magic == GB_MAGIC2)                                  \
         {                                                               \
             /* optional arg is not NULL, but invalid */                 \
-            return (ERROR (GrB_INVALID_OBJECT, (LOG,                    \
+            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,              \
                 "Argument is invalid: [%s]", GB_STR(arg)))) ;           \
         }                                                               \
         else                                                            \
         {                                                               \
             /* optional arg is not NULL, but not initialized */         \
-            return (ERROR (GrB_UNINITIALIZED_OBJECT, (LOG,              \
+            return (GB_ERROR (GrB_UNINITIALIZED_OBJECT, (GB_LOG,        \
                 "Argument is uninitialized: [%s]", GB_STR(arg)))) ;     \
         }                                                               \
     }
 
 // arg must not be NULL, and it must be initialized
-#define RETURN_IF_NULL_OR_FAULTY(arg)                                   \
-    RETURN_IF_NULL (arg) ;                                              \
-    RETURN_IF_FAULTY (arg) ;                                            \
+#define GB_RETURN_IF_NULL_OR_FAULTY(arg)                                \
+    GB_RETURN_IF_NULL (arg) ;                                           \
+    GB_RETURN_IF_FAULTY (arg) ;
 
 // check the descriptor and extract its contents
-#define GET_DESCRIPTOR(info,desc,dout,dm,d0,d1,dalgo)                   \
+#define GB_GET_DESCRIPTOR(info,desc,dout,dm,d0,d1,dalgo)                \
     GrB_Info info ;                                                     \
     bool dout, dm, d0, d1 ;                                             \
     GrB_Desc_Value dalgo ;                                              \
@@ -2114,7 +2235,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 
 // C<Mask>=Z ignores Z if an empty Mask is complemented, so return from
 // the method without computing anything.  But do apply the mask.
-#define RETURN_IF_QUICK_MASK(C, C_replace, Mask, Mask_comp)             \
+#define GB_RETURN_IF_QUICK_MASK(C, C_replace, Mask, Mask_comp)          \
     if (Mask_comp && Mask == NULL)                                      \
     {                                                                   \
         /* C<~NULL>=NULL since result does not depend on computing Z */ \
@@ -2125,13 +2246,12 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // Pending upddate and zombies
 //------------------------------------------------------------------------------
 
-// FLIP is a kind of  "negation" about (-1) of a zero-based index.
-// FLIP(i) acts like -i for one-based indices.
+// GB_FLIP is a kind of  "negation" about (-1) of a zero-based index.
 // If i >= 0 then it is not flipped.
 // If i < 0 then it has been flipped.
-// Like negation, FLIP is its own inverse: FLIP (FLIP (i)) == i.
-// The "nil" value, -1, doesn't change when flipped: FLIP (-1) = -1.
-// UNFLIP(i) is like taking an absolute value, undoing any flip.
+// Like negation, GB_FLIP is its own inverse: GB_FLIP (GB_FLIP (i)) == i.
+// The "nil" value, -1, doesn't change when flipped: GB_FLIP (-1) = -1.
+// GB_UNFLIP(i) is like taking an absolute value, undoing any GB_FLIP(i).
 
 // An entry A(i,j) in a matrix can be marked as a "zombie".  A zombie is an
 // entry that has been marked for deletion, but hasn't been deleted yet because
@@ -2150,28 +2270,27 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // Zombies are deleted and pending tuples are added into the matrix all at
 // once, by GB_wait.
 
-#define NIL                 (-1)
-#define FLIP(i)             (-(i)-2)
-#define IS_FLIPPED(i)       ((i) < 0)
-#define IS_ZOMBIE(i)        ((i) < 0)
-#define IS_NOT_FLIPPED(i)   ((i) >= 0)
-#define IS_NOT_ZOMBIE(i)    ((i) >= 0)
-#define UNFLIP(i)           (((i) < 0) ? FLIP(i) : (i))
+#define GB_FLIP(i)             (-(i)-2)
+#define GB_IS_FLIPPED(i)       ((i) < 0)
+#define GB_IS_ZOMBIE(i)        ((i) < 0)
+#define GB_IS_NOT_FLIPPED(i)   ((i) >= 0)
+#define GB_IS_NOT_ZOMBIE(i)    ((i) >= 0)
+#define GB_UNFLIP(i)           (((i) < 0) ? GB_FLIP(i) : (i))
 
 // true if a matrix has pending tuples
-#define PENDING(A) ((A) != NULL && (A)->n_pending > 0)
+#define GB_PENDING(A) ((A) != NULL && (A)->n_pending > 0)
 
 // true if a matrix is allowed to have pending tuples
-#define PENDING_OK(A) ((A) != NULL && (A)->n_pending >= 0)
+#define GB_PENDING_OK(A) ((A) != NULL && (A)->n_pending >= 0)
 
 // true if a matrix has zombies
-#define ZOMBIES(A) ((A) != NULL && (A)->nzombies > 0)
+#define GB_ZOMBIES(A) ((A) != NULL && (A)->nzombies > 0)
 
 // true if a matrix is allowed to have zombies
-#define ZOMBIES_OK(A) ((A) != NULL && (A)->nzombies >= 0)
+#define GB_ZOMBIES_OK(A) ((A) != NULL && (A)->nzombies >= 0)
 
 // do all pending updates:  delete zombies and assemble any pending tuples
-#define GB_WAIT(A)                                                      \
+#define GB_WAIT_MATRIX(A)                                               \
 {                                                                       \
     GrB_Info info = GB_wait ((GrB_Matrix) A) ;                          \
     if (info != GrB_SUCCESS)                                            \
@@ -2180,66 +2299,34 @@ void GB_wfree ( ) ;                 // free all thread-local storage
         ASSERT (info == GrB_OUT_OF_MEMORY) ;                            \
         return (info) ;                                                 \
     }                                                                   \
-    ASSERT (!ZOMBIES (A)) ;                                             \
-    ASSERT (!PENDING (A)) ;                                             \
+    ASSERT (!GB_ZOMBIES (A)) ;                                          \
+    ASSERT (!GB_PENDING (A)) ;                                          \
 }
 
 // wait for any pending operations: both pending tuples and zombies
-#define WAIT(A)                                                         \
+#define GB_WAIT(A)                                                      \
 {                                                                       \
-    if (PENDING (A) || ZOMBIES (A)) GB_WAIT (A) ;                       \
+    if (GB_PENDING (A) || GB_ZOMBIES (A)) GB_WAIT_MATRIX (A) ;          \
 }
 
 // just wait for pending tuples; zombies are OK but removed anyway if the
 // matrix also has pending tuples.  They are left in place if the matrix has
 // zombies but no pending tuples.
-#define WAIT_PENDING(A)                                                 \
+#define GB_WAIT_PENDING(A)                                              \
 {                                                                       \
-    if (PENDING (A)) GB_WAIT (A) ;                                      \
-    ASSERT (ZOMBIES_OK (A)) ;                                           \
+    if (GB_PENDING (A)) GB_WAIT_MATRIX (A) ;                            \
+    ASSERT (GB_ZOMBIES_OK (A)) ;                                        \
 }
 
 // true if a matrix has no entries; zombies OK
-#define EMPTY(A) ((NNZ (A) == 0) && !PENDING (A))
-
-//------------------------------------------------------------------------------
-// helper macro for checking objects
-//------------------------------------------------------------------------------
-
-#define CHECK_MAGIC(object,kind)                                        \
-{                                                                       \
-    switch (object->magic)                                              \
-    {                                                                   \
-        case MAGIC :                                                    \
-            /* the object is valid */                                   \
-            break ;                                                     \
-                                                                        \
-        case FREED :                                                    \
-            /* dangling pointer! */                                     \
-            if (pr > 0) printf ("already freed!\n") ;                   \
-            return (ERROR (GrB_UNINITIALIZED_OBJECT, (LOG,              \
-                "%s is freed: [%s]", kind, name))) ;                    \
-                                                                        \
-        case MAGIC2 :                                                   \
-            /* invalid */                                               \
-            if (pr > 0) printf ("invalid\n") ;                          \
-            return (ERROR (GrB_INVALID_OBJECT, (LOG,                    \
-                "%s is invalid: [%s]", kind, name))) ;                  \
-                                                                        \
-        default :                                                       \
-            /* uninitialized */                                         \
-            if (pr > 0) printf ("uninititialized\n") ;                  \
-            return (ERROR (GrB_UNINITIALIZED_OBJECT, (LOG,              \
-                "%s is uninitialized: [%s]", kind, name))) ;            \
-    }                                                                   \
-}
+#define GB_EMPTY(A) ((GB_NNZ (A) == 0) && !GB_PENDING (A))
 
 //------------------------------------------------------------------------------
 // type-specific macros
 //------------------------------------------------------------------------------
 
 // returns the largest possible value for a given type
-#define PLUS_INF(type)            \
+#define GB_PLUS_INF(type)         \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2257,7 +2344,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     )
 
 // returns the smallest possible value for a given type
-#define MINUS_INF(type)           \
+#define GB_MINUS_INF(type)        \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2275,7 +2362,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     )
 
 // true if the type is signed
-#define IS_SIGNED(type)           \
+#define GB_IS_SIGNED(type)        \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2293,7 +2380,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     )
 
 // true if the type is integer (boolean is not integer)
-#define IS_INTEGER(type)          \
+#define GB_IS_INTEGER(type)       \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2311,7 +2398,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     )
 
 // true if the type is boolean
-#define IS_BOOLEAN(type)          \
+#define GB_IS_BOOLEAN(type)       \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2329,7 +2416,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     )
 
 // true if the type is float or double
-#define IS_FLOAT(type)            \
+#define GB_IS_FLOAT(type)         \
     _Generic                      \
     (                             \
         (type),                   \
@@ -2362,7 +2449,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // grep "integer division"
 
 // signed integer division x/zero: special cases for 0/0, -(neg)/0, (pos)/0
-#define SIGNED_INTEGER_DIVISION_BY_ZERO(x)                                  \
+#define GB_SIGNED_INTEGER_DIVISION_BY_ZERO(x)                               \
 (                                                                           \
     ((x) == 0) ?                                                            \
     (                                                                       \
@@ -2375,18 +2462,18 @@ void GB_wfree ( ) ;                 // free all thread-local storage
         ((x) < 0) ?                                                         \
         (                                                                   \
             /* x is negative: x/0 gives '-Inf' */                           \
-            MINUS_INF (x)                                                   \
+            GB_MINUS_INF (x)                                                \
         )                                                                   \
         :                                                                   \
         (                                                                   \
             /* x is positive: x/0 gives '+Inf' */                           \
-            PLUS_INF (x)                                                    \
+            GB_PLUS_INF (x)                                                 \
         )                                                                   \
     )                                                                       \
 )
 
 // signed integer division x/y: special cases for y=-1 and y=0
-#define SIGNED_INTEGER_DIVISION(x,y)                                        \
+#define GB_SIGNED_INTEGER_DIVISION(x,y)                                     \
 (                                                                           \
     ((y) == -1) ?                                                           \
     (                                                                       \
@@ -2398,7 +2485,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
         ((y) == 0) ?                                                        \
         (                                                                   \
             /* x/0 */                                                       \
-            SIGNED_INTEGER_DIVISION_BY_ZERO (x)                             \
+            GB_SIGNED_INTEGER_DIVISION_BY_ZERO (x)                          \
         )                                                                   \
         :                                                                   \
         (                                                                   \
@@ -2409,7 +2496,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 )
 
 // unsigned integer division x/zero: special cases for 0/0 and (pos)/0
-#define UNSIGNED_INTEGER_DIVISION_BY_ZERO(x)                                \
+#define GB_UNSIGNED_INTEGER_DIVISION_BY_ZERO(x)                             \
 (                                                                           \
     ((x) == 0) ?                                                            \
     (                                                                       \
@@ -2419,17 +2506,17 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     :                                                                       \
     (                                                                       \
         /* x is positive: x/0 gives '+Inf' */                               \
-        PLUS_INF (x)                                                        \
+        GB_PLUS_INF (x)                                                     \
     )                                                                       \
 )                                                                           \
 
 // unsigned integer division x/y: special case for y=0
-#define UNSIGNED_INTEGER_DIVISION(x,y)                                      \
+#define GB_UNSIGNED_INTEGER_DIVISION(x,y)                                   \
 (                                                                           \
     ((y) == 0) ?                                                            \
     (                                                                       \
         /* x/0 */                                                           \
-        UNSIGNED_INTEGER_DIVISION_BY_ZERO (x)                               \
+        GB_UNSIGNED_INTEGER_DIVISION_BY_ZERO (x)                            \
     )                                                                       \
     :                                                                       \
     (                                                                       \
@@ -2439,25 +2526,25 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 )
 
 // x/y when x and y are signed or unsigned integers
-#define IDIV(x,y)                                                           \
+#define GB_IDIV(x,y)                                                        \
 (                                                                           \
-    (IS_SIGNED (x)) ?                                                       \
+    (GB_IS_SIGNED (x)) ?                                                    \
     (                                                                       \
-        SIGNED_INTEGER_DIVISION (x,y)                                       \
+        GB_SIGNED_INTEGER_DIVISION (x,y)                                    \
     )                                                                       \
     :                                                                       \
     (                                                                       \
-        UNSIGNED_INTEGER_DIVISION (x,y)                                     \
+        GB_UNSIGNED_INTEGER_DIVISION (x,y)                                  \
     )                                                                       \
 )
 
 // 1/y when y is signed or unsigned integer
-#define IMINV(y)                                                            \
+#define GB_IMINV(y)                                                         \
 (                                                                           \
     ((y) == 0) ?                                                            \
     (                                                                       \
         /* 1/0 */                                                           \
-        PLUS_INF (y)                                                        \
+        GB_PLUS_INF (y)                                                     \
     )                                                                       \
     :                                                                       \
     (                                                                       \
@@ -2505,9 +2592,9 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // smallest integer, and NaN to zero.  This is the same behavior as MATLAB.
 
 // cast a value x to the type of z
-#define CAST(z,x)                                                           \
+#define GB_CAST(z,x)                                                        \
 {                                                                           \
-    if (IS_INTEGER (z) && IS_FLOAT (x))                                     \
+    if (GB_IS_INTEGER (z) && GB_IS_FLOAT (x))                               \
     {                                                                       \
         switch (fpclassify ((double) (x)))                                  \
         {                                                                   \
@@ -2520,7 +2607,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
                 z = 0 ;                                                     \
                 break ;                                                     \
             case FP_INFINITE:                                               \
-                z = ((x) > 0) ? PLUS_INF (z) : MINUS_INF (z) ;              \
+                z = ((x) > 0) ? GB_PLUS_INF (z) : GB_MINUS_INF (z) ;        \
                 break ;                                                     \
         }                                                                   \
     }                                                                       \
@@ -2530,7 +2617,6 @@ void GB_wfree ( ) ;                 // free all thread-local storage
         z = (x) ;                                                           \
     }                                                                       \
 }
-
 
 //------------------------------------------------------------------------------
 // GB_BINARY_SEARCH
@@ -2610,7 +2696,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     while (pleft < pright)                                                  \
     {                                                                       \
         int64_t pmiddle = (pleft + pright) / 2 ;                            \
-        if (i > UNFLIP (X [pmiddle]))                                       \
+        if (i > GB_UNFLIP (X [pmiddle]))                                    \
         {                                                                   \
             /* if in the list, it appears in [pmiddle+1..pright] */         \
             pleft = pmiddle + 1 ;                                           \
@@ -2636,10 +2722,10 @@ void GB_wfree ( ) ;                 // free all thread-local storage
         if (pleft == pright)                                                \
         {                                                                   \
             int64_t i2 = X [pleft] ;                                        \
-            is_zombie = IS_ZOMBIE (i2) ;                                    \
+            is_zombie = GB_IS_ZOMBIE (i2) ;                                 \
             if (is_zombie)                                                  \
             {                                                               \
-                i2 = FLIP (i2) ;                                            \
+                i2 = GB_FLIP (i2) ;                                         \
             }                                                               \
             found = (i == i2) ;                                             \
         }                                                                   \
@@ -2904,8 +2990,8 @@ static inline void GB_bracket
     GB_bracket_right (imax, X, kleft, &kright) ;
 
     // list has been trimmed
-    ASSERT (IMPLIES (kleft > kleft_in, X [kleft-1] < imin)) ;
-    ASSERT (IMPLIES (kright < kright_in, imax < X [kright+1])) ;
+    ASSERT (GB_IMPLIES (kleft > kleft_in, X [kleft-1] < imin)) ;
+    ASSERT (GB_IMPLIES (kright < kright_in, imax < X [kright+1])) ;
 
     // return result
     (*kleft_new ) = kleft ;
@@ -2951,19 +3037,17 @@ static inline void GB_bracket
 // if x = 2, z=min(3,x) is 2.  Since z depends on x, z should be NaN if x is
 // NaN.
 
-// suitable for all types, but given unique names to match IMIN, FMIN:
-#define IABS(x) (((x) >= 0) ? (x) : (-(x)))
-#define FABS(x) (((x) >= 0) ? (x) : (-(x)))
+// suitable for all types, but given unique names to match GB_IMIN, GB_FMIN:
+#define GB_IABS(x) (((x) >= 0) ? (x) : (-(x)))
+#define GB_FABS(x) (((x) >= 0) ? (x) : (-(x)))
 
 // suitable for integers, and non-NaN floating point:
-#define IMAX(x,y) (((x) > (y)) ? (x) : (y))
-#define IMIN(x,y) (((x) < (y)) ? (x) : (y))
+#define GB_IMAX(x,y) (((x) > (y)) ? (x) : (y))
+#define GB_IMIN(x,y) (((x) < (y)) ? (x) : (y))
 
-// MIN for floating-point, same as min(x,y,'includenan') in MATLAB
-#define FMIN(x,y) ((isnan (x) || isnan (y)) ? NAN : IMIN (x,y))
-
-// MAX for floating-point, same as max(x,y,'includenan') in MATLAB
-#define FMAX(x,y) ((isnan (x) || isnan (y)) ? NAN : IMAX (x,y))
+// for floating-point, same as min(x,y,'includenan') and max(...) in MATLAB
+#define GB_FMIN(x,y) ((isnan (x) || isnan (y)) ? NAN : GB_IMIN (x,y))
+#define GB_FMAX(x,y) ((isnan (x) || isnan (y)) ? NAN : GB_IMAX (x,y))
 
 //==============================================================================
 // GrB_Matrix iterator and related functions
@@ -3226,7 +3310,7 @@ static inline void GBI2s_init
 
 // Test the condition for a loop over one, two, or three matrices and
 // prepare to access the vector at each matrix.  The inline
-// GBI#_while functions are only used in the each_vector* macros.
+// GBI#_while functions are only used in the GB_each_vector* macros.
 
 // get the index of the next vector in a given matrix
 #define GBI_jjget(Iter,matrix)                                              \
@@ -3296,8 +3380,8 @@ static inline bool GBI3_while
         GBI_jjget (Iter, 0) ;
         GBI_jjget (Iter, 1) ;
         GBI_jjget (Iter, 2) ;
-        Iter->j = IMIN (Iter->jj [0], Iter->jj [1]) ;
-        Iter->j = IMIN (Iter->j     , Iter->jj [2]) ;
+        Iter->j = GB_IMIN (Iter->jj [0], Iter->jj [1]) ;
+        Iter->j = GB_IMIN (Iter->j     , Iter->jj [2]) ;
 
         // test if the end of the matrix has been reached
         if (Iter->j >= Iter->vdim) return (false) ;
@@ -3361,7 +3445,7 @@ static inline bool GBI2_while
         // get next vector from A and/or B
         GBI_jjget (Iter, 0) ;
         GBI_jjget (Iter, 1) ;
-        Iter->j = IMIN (Iter->jj [0], Iter->jj [1]) ;
+        Iter->j = GB_IMIN (Iter->jj [0], Iter->jj [1]) ;
 
         // test if the end of the matrix has been reached
         if (Iter->j >= Iter->vdim) return (false) ;
@@ -3452,7 +3536,7 @@ static inline bool GBI1_while
 //------------------------------------------------------------------------------
 
 // Advance to the next vector of one, two, or three matrices.  The inline
-// GBI#_next functions are only used in the each_vector* macros.
+// GBI#_next functions are only used in the GB_each_vector* macros.
 
 #define GBI_jnext(Iter,matrix)                                                \
 {                                                                             \
@@ -3561,8 +3645,8 @@ static inline void GBI1_next
 
 // Get the column at the current iteration, and the start/end pointers
 // of column j in the three matrices A, B, and C.  These macros are used
-// in the for (each_entry (...)) loop, and also at the start of the
-// body of the for (each_vector (...)) loops, outside of this file.
+// in the for (GB_each_entry (...)) loop, and also at the start of the
+// body of the for (GB_each_vector (...)) loops, outside of this file.
 
 #define GBI3_initj(Iter,j_,pstart0,pend0,pstart1,pend1,pstart2,pend2)  \
     j_      = Iter.j,                                                  \
@@ -3596,60 +3680,60 @@ static inline void GBI1_next
 //------------------------------------------------------------------------------
 
 // iterate over one matrix A
-#define each_vector(Iter,A)                                                 \
+#define GB_each_vector(Iter,A)                                                 \
     GBI1_init (&Iter,A)     ; GBI1_while (&Iter)  ; GBI1_next (&Iter)
 
-#define for_each_vector(A)                                                  \
+#define GB_for_each_vector(A)                                                  \
     GBI_iterator Iter ;                                                     \
-    for (each_vector (Iter, A))
+    for (GB_each_vector (Iter, A))
 
 // iterate the union of two matrices A and B
-#define each_vector2(Iter,A,B)                                              \
+#define GB_each_vector2(Iter,A,B)                                              \
     GBI2_init (&Iter,A,B)   ; GBI2_while (&Iter)  ; GBI2_next (&Iter)
 
-#define for_each_vector2(A,B)                                               \
+#define GB_for_each_vector2(A,B)                                               \
     GBI_iterator Iter ;                                                     \
-    for (each_vector2 (Iter, A, B))
+    for (GB_each_vector2 (Iter, A, B))
 
 // iterate the union of one or two matrices A and B.  B may be NULL.
-#define each_vector2m(Iter,A,B)                                             \
+#define GB_each_vector2m(Iter,A,B)                                             \
     (B == NULL) ? GBI1_init  (&Iter,A) : GBI2_init  (&Iter,A,B) ;           \
     (B == NULL) ? GBI1_while (&Iter)   : GBI2_while (&Iter)    ;            \
     (B == NULL) ? GBI1_next  (&Iter)   : GBI2_next  (&Iter)
 
-#define for_each_vector2m(A,B)                                              \
+#define GB_for_each_vector2m(A,B)                                              \
     GBI_iterator Iter ;                                                     \
-    for (each_vector2m (Iter, A, B))
+    for (GB_each_vector2m (Iter, A, B))
 
 // iterate the union of three matrices A, B, and C
-#define each_vector3(Iter,A,B,C)                                            \
+#define GB_each_vector3(Iter,A,B,C)                                            \
     GBI3_init (&Iter,A,B,C) ; GBI3_while (&Iter)  ; GBI3_next (&Iter)
 
-#define for_each_vector3(A,B,C)                                             \
+#define GB_for_each_vector3(A,B,C)                                             \
     GBI_iterator Iter ;                                                     \
-    for (each_vector3 (Iter, A, B, C))
+    for (GB_each_vector3 (Iter, A, B, C))
 
 // iterate over a matrix A and an implicit expanded scalar
-#define each_vector2s(Iter,A)                                               \
+#define GB_each_vector2s(Iter,A)                                               \
     GBI2s_init (&Iter,A)    ; GBI2s_while (&Iter) ; GBI2s_next (&Iter)
 
-#define for_each_vector2s(A)                                                \
+#define GB_for_each_vector2s(A)                                                \
     GBI_iterator Iter ;                                                     \
-    for (each_vector2s (Iter, A))
+    for (GB_each_vector2s (Iter, A))
 
 // iterate over two matrices A and B, and an implicit expanded scalar
-#define each_vector3s(Iter,A,B)                                             \
+#define GB_each_vector3s(Iter,A,B)                                             \
     GBI3s_init (&Iter,A,B)  ; GBI3s_while (&Iter) ; GBI3s_next (&Iter)
 
-#define for_each_vector3s(A,B)                                              \
+#define GB_for_each_vector3s(A,B)                                              \
     GBI_iterator Iter ;                                                     \
-    for (each_vector3s (Iter, A, B))
+    for (GB_each_vector3s (Iter, A, B))
 
 // iterate over a vector of a single matrix
-#define each_entry(Iter,j,p,pend)                                           \
+#define GB_each_entry(Iter,j,p,pend)                                           \
     int64_t GBI1_initj (Iter, j, p, pend) ; (p) < (pend) ; (p)++
 
-#define for_each_entry(j,p,pend)                                            \
+#define GB_for_each_entry(j,p,pend)                                            \
     int64_t GBI1_initj (Iter, j, p, pend) ;                                 \
     for ( ; (p) < (pend) ; (p)++)
 
@@ -3742,7 +3826,8 @@ static inline GrB_Info GB_jappend
         if (C->nvec == C->plen)
         { 
             // double the size of C->h and C->p
-            GrB_Info info = GB_hyper_realloc (C, IMIN (C->vdim, 2*(C->plen+1)));
+            GrB_Info info ;
+            info = GB_hyper_realloc (C, GB_IMIN (C->vdim, 2*(C->plen+1))) ;
             if (info != GrB_SUCCESS)
             { 
                 return (info) ;
@@ -3826,8 +3911,1815 @@ static inline void GB_jwrapup
     }
 
     // C->p and C->h are now valid
-    C->magic = MAGIC ;
+    C->magic = GB_MAGIC ;
 }
+
+//------------------------------------------------------------------------------
+// built-in unary and binary operators
+//------------------------------------------------------------------------------
+
+#define GB_TYPE             bool
+#define GB_BOOLEAN
+#define GB(x)               GB_ ## x ## _BOOL
+#define GB_CAST_NAME(x)     GB_cast_bool_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             int8_t
+#define GB(x)               GB_ ## x ## _INT8
+#define GB_CAST_NAME(x)     GB_cast_int8_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             uint8_t
+#define GB_UNSIGNED
+#define GB(x)               GB_ ## x ## _UINT8
+#define GB_CAST_NAME(x)     GB_cast_uint8_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             int16_t
+#define GB(x)               GB_ ## x ## _INT16
+#define GB_CAST_NAME(x)     GB_cast_int16_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             uint16_t
+#define GB_UNSIGNED
+#define GB(x)               GB_ ## x ## _UINT16
+#define GB_CAST_NAME(x)     GB_cast_uint16_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             int32_t
+#define GB(x)               GB_ ## x ## _INT32
+#define GB_CAST_NAME(x)     GB_cast_int32_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             uint32_t
+#define GB_UNSIGNED
+#define GB(x)               GB_ ## x ## _UINT32
+#define GB_CAST_NAME(x)     GB_cast_uint32_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             int64_t
+#define GB(x)               GB_ ## x ## _INT64
+#define GB_CAST_NAME(x)     GB_cast_int64_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             uint64_t
+#define GB_UNSIGNED
+#define GB(x)               GB_ ## x ## _UINT64
+#define GB_CAST_NAME(x)     GB_cast_uint64_t_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             float
+#define GB_FLOATING_POINT
+#define GB(x)               GB_ ## x ## _FP32
+#define GB_CAST_NAME(x)     GB_cast_float_ ## x
+#include "GB_ops_template.h"
+
+#define GB_TYPE             double
+#define GB_FLOATING_POINT
+#define GB(x)               GB_ ## x ## _FP64
+#define GB_CAST_NAME(x)     GB_cast_double_ ## x
+#include "GB_ops_template.h"
+
+inline void GB_copy_user_user (void *z, const void *x, size_t s)
+{ 
+    memcpy (z, x, s) ;
+}
+
+//------------------------------------------------------------------------------
+// definitions of built-in types and functions, used by user-defined objects
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------
+// built-in types
+//------------------------------------------------------
+
+#define GB_DEF_GrB_BOOL_type bool
+#define GB_DEF_GrB_INT8_type int8_t
+#define GB_DEF_GrB_UINT8_type uint8_t
+#define GB_DEF_GrB_INT16_type int16_t
+#define GB_DEF_GrB_UINT16_type uint16_t
+#define GB_DEF_GrB_INT32_type int32_t
+#define GB_DEF_GrB_UINT32_type uint32_t
+#define GB_DEF_GrB_INT64_type int64_t
+#define GB_DEF_GrB_UINT64_type uint64_t
+#define GB_DEF_GrB_FP32_type float
+#define GB_DEF_GrB_FP64_type double
+
+//------------------------------------------------------
+// built-in unary operators
+//------------------------------------------------------
+
+// op: IDENTITY
+#define GB_DEF_GrB_IDENTITY_BOOL_function GB_IDENTITY_f_BOOL
+#define GB_DEF_GrB_IDENTITY_BOOL_ztype bool
+#define GB_DEF_GrB_IDENTITY_BOOL_xtype bool
+
+#define GB_DEF_GrB_IDENTITY_INT8_function GB_IDENTITY_f_INT8
+#define GB_DEF_GrB_IDENTITY_INT8_ztype int8_t
+#define GB_DEF_GrB_IDENTITY_INT8_xtype int8_t
+
+#define GB_DEF_GrB_IDENTITY_UINT8_function GB_IDENTITY_f_UINT8
+#define GB_DEF_GrB_IDENTITY_UINT8_ztype uint8_t
+#define GB_DEF_GrB_IDENTITY_UINT8_xtype uint8_t
+
+#define GB_DEF_GrB_IDENTITY_INT16_function GB_IDENTITY_f_INT16
+#define GB_DEF_GrB_IDENTITY_INT16_ztype int16_t
+#define GB_DEF_GrB_IDENTITY_INT16_xtype int16_t
+
+#define GB_DEF_GrB_IDENTITY_UINT16_function GB_IDENTITY_f_UINT16
+#define GB_DEF_GrB_IDENTITY_UINT16_ztype uint16_t
+#define GB_DEF_GrB_IDENTITY_UINT16_xtype uint16_t
+
+#define GB_DEF_GrB_IDENTITY_INT32_function GB_IDENTITY_f_INT32
+#define GB_DEF_GrB_IDENTITY_INT32_ztype int32_t
+#define GB_DEF_GrB_IDENTITY_INT32_xtype int32_t
+
+#define GB_DEF_GrB_IDENTITY_UINT32_function GB_IDENTITY_f_UINT32
+#define GB_DEF_GrB_IDENTITY_UINT32_ztype uint32_t
+#define GB_DEF_GrB_IDENTITY_UINT32_xtype uint32_t
+
+#define GB_DEF_GrB_IDENTITY_INT64_function GB_IDENTITY_f_INT64
+#define GB_DEF_GrB_IDENTITY_INT64_ztype int64_t
+#define GB_DEF_GrB_IDENTITY_INT64_xtype int64_t
+
+#define GB_DEF_GrB_IDENTITY_UINT64_function GB_IDENTITY_f_UINT64
+#define GB_DEF_GrB_IDENTITY_UINT64_ztype uint64_t
+#define GB_DEF_GrB_IDENTITY_UINT64_xtype uint64_t
+
+#define GB_DEF_GrB_IDENTITY_FP32_function GB_IDENTITY_f_FP32
+#define GB_DEF_GrB_IDENTITY_FP32_ztype float
+#define GB_DEF_GrB_IDENTITY_FP32_xtype float
+
+#define GB_DEF_GrB_IDENTITY_FP64_function GB_IDENTITY_f_FP64
+#define GB_DEF_GrB_IDENTITY_FP64_ztype double
+#define GB_DEF_GrB_IDENTITY_FP64_xtype double
+
+// op: AINV
+#define GB_DEF_GrB_AINV_BOOL_function GB_AINV_f_BOOL
+#define GB_DEF_GrB_AINV_BOOL_ztype bool
+#define GB_DEF_GrB_AINV_BOOL_xtype bool
+
+#define GB_DEF_GrB_AINV_INT8_function GB_AINV_f_INT8
+#define GB_DEF_GrB_AINV_INT8_ztype int8_t
+#define GB_DEF_GrB_AINV_INT8_xtype int8_t
+
+#define GB_DEF_GrB_AINV_UINT8_function GB_AINV_f_UINT8
+#define GB_DEF_GrB_AINV_UINT8_ztype uint8_t
+#define GB_DEF_GrB_AINV_UINT8_xtype uint8_t
+
+#define GB_DEF_GrB_AINV_INT16_function GB_AINV_f_INT16
+#define GB_DEF_GrB_AINV_INT16_ztype int16_t
+#define GB_DEF_GrB_AINV_INT16_xtype int16_t
+
+#define GB_DEF_GrB_AINV_UINT16_function GB_AINV_f_UINT16
+#define GB_DEF_GrB_AINV_UINT16_ztype uint16_t
+#define GB_DEF_GrB_AINV_UINT16_xtype uint16_t
+
+#define GB_DEF_GrB_AINV_INT32_function GB_AINV_f_INT32
+#define GB_DEF_GrB_AINV_INT32_ztype int32_t
+#define GB_DEF_GrB_AINV_INT32_xtype int32_t
+
+#define GB_DEF_GrB_AINV_UINT32_function GB_AINV_f_UINT32
+#define GB_DEF_GrB_AINV_UINT32_ztype uint32_t
+#define GB_DEF_GrB_AINV_UINT32_xtype uint32_t
+
+#define GB_DEF_GrB_AINV_INT64_function GB_AINV_f_INT64
+#define GB_DEF_GrB_AINV_INT64_ztype int64_t
+#define GB_DEF_GrB_AINV_INT64_xtype int64_t
+
+#define GB_DEF_GrB_AINV_UINT64_function GB_AINV_f_UINT64
+#define GB_DEF_GrB_AINV_UINT64_ztype uint64_t
+#define GB_DEF_GrB_AINV_UINT64_xtype uint64_t
+
+#define GB_DEF_GrB_AINV_FP32_function GB_AINV_f_FP32
+#define GB_DEF_GrB_AINV_FP32_ztype float
+#define GB_DEF_GrB_AINV_FP32_xtype float
+
+#define GB_DEF_GrB_AINV_FP64_function GB_AINV_f_FP64
+#define GB_DEF_GrB_AINV_FP64_ztype double
+#define GB_DEF_GrB_AINV_FP64_xtype double
+
+// op: MINV
+#define GB_DEF_GrB_MINV_BOOL_function GB_MINV_f_BOOL
+#define GB_DEF_GrB_MINV_BOOL_ztype bool
+#define GB_DEF_GrB_MINV_BOOL_xtype bool
+
+#define GB_DEF_GrB_MINV_INT8_function GB_MINV_f_INT8
+#define GB_DEF_GrB_MINV_INT8_ztype int8_t
+#define GB_DEF_GrB_MINV_INT8_xtype int8_t
+
+#define GB_DEF_GrB_MINV_UINT8_function GB_MINV_f_UINT8
+#define GB_DEF_GrB_MINV_UINT8_ztype uint8_t
+#define GB_DEF_GrB_MINV_UINT8_xtype uint8_t
+
+#define GB_DEF_GrB_MINV_INT16_function GB_MINV_f_INT16
+#define GB_DEF_GrB_MINV_INT16_ztype int16_t
+#define GB_DEF_GrB_MINV_INT16_xtype int16_t
+
+#define GB_DEF_GrB_MINV_UINT16_function GB_MINV_f_UINT16
+#define GB_DEF_GrB_MINV_UINT16_ztype uint16_t
+#define GB_DEF_GrB_MINV_UINT16_xtype uint16_t
+
+#define GB_DEF_GrB_MINV_INT32_function GB_MINV_f_INT32
+#define GB_DEF_GrB_MINV_INT32_ztype int32_t
+#define GB_DEF_GrB_MINV_INT32_xtype int32_t
+
+#define GB_DEF_GrB_MINV_UINT32_function GB_MINV_f_UINT32
+#define GB_DEF_GrB_MINV_UINT32_ztype uint32_t
+#define GB_DEF_GrB_MINV_UINT32_xtype uint32_t
+
+#define GB_DEF_GrB_MINV_INT64_function GB_MINV_f_INT64
+#define GB_DEF_GrB_MINV_INT64_ztype int64_t
+#define GB_DEF_GrB_MINV_INT64_xtype int64_t
+
+#define GB_DEF_GrB_MINV_UINT64_function GB_MINV_f_UINT64
+#define GB_DEF_GrB_MINV_UINT64_ztype uint64_t
+#define GB_DEF_GrB_MINV_UINT64_xtype uint64_t
+
+#define GB_DEF_GrB_MINV_FP32_function GB_MINV_f_FP32
+#define GB_DEF_GrB_MINV_FP32_ztype float
+#define GB_DEF_GrB_MINV_FP32_xtype float
+
+#define GB_DEF_GrB_MINV_FP64_function GB_MINV_f_FP64
+#define GB_DEF_GrB_MINV_FP64_ztype double
+#define GB_DEF_GrB_MINV_FP64_xtype double
+
+// op: LNOT
+#define GB_DEF_GxB_LNOT_BOOL_function GB_LNOT_f_BOOL
+#define GB_DEF_GxB_LNOT_BOOL_ztype bool
+#define GB_DEF_GxB_LNOT_BOOL_xtype bool
+
+#define GB_DEF_GxB_LNOT_INT8_function GB_LNOT_f_INT8
+#define GB_DEF_GxB_LNOT_INT8_ztype int8_t
+#define GB_DEF_GxB_LNOT_INT8_xtype int8_t
+
+#define GB_DEF_GxB_LNOT_UINT8_function GB_LNOT_f_UINT8
+#define GB_DEF_GxB_LNOT_UINT8_ztype uint8_t
+#define GB_DEF_GxB_LNOT_UINT8_xtype uint8_t
+
+#define GB_DEF_GxB_LNOT_INT16_function GB_LNOT_f_INT16
+#define GB_DEF_GxB_LNOT_INT16_ztype int16_t
+#define GB_DEF_GxB_LNOT_INT16_xtype int16_t
+
+#define GB_DEF_GxB_LNOT_UINT16_function GB_LNOT_f_UINT16
+#define GB_DEF_GxB_LNOT_UINT16_ztype uint16_t
+#define GB_DEF_GxB_LNOT_UINT16_xtype uint16_t
+
+#define GB_DEF_GxB_LNOT_INT32_function GB_LNOT_f_INT32
+#define GB_DEF_GxB_LNOT_INT32_ztype int32_t
+#define GB_DEF_GxB_LNOT_INT32_xtype int32_t
+
+#define GB_DEF_GxB_LNOT_UINT32_function GB_LNOT_f_UINT32
+#define GB_DEF_GxB_LNOT_UINT32_ztype uint32_t
+#define GB_DEF_GxB_LNOT_UINT32_xtype uint32_t
+
+#define GB_DEF_GxB_LNOT_INT64_function GB_LNOT_f_INT64
+#define GB_DEF_GxB_LNOT_INT64_ztype int64_t
+#define GB_DEF_GxB_LNOT_INT64_xtype int64_t
+
+#define GB_DEF_GxB_LNOT_UINT64_function GB_LNOT_f_UINT64
+#define GB_DEF_GxB_LNOT_UINT64_ztype uint64_t
+#define GB_DEF_GxB_LNOT_UINT64_xtype uint64_t
+
+#define GB_DEF_GxB_LNOT_FP32_function GB_LNOT_f_FP32
+#define GB_DEF_GxB_LNOT_FP32_ztype float
+#define GB_DEF_GxB_LNOT_FP32_xtype float
+
+#define GB_DEF_GxB_LNOT_FP64_function GB_LNOT_f_FP64
+#define GB_DEF_GxB_LNOT_FP64_ztype double
+#define GB_DEF_GxB_LNOT_FP64_xtype double
+
+// op: ONE
+#define GB_DEF_GxB_ONE_BOOL_function GB_ONE_f_BOOL
+#define GB_DEF_GxB_ONE_BOOL_ztype bool
+#define GB_DEF_GxB_ONE_BOOL_xtype bool
+
+#define GB_DEF_GxB_ONE_INT8_function GB_ONE_f_INT8
+#define GB_DEF_GxB_ONE_INT8_ztype int8_t
+#define GB_DEF_GxB_ONE_INT8_xtype int8_t
+
+#define GB_DEF_GxB_ONE_UINT8_function GB_ONE_f_UINT8
+#define GB_DEF_GxB_ONE_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ONE_UINT8_xtype uint8_t
+
+#define GB_DEF_GxB_ONE_INT16_function GB_ONE_f_INT16
+#define GB_DEF_GxB_ONE_INT16_ztype int16_t
+#define GB_DEF_GxB_ONE_INT16_xtype int16_t
+
+#define GB_DEF_GxB_ONE_UINT16_function GB_ONE_f_UINT16
+#define GB_DEF_GxB_ONE_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ONE_UINT16_xtype uint16_t
+
+#define GB_DEF_GxB_ONE_INT32_function GB_ONE_f_INT32
+#define GB_DEF_GxB_ONE_INT32_ztype int32_t
+#define GB_DEF_GxB_ONE_INT32_xtype int32_t
+
+#define GB_DEF_GxB_ONE_UINT32_function GB_ONE_f_UINT32
+#define GB_DEF_GxB_ONE_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ONE_UINT32_xtype uint32_t
+
+#define GB_DEF_GxB_ONE_INT64_function GB_ONE_f_INT64
+#define GB_DEF_GxB_ONE_INT64_ztype int64_t
+#define GB_DEF_GxB_ONE_INT64_xtype int64_t
+
+#define GB_DEF_GxB_ONE_UINT64_function GB_ONE_f_UINT64
+#define GB_DEF_GxB_ONE_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ONE_UINT64_xtype uint64_t
+
+#define GB_DEF_GxB_ONE_FP32_function GB_ONE_f_FP32
+#define GB_DEF_GxB_ONE_FP32_ztype float
+#define GB_DEF_GxB_ONE_FP32_xtype float
+
+#define GB_DEF_GxB_ONE_FP64_function GB_ONE_f_FP64
+#define GB_DEF_GxB_ONE_FP64_ztype double
+#define GB_DEF_GxB_ONE_FP64_xtype double
+
+// op: ABS
+#define GB_DEF_GxB_ABS_BOOL_function GB_ABS_f_BOOL
+#define GB_DEF_GxB_ABS_BOOL_ztype bool
+#define GB_DEF_GxB_ABS_BOOL_xtype bool
+
+#define GB_DEF_GxB_ABS_INT8_function GB_ABS_f_INT8
+#define GB_DEF_GxB_ABS_INT8_ztype int8_t
+#define GB_DEF_GxB_ABS_INT8_xtype int8_t
+
+#define GB_DEF_GxB_ABS_UINT8_function GB_ABS_f_UINT8
+#define GB_DEF_GxB_ABS_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ABS_UINT8_xtype uint8_t
+
+#define GB_DEF_GxB_ABS_INT16_function GB_ABS_f_INT16
+#define GB_DEF_GxB_ABS_INT16_ztype int16_t
+#define GB_DEF_GxB_ABS_INT16_xtype int16_t
+
+#define GB_DEF_GxB_ABS_UINT16_function GB_ABS_f_UINT16
+#define GB_DEF_GxB_ABS_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ABS_UINT16_xtype uint16_t
+
+#define GB_DEF_GxB_ABS_INT32_function GB_ABS_f_INT32
+#define GB_DEF_GxB_ABS_INT32_ztype int32_t
+#define GB_DEF_GxB_ABS_INT32_xtype int32_t
+
+#define GB_DEF_GxB_ABS_UINT32_function GB_ABS_f_UINT32
+#define GB_DEF_GxB_ABS_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ABS_UINT32_xtype uint32_t
+
+#define GB_DEF_GxB_ABS_INT64_function GB_ABS_f_INT64
+#define GB_DEF_GxB_ABS_INT64_ztype int64_t
+#define GB_DEF_GxB_ABS_INT64_xtype int64_t
+
+#define GB_DEF_GxB_ABS_UINT64_function GB_ABS_f_UINT64
+#define GB_DEF_GxB_ABS_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ABS_UINT64_xtype uint64_t
+
+#define GB_DEF_GxB_ABS_FP32_function GB_ABS_f_FP32
+#define GB_DEF_GxB_ABS_FP32_ztype float
+#define GB_DEF_GxB_ABS_FP32_xtype float
+
+#define GB_DEF_GxB_ABS_FP64_function GB_ABS_f_FP64
+#define GB_DEF_GxB_ABS_FP64_ztype double
+#define GB_DEF_GxB_ABS_FP64_xtype double
+
+#define GB_DEF_GrB_LNOT_function GB_LNOT_f_BOOL
+#define GB_DEF_GrB_LNOT_ztype bool
+#define GB_DEF_GrB_LNOT_xtype bool
+
+//------------------------------------------------------
+// binary operators of the form z=f(x,y): TxT -> T
+//------------------------------------------------------
+
+// op: FIRST
+#define GB_DEF_GrB_FIRST_BOOL_function GB_FIRST_f_BOOL
+#define GB_DEF_GrB_FIRST_BOOL_ztype bool
+#define GB_DEF_GrB_FIRST_BOOL_xtype bool
+#define GB_DEF_GrB_FIRST_BOOL_ytype bool
+
+#define GB_DEF_GrB_FIRST_INT8_function GB_FIRST_f_INT8
+#define GB_DEF_GrB_FIRST_INT8_ztype int8_t
+#define GB_DEF_GrB_FIRST_INT8_xtype int8_t
+#define GB_DEF_GrB_FIRST_INT8_ytype int8_t
+
+#define GB_DEF_GrB_FIRST_UINT8_function GB_FIRST_f_UINT8
+#define GB_DEF_GrB_FIRST_UINT8_ztype uint8_t
+#define GB_DEF_GrB_FIRST_UINT8_xtype uint8_t
+#define GB_DEF_GrB_FIRST_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_FIRST_INT16_function GB_FIRST_f_INT16
+#define GB_DEF_GrB_FIRST_INT16_ztype int16_t
+#define GB_DEF_GrB_FIRST_INT16_xtype int16_t
+#define GB_DEF_GrB_FIRST_INT16_ytype int16_t
+
+#define GB_DEF_GrB_FIRST_UINT16_function GB_FIRST_f_UINT16
+#define GB_DEF_GrB_FIRST_UINT16_ztype uint16_t
+#define GB_DEF_GrB_FIRST_UINT16_xtype uint16_t
+#define GB_DEF_GrB_FIRST_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_FIRST_INT32_function GB_FIRST_f_INT32
+#define GB_DEF_GrB_FIRST_INT32_ztype int32_t
+#define GB_DEF_GrB_FIRST_INT32_xtype int32_t
+#define GB_DEF_GrB_FIRST_INT32_ytype int32_t
+
+#define GB_DEF_GrB_FIRST_UINT32_function GB_FIRST_f_UINT32
+#define GB_DEF_GrB_FIRST_UINT32_ztype uint32_t
+#define GB_DEF_GrB_FIRST_UINT32_xtype uint32_t
+#define GB_DEF_GrB_FIRST_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_FIRST_INT64_function GB_FIRST_f_INT64
+#define GB_DEF_GrB_FIRST_INT64_ztype int64_t
+#define GB_DEF_GrB_FIRST_INT64_xtype int64_t
+#define GB_DEF_GrB_FIRST_INT64_ytype int64_t
+
+#define GB_DEF_GrB_FIRST_UINT64_function GB_FIRST_f_UINT64
+#define GB_DEF_GrB_FIRST_UINT64_ztype uint64_t
+#define GB_DEF_GrB_FIRST_UINT64_xtype uint64_t
+#define GB_DEF_GrB_FIRST_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_FIRST_FP32_function GB_FIRST_f_FP32
+#define GB_DEF_GrB_FIRST_FP32_ztype float
+#define GB_DEF_GrB_FIRST_FP32_xtype float
+#define GB_DEF_GrB_FIRST_FP32_ytype float
+
+#define GB_DEF_GrB_FIRST_FP64_function GB_FIRST_f_FP64
+#define GB_DEF_GrB_FIRST_FP64_ztype double
+#define GB_DEF_GrB_FIRST_FP64_xtype double
+#define GB_DEF_GrB_FIRST_FP64_ytype double
+
+// op: SECOND
+#define GB_DEF_GrB_SECOND_BOOL_function GB_SECOND_f_BOOL
+#define GB_DEF_GrB_SECOND_BOOL_ztype bool
+#define GB_DEF_GrB_SECOND_BOOL_xtype bool
+#define GB_DEF_GrB_SECOND_BOOL_ytype bool
+
+#define GB_DEF_GrB_SECOND_INT8_function GB_SECOND_f_INT8
+#define GB_DEF_GrB_SECOND_INT8_ztype int8_t
+#define GB_DEF_GrB_SECOND_INT8_xtype int8_t
+#define GB_DEF_GrB_SECOND_INT8_ytype int8_t
+
+#define GB_DEF_GrB_SECOND_UINT8_function GB_SECOND_f_UINT8
+#define GB_DEF_GrB_SECOND_UINT8_ztype uint8_t
+#define GB_DEF_GrB_SECOND_UINT8_xtype uint8_t
+#define GB_DEF_GrB_SECOND_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_SECOND_INT16_function GB_SECOND_f_INT16
+#define GB_DEF_GrB_SECOND_INT16_ztype int16_t
+#define GB_DEF_GrB_SECOND_INT16_xtype int16_t
+#define GB_DEF_GrB_SECOND_INT16_ytype int16_t
+
+#define GB_DEF_GrB_SECOND_UINT16_function GB_SECOND_f_UINT16
+#define GB_DEF_GrB_SECOND_UINT16_ztype uint16_t
+#define GB_DEF_GrB_SECOND_UINT16_xtype uint16_t
+#define GB_DEF_GrB_SECOND_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_SECOND_INT32_function GB_SECOND_f_INT32
+#define GB_DEF_GrB_SECOND_INT32_ztype int32_t
+#define GB_DEF_GrB_SECOND_INT32_xtype int32_t
+#define GB_DEF_GrB_SECOND_INT32_ytype int32_t
+
+#define GB_DEF_GrB_SECOND_UINT32_function GB_SECOND_f_UINT32
+#define GB_DEF_GrB_SECOND_UINT32_ztype uint32_t
+#define GB_DEF_GrB_SECOND_UINT32_xtype uint32_t
+#define GB_DEF_GrB_SECOND_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_SECOND_INT64_function GB_SECOND_f_INT64
+#define GB_DEF_GrB_SECOND_INT64_ztype int64_t
+#define GB_DEF_GrB_SECOND_INT64_xtype int64_t
+#define GB_DEF_GrB_SECOND_INT64_ytype int64_t
+
+#define GB_DEF_GrB_SECOND_UINT64_function GB_SECOND_f_UINT64
+#define GB_DEF_GrB_SECOND_UINT64_ztype uint64_t
+#define GB_DEF_GrB_SECOND_UINT64_xtype uint64_t
+#define GB_DEF_GrB_SECOND_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_SECOND_FP32_function GB_SECOND_f_FP32
+#define GB_DEF_GrB_SECOND_FP32_ztype float
+#define GB_DEF_GrB_SECOND_FP32_xtype float
+#define GB_DEF_GrB_SECOND_FP32_ytype float
+
+#define GB_DEF_GrB_SECOND_FP64_function GB_SECOND_f_FP64
+#define GB_DEF_GrB_SECOND_FP64_ztype double
+#define GB_DEF_GrB_SECOND_FP64_xtype double
+#define GB_DEF_GrB_SECOND_FP64_ytype double
+
+// op: MIN
+#define GB_DEF_GrB_MIN_BOOL_function GB_MIN_f_BOOL
+#define GB_DEF_GrB_MIN_BOOL_ztype bool
+#define GB_DEF_GrB_MIN_BOOL_xtype bool
+#define GB_DEF_GrB_MIN_BOOL_ytype bool
+
+#define GB_DEF_GrB_MIN_INT8_function GB_MIN_f_INT8
+#define GB_DEF_GrB_MIN_INT8_ztype int8_t
+#define GB_DEF_GrB_MIN_INT8_xtype int8_t
+#define GB_DEF_GrB_MIN_INT8_ytype int8_t
+
+#define GB_DEF_GrB_MIN_UINT8_function GB_MIN_f_UINT8
+#define GB_DEF_GrB_MIN_UINT8_ztype uint8_t
+#define GB_DEF_GrB_MIN_UINT8_xtype uint8_t
+#define GB_DEF_GrB_MIN_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_MIN_INT16_function GB_MIN_f_INT16
+#define GB_DEF_GrB_MIN_INT16_ztype int16_t
+#define GB_DEF_GrB_MIN_INT16_xtype int16_t
+#define GB_DEF_GrB_MIN_INT16_ytype int16_t
+
+#define GB_DEF_GrB_MIN_UINT16_function GB_MIN_f_UINT16
+#define GB_DEF_GrB_MIN_UINT16_ztype uint16_t
+#define GB_DEF_GrB_MIN_UINT16_xtype uint16_t
+#define GB_DEF_GrB_MIN_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_MIN_INT32_function GB_MIN_f_INT32
+#define GB_DEF_GrB_MIN_INT32_ztype int32_t
+#define GB_DEF_GrB_MIN_INT32_xtype int32_t
+#define GB_DEF_GrB_MIN_INT32_ytype int32_t
+
+#define GB_DEF_GrB_MIN_UINT32_function GB_MIN_f_UINT32
+#define GB_DEF_GrB_MIN_UINT32_ztype uint32_t
+#define GB_DEF_GrB_MIN_UINT32_xtype uint32_t
+#define GB_DEF_GrB_MIN_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_MIN_INT64_function GB_MIN_f_INT64
+#define GB_DEF_GrB_MIN_INT64_ztype int64_t
+#define GB_DEF_GrB_MIN_INT64_xtype int64_t
+#define GB_DEF_GrB_MIN_INT64_ytype int64_t
+
+#define GB_DEF_GrB_MIN_UINT64_function GB_MIN_f_UINT64
+#define GB_DEF_GrB_MIN_UINT64_ztype uint64_t
+#define GB_DEF_GrB_MIN_UINT64_xtype uint64_t
+#define GB_DEF_GrB_MIN_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_MIN_FP32_function GB_MIN_f_FP32
+#define GB_DEF_GrB_MIN_FP32_ztype float
+#define GB_DEF_GrB_MIN_FP32_xtype float
+#define GB_DEF_GrB_MIN_FP32_ytype float
+
+#define GB_DEF_GrB_MIN_FP64_function GB_MIN_f_FP64
+#define GB_DEF_GrB_MIN_FP64_ztype double
+#define GB_DEF_GrB_MIN_FP64_xtype double
+#define GB_DEF_GrB_MIN_FP64_ytype double
+
+// op: MAX
+#define GB_DEF_GrB_MAX_BOOL_function GB_MAX_f_BOOL
+#define GB_DEF_GrB_MAX_BOOL_ztype bool
+#define GB_DEF_GrB_MAX_BOOL_xtype bool
+#define GB_DEF_GrB_MAX_BOOL_ytype bool
+
+#define GB_DEF_GrB_MAX_INT8_function GB_MAX_f_INT8
+#define GB_DEF_GrB_MAX_INT8_ztype int8_t
+#define GB_DEF_GrB_MAX_INT8_xtype int8_t
+#define GB_DEF_GrB_MAX_INT8_ytype int8_t
+
+#define GB_DEF_GrB_MAX_UINT8_function GB_MAX_f_UINT8
+#define GB_DEF_GrB_MAX_UINT8_ztype uint8_t
+#define GB_DEF_GrB_MAX_UINT8_xtype uint8_t
+#define GB_DEF_GrB_MAX_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_MAX_INT16_function GB_MAX_f_INT16
+#define GB_DEF_GrB_MAX_INT16_ztype int16_t
+#define GB_DEF_GrB_MAX_INT16_xtype int16_t
+#define GB_DEF_GrB_MAX_INT16_ytype int16_t
+
+#define GB_DEF_GrB_MAX_UINT16_function GB_MAX_f_UINT16
+#define GB_DEF_GrB_MAX_UINT16_ztype uint16_t
+#define GB_DEF_GrB_MAX_UINT16_xtype uint16_t
+#define GB_DEF_GrB_MAX_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_MAX_INT32_function GB_MAX_f_INT32
+#define GB_DEF_GrB_MAX_INT32_ztype int32_t
+#define GB_DEF_GrB_MAX_INT32_xtype int32_t
+#define GB_DEF_GrB_MAX_INT32_ytype int32_t
+
+#define GB_DEF_GrB_MAX_UINT32_function GB_MAX_f_UINT32
+#define GB_DEF_GrB_MAX_UINT32_ztype uint32_t
+#define GB_DEF_GrB_MAX_UINT32_xtype uint32_t
+#define GB_DEF_GrB_MAX_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_MAX_INT64_function GB_MAX_f_INT64
+#define GB_DEF_GrB_MAX_INT64_ztype int64_t
+#define GB_DEF_GrB_MAX_INT64_xtype int64_t
+#define GB_DEF_GrB_MAX_INT64_ytype int64_t
+
+#define GB_DEF_GrB_MAX_UINT64_function GB_MAX_f_UINT64
+#define GB_DEF_GrB_MAX_UINT64_ztype uint64_t
+#define GB_DEF_GrB_MAX_UINT64_xtype uint64_t
+#define GB_DEF_GrB_MAX_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_MAX_FP32_function GB_MAX_f_FP32
+#define GB_DEF_GrB_MAX_FP32_ztype float
+#define GB_DEF_GrB_MAX_FP32_xtype float
+#define GB_DEF_GrB_MAX_FP32_ytype float
+
+#define GB_DEF_GrB_MAX_FP64_function GB_MAX_f_FP64
+#define GB_DEF_GrB_MAX_FP64_ztype double
+#define GB_DEF_GrB_MAX_FP64_xtype double
+#define GB_DEF_GrB_MAX_FP64_ytype double
+
+// op: PLUS
+#define GB_DEF_GrB_PLUS_BOOL_function GB_PLUS_f_BOOL
+#define GB_DEF_GrB_PLUS_BOOL_ztype bool
+#define GB_DEF_GrB_PLUS_BOOL_xtype bool
+#define GB_DEF_GrB_PLUS_BOOL_ytype bool
+
+#define GB_DEF_GrB_PLUS_INT8_function GB_PLUS_f_INT8
+#define GB_DEF_GrB_PLUS_INT8_ztype int8_t
+#define GB_DEF_GrB_PLUS_INT8_xtype int8_t
+#define GB_DEF_GrB_PLUS_INT8_ytype int8_t
+
+#define GB_DEF_GrB_PLUS_UINT8_function GB_PLUS_f_UINT8
+#define GB_DEF_GrB_PLUS_UINT8_ztype uint8_t
+#define GB_DEF_GrB_PLUS_UINT8_xtype uint8_t
+#define GB_DEF_GrB_PLUS_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_PLUS_INT16_function GB_PLUS_f_INT16
+#define GB_DEF_GrB_PLUS_INT16_ztype int16_t
+#define GB_DEF_GrB_PLUS_INT16_xtype int16_t
+#define GB_DEF_GrB_PLUS_INT16_ytype int16_t
+
+#define GB_DEF_GrB_PLUS_UINT16_function GB_PLUS_f_UINT16
+#define GB_DEF_GrB_PLUS_UINT16_ztype uint16_t
+#define GB_DEF_GrB_PLUS_UINT16_xtype uint16_t
+#define GB_DEF_GrB_PLUS_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_PLUS_INT32_function GB_PLUS_f_INT32
+#define GB_DEF_GrB_PLUS_INT32_ztype int32_t
+#define GB_DEF_GrB_PLUS_INT32_xtype int32_t
+#define GB_DEF_GrB_PLUS_INT32_ytype int32_t
+
+#define GB_DEF_GrB_PLUS_UINT32_function GB_PLUS_f_UINT32
+#define GB_DEF_GrB_PLUS_UINT32_ztype uint32_t
+#define GB_DEF_GrB_PLUS_UINT32_xtype uint32_t
+#define GB_DEF_GrB_PLUS_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_PLUS_INT64_function GB_PLUS_f_INT64
+#define GB_DEF_GrB_PLUS_INT64_ztype int64_t
+#define GB_DEF_GrB_PLUS_INT64_xtype int64_t
+#define GB_DEF_GrB_PLUS_INT64_ytype int64_t
+
+#define GB_DEF_GrB_PLUS_UINT64_function GB_PLUS_f_UINT64
+#define GB_DEF_GrB_PLUS_UINT64_ztype uint64_t
+#define GB_DEF_GrB_PLUS_UINT64_xtype uint64_t
+#define GB_DEF_GrB_PLUS_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_PLUS_FP32_function GB_PLUS_f_FP32
+#define GB_DEF_GrB_PLUS_FP32_ztype float
+#define GB_DEF_GrB_PLUS_FP32_xtype float
+#define GB_DEF_GrB_PLUS_FP32_ytype float
+
+#define GB_DEF_GrB_PLUS_FP64_function GB_PLUS_f_FP64
+#define GB_DEF_GrB_PLUS_FP64_ztype double
+#define GB_DEF_GrB_PLUS_FP64_xtype double
+#define GB_DEF_GrB_PLUS_FP64_ytype double
+
+// op: MINUS
+#define GB_DEF_GrB_MINUS_BOOL_function GB_MINUS_f_BOOL
+#define GB_DEF_GrB_MINUS_BOOL_ztype bool
+#define GB_DEF_GrB_MINUS_BOOL_xtype bool
+#define GB_DEF_GrB_MINUS_BOOL_ytype bool
+
+#define GB_DEF_GrB_MINUS_INT8_function GB_MINUS_f_INT8
+#define GB_DEF_GrB_MINUS_INT8_ztype int8_t
+#define GB_DEF_GrB_MINUS_INT8_xtype int8_t
+#define GB_DEF_GrB_MINUS_INT8_ytype int8_t
+
+#define GB_DEF_GrB_MINUS_UINT8_function GB_MINUS_f_UINT8
+#define GB_DEF_GrB_MINUS_UINT8_ztype uint8_t
+#define GB_DEF_GrB_MINUS_UINT8_xtype uint8_t
+#define GB_DEF_GrB_MINUS_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_MINUS_INT16_function GB_MINUS_f_INT16
+#define GB_DEF_GrB_MINUS_INT16_ztype int16_t
+#define GB_DEF_GrB_MINUS_INT16_xtype int16_t
+#define GB_DEF_GrB_MINUS_INT16_ytype int16_t
+
+#define GB_DEF_GrB_MINUS_UINT16_function GB_MINUS_f_UINT16
+#define GB_DEF_GrB_MINUS_UINT16_ztype uint16_t
+#define GB_DEF_GrB_MINUS_UINT16_xtype uint16_t
+#define GB_DEF_GrB_MINUS_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_MINUS_INT32_function GB_MINUS_f_INT32
+#define GB_DEF_GrB_MINUS_INT32_ztype int32_t
+#define GB_DEF_GrB_MINUS_INT32_xtype int32_t
+#define GB_DEF_GrB_MINUS_INT32_ytype int32_t
+
+#define GB_DEF_GrB_MINUS_UINT32_function GB_MINUS_f_UINT32
+#define GB_DEF_GrB_MINUS_UINT32_ztype uint32_t
+#define GB_DEF_GrB_MINUS_UINT32_xtype uint32_t
+#define GB_DEF_GrB_MINUS_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_MINUS_INT64_function GB_MINUS_f_INT64
+#define GB_DEF_GrB_MINUS_INT64_ztype int64_t
+#define GB_DEF_GrB_MINUS_INT64_xtype int64_t
+#define GB_DEF_GrB_MINUS_INT64_ytype int64_t
+
+#define GB_DEF_GrB_MINUS_UINT64_function GB_MINUS_f_UINT64
+#define GB_DEF_GrB_MINUS_UINT64_ztype uint64_t
+#define GB_DEF_GrB_MINUS_UINT64_xtype uint64_t
+#define GB_DEF_GrB_MINUS_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_MINUS_FP32_function GB_MINUS_f_FP32
+#define GB_DEF_GrB_MINUS_FP32_ztype float
+#define GB_DEF_GrB_MINUS_FP32_xtype float
+#define GB_DEF_GrB_MINUS_FP32_ytype float
+
+#define GB_DEF_GrB_MINUS_FP64_function GB_MINUS_f_FP64
+#define GB_DEF_GrB_MINUS_FP64_ztype double
+#define GB_DEF_GrB_MINUS_FP64_xtype double
+#define GB_DEF_GrB_MINUS_FP64_ytype double
+
+// op: TIMES
+#define GB_DEF_GrB_TIMES_BOOL_function GB_TIMES_f_BOOL
+#define GB_DEF_GrB_TIMES_BOOL_ztype bool
+#define GB_DEF_GrB_TIMES_BOOL_xtype bool
+#define GB_DEF_GrB_TIMES_BOOL_ytype bool
+
+#define GB_DEF_GrB_TIMES_INT8_function GB_TIMES_f_INT8
+#define GB_DEF_GrB_TIMES_INT8_ztype int8_t
+#define GB_DEF_GrB_TIMES_INT8_xtype int8_t
+#define GB_DEF_GrB_TIMES_INT8_ytype int8_t
+
+#define GB_DEF_GrB_TIMES_UINT8_function GB_TIMES_f_UINT8
+#define GB_DEF_GrB_TIMES_UINT8_ztype uint8_t
+#define GB_DEF_GrB_TIMES_UINT8_xtype uint8_t
+#define GB_DEF_GrB_TIMES_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_TIMES_INT16_function GB_TIMES_f_INT16
+#define GB_DEF_GrB_TIMES_INT16_ztype int16_t
+#define GB_DEF_GrB_TIMES_INT16_xtype int16_t
+#define GB_DEF_GrB_TIMES_INT16_ytype int16_t
+
+#define GB_DEF_GrB_TIMES_UINT16_function GB_TIMES_f_UINT16
+#define GB_DEF_GrB_TIMES_UINT16_ztype uint16_t
+#define GB_DEF_GrB_TIMES_UINT16_xtype uint16_t
+#define GB_DEF_GrB_TIMES_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_TIMES_INT32_function GB_TIMES_f_INT32
+#define GB_DEF_GrB_TIMES_INT32_ztype int32_t
+#define GB_DEF_GrB_TIMES_INT32_xtype int32_t
+#define GB_DEF_GrB_TIMES_INT32_ytype int32_t
+
+#define GB_DEF_GrB_TIMES_UINT32_function GB_TIMES_f_UINT32
+#define GB_DEF_GrB_TIMES_UINT32_ztype uint32_t
+#define GB_DEF_GrB_TIMES_UINT32_xtype uint32_t
+#define GB_DEF_GrB_TIMES_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_TIMES_INT64_function GB_TIMES_f_INT64
+#define GB_DEF_GrB_TIMES_INT64_ztype int64_t
+#define GB_DEF_GrB_TIMES_INT64_xtype int64_t
+#define GB_DEF_GrB_TIMES_INT64_ytype int64_t
+
+#define GB_DEF_GrB_TIMES_UINT64_function GB_TIMES_f_UINT64
+#define GB_DEF_GrB_TIMES_UINT64_ztype uint64_t
+#define GB_DEF_GrB_TIMES_UINT64_xtype uint64_t
+#define GB_DEF_GrB_TIMES_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_TIMES_FP32_function GB_TIMES_f_FP32
+#define GB_DEF_GrB_TIMES_FP32_ztype float
+#define GB_DEF_GrB_TIMES_FP32_xtype float
+#define GB_DEF_GrB_TIMES_FP32_ytype float
+
+#define GB_DEF_GrB_TIMES_FP64_function GB_TIMES_f_FP64
+#define GB_DEF_GrB_TIMES_FP64_ztype double
+#define GB_DEF_GrB_TIMES_FP64_xtype double
+#define GB_DEF_GrB_TIMES_FP64_ytype double
+
+// op: DIV
+#define GB_DEF_GrB_DIV_BOOL_function GB_DIV_f_BOOL
+#define GB_DEF_GrB_DIV_BOOL_ztype bool
+#define GB_DEF_GrB_DIV_BOOL_xtype bool
+#define GB_DEF_GrB_DIV_BOOL_ytype bool
+
+#define GB_DEF_GrB_DIV_INT8_function GB_DIV_f_INT8
+#define GB_DEF_GrB_DIV_INT8_ztype int8_t
+#define GB_DEF_GrB_DIV_INT8_xtype int8_t
+#define GB_DEF_GrB_DIV_INT8_ytype int8_t
+
+#define GB_DEF_GrB_DIV_UINT8_function GB_DIV_f_UINT8
+#define GB_DEF_GrB_DIV_UINT8_ztype uint8_t
+#define GB_DEF_GrB_DIV_UINT8_xtype uint8_t
+#define GB_DEF_GrB_DIV_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_DIV_INT16_function GB_DIV_f_INT16
+#define GB_DEF_GrB_DIV_INT16_ztype int16_t
+#define GB_DEF_GrB_DIV_INT16_xtype int16_t
+#define GB_DEF_GrB_DIV_INT16_ytype int16_t
+
+#define GB_DEF_GrB_DIV_UINT16_function GB_DIV_f_UINT16
+#define GB_DEF_GrB_DIV_UINT16_ztype uint16_t
+#define GB_DEF_GrB_DIV_UINT16_xtype uint16_t
+#define GB_DEF_GrB_DIV_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_DIV_INT32_function GB_DIV_f_INT32
+#define GB_DEF_GrB_DIV_INT32_ztype int32_t
+#define GB_DEF_GrB_DIV_INT32_xtype int32_t
+#define GB_DEF_GrB_DIV_INT32_ytype int32_t
+
+#define GB_DEF_GrB_DIV_UINT32_function GB_DIV_f_UINT32
+#define GB_DEF_GrB_DIV_UINT32_ztype uint32_t
+#define GB_DEF_GrB_DIV_UINT32_xtype uint32_t
+#define GB_DEF_GrB_DIV_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_DIV_INT64_function GB_DIV_f_INT64
+#define GB_DEF_GrB_DIV_INT64_ztype int64_t
+#define GB_DEF_GrB_DIV_INT64_xtype int64_t
+#define GB_DEF_GrB_DIV_INT64_ytype int64_t
+
+#define GB_DEF_GrB_DIV_UINT64_function GB_DIV_f_UINT64
+#define GB_DEF_GrB_DIV_UINT64_ztype uint64_t
+#define GB_DEF_GrB_DIV_UINT64_xtype uint64_t
+#define GB_DEF_GrB_DIV_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_DIV_FP32_function GB_DIV_f_FP32
+#define GB_DEF_GrB_DIV_FP32_ztype float
+#define GB_DEF_GrB_DIV_FP32_xtype float
+#define GB_DEF_GrB_DIV_FP32_ytype float
+
+#define GB_DEF_GrB_DIV_FP64_function GB_DIV_f_FP64
+#define GB_DEF_GrB_DIV_FP64_ztype double
+#define GB_DEF_GrB_DIV_FP64_xtype double
+#define GB_DEF_GrB_DIV_FP64_ytype double
+
+// op: ISEQ
+#define GB_DEF_GxB_ISEQ_BOOL_function GB_ISEQ_f_BOOL
+#define GB_DEF_GxB_ISEQ_BOOL_ztype bool
+#define GB_DEF_GxB_ISEQ_BOOL_xtype bool
+#define GB_DEF_GxB_ISEQ_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISEQ_INT8_function GB_ISEQ_f_INT8
+#define GB_DEF_GxB_ISEQ_INT8_ztype int8_t
+#define GB_DEF_GxB_ISEQ_INT8_xtype int8_t
+#define GB_DEF_GxB_ISEQ_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISEQ_UINT8_function GB_ISEQ_f_UINT8
+#define GB_DEF_GxB_ISEQ_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISEQ_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISEQ_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISEQ_INT16_function GB_ISEQ_f_INT16
+#define GB_DEF_GxB_ISEQ_INT16_ztype int16_t
+#define GB_DEF_GxB_ISEQ_INT16_xtype int16_t
+#define GB_DEF_GxB_ISEQ_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISEQ_UINT16_function GB_ISEQ_f_UINT16
+#define GB_DEF_GxB_ISEQ_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISEQ_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISEQ_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISEQ_INT32_function GB_ISEQ_f_INT32
+#define GB_DEF_GxB_ISEQ_INT32_ztype int32_t
+#define GB_DEF_GxB_ISEQ_INT32_xtype int32_t
+#define GB_DEF_GxB_ISEQ_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISEQ_UINT32_function GB_ISEQ_f_UINT32
+#define GB_DEF_GxB_ISEQ_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISEQ_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISEQ_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISEQ_INT64_function GB_ISEQ_f_INT64
+#define GB_DEF_GxB_ISEQ_INT64_ztype int64_t
+#define GB_DEF_GxB_ISEQ_INT64_xtype int64_t
+#define GB_DEF_GxB_ISEQ_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISEQ_UINT64_function GB_ISEQ_f_UINT64
+#define GB_DEF_GxB_ISEQ_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISEQ_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISEQ_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISEQ_FP32_function GB_ISEQ_f_FP32
+#define GB_DEF_GxB_ISEQ_FP32_ztype float
+#define GB_DEF_GxB_ISEQ_FP32_xtype float
+#define GB_DEF_GxB_ISEQ_FP32_ytype float
+
+#define GB_DEF_GxB_ISEQ_FP64_function GB_ISEQ_f_FP64
+#define GB_DEF_GxB_ISEQ_FP64_ztype double
+#define GB_DEF_GxB_ISEQ_FP64_xtype double
+#define GB_DEF_GxB_ISEQ_FP64_ytype double
+
+// op: ISNE
+#define GB_DEF_GxB_ISNE_BOOL_function GB_ISNE_f_BOOL
+#define GB_DEF_GxB_ISNE_BOOL_ztype bool
+#define GB_DEF_GxB_ISNE_BOOL_xtype bool
+#define GB_DEF_GxB_ISNE_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISNE_INT8_function GB_ISNE_f_INT8
+#define GB_DEF_GxB_ISNE_INT8_ztype int8_t
+#define GB_DEF_GxB_ISNE_INT8_xtype int8_t
+#define GB_DEF_GxB_ISNE_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISNE_UINT8_function GB_ISNE_f_UINT8
+#define GB_DEF_GxB_ISNE_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISNE_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISNE_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISNE_INT16_function GB_ISNE_f_INT16
+#define GB_DEF_GxB_ISNE_INT16_ztype int16_t
+#define GB_DEF_GxB_ISNE_INT16_xtype int16_t
+#define GB_DEF_GxB_ISNE_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISNE_UINT16_function GB_ISNE_f_UINT16
+#define GB_DEF_GxB_ISNE_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISNE_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISNE_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISNE_INT32_function GB_ISNE_f_INT32
+#define GB_DEF_GxB_ISNE_INT32_ztype int32_t
+#define GB_DEF_GxB_ISNE_INT32_xtype int32_t
+#define GB_DEF_GxB_ISNE_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISNE_UINT32_function GB_ISNE_f_UINT32
+#define GB_DEF_GxB_ISNE_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISNE_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISNE_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISNE_INT64_function GB_ISNE_f_INT64
+#define GB_DEF_GxB_ISNE_INT64_ztype int64_t
+#define GB_DEF_GxB_ISNE_INT64_xtype int64_t
+#define GB_DEF_GxB_ISNE_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISNE_UINT64_function GB_ISNE_f_UINT64
+#define GB_DEF_GxB_ISNE_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISNE_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISNE_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISNE_FP32_function GB_ISNE_f_FP32
+#define GB_DEF_GxB_ISNE_FP32_ztype float
+#define GB_DEF_GxB_ISNE_FP32_xtype float
+#define GB_DEF_GxB_ISNE_FP32_ytype float
+
+#define GB_DEF_GxB_ISNE_FP64_function GB_ISNE_f_FP64
+#define GB_DEF_GxB_ISNE_FP64_ztype double
+#define GB_DEF_GxB_ISNE_FP64_xtype double
+#define GB_DEF_GxB_ISNE_FP64_ytype double
+
+// op: ISGT
+#define GB_DEF_GxB_ISGT_BOOL_function GB_ISGT_f_BOOL
+#define GB_DEF_GxB_ISGT_BOOL_ztype bool
+#define GB_DEF_GxB_ISGT_BOOL_xtype bool
+#define GB_DEF_GxB_ISGT_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISGT_INT8_function GB_ISGT_f_INT8
+#define GB_DEF_GxB_ISGT_INT8_ztype int8_t
+#define GB_DEF_GxB_ISGT_INT8_xtype int8_t
+#define GB_DEF_GxB_ISGT_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISGT_UINT8_function GB_ISGT_f_UINT8
+#define GB_DEF_GxB_ISGT_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISGT_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISGT_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISGT_INT16_function GB_ISGT_f_INT16
+#define GB_DEF_GxB_ISGT_INT16_ztype int16_t
+#define GB_DEF_GxB_ISGT_INT16_xtype int16_t
+#define GB_DEF_GxB_ISGT_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISGT_UINT16_function GB_ISGT_f_UINT16
+#define GB_DEF_GxB_ISGT_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISGT_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISGT_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISGT_INT32_function GB_ISGT_f_INT32
+#define GB_DEF_GxB_ISGT_INT32_ztype int32_t
+#define GB_DEF_GxB_ISGT_INT32_xtype int32_t
+#define GB_DEF_GxB_ISGT_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISGT_UINT32_function GB_ISGT_f_UINT32
+#define GB_DEF_GxB_ISGT_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISGT_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISGT_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISGT_INT64_function GB_ISGT_f_INT64
+#define GB_DEF_GxB_ISGT_INT64_ztype int64_t
+#define GB_DEF_GxB_ISGT_INT64_xtype int64_t
+#define GB_DEF_GxB_ISGT_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISGT_UINT64_function GB_ISGT_f_UINT64
+#define GB_DEF_GxB_ISGT_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISGT_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISGT_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISGT_FP32_function GB_ISGT_f_FP32
+#define GB_DEF_GxB_ISGT_FP32_ztype float
+#define GB_DEF_GxB_ISGT_FP32_xtype float
+#define GB_DEF_GxB_ISGT_FP32_ytype float
+
+#define GB_DEF_GxB_ISGT_FP64_function GB_ISGT_f_FP64
+#define GB_DEF_GxB_ISGT_FP64_ztype double
+#define GB_DEF_GxB_ISGT_FP64_xtype double
+#define GB_DEF_GxB_ISGT_FP64_ytype double
+
+// op: ISLT
+#define GB_DEF_GxB_ISLT_BOOL_function GB_ISLT_f_BOOL
+#define GB_DEF_GxB_ISLT_BOOL_ztype bool
+#define GB_DEF_GxB_ISLT_BOOL_xtype bool
+#define GB_DEF_GxB_ISLT_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISLT_INT8_function GB_ISLT_f_INT8
+#define GB_DEF_GxB_ISLT_INT8_ztype int8_t
+#define GB_DEF_GxB_ISLT_INT8_xtype int8_t
+#define GB_DEF_GxB_ISLT_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISLT_UINT8_function GB_ISLT_f_UINT8
+#define GB_DEF_GxB_ISLT_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISLT_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISLT_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISLT_INT16_function GB_ISLT_f_INT16
+#define GB_DEF_GxB_ISLT_INT16_ztype int16_t
+#define GB_DEF_GxB_ISLT_INT16_xtype int16_t
+#define GB_DEF_GxB_ISLT_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISLT_UINT16_function GB_ISLT_f_UINT16
+#define GB_DEF_GxB_ISLT_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISLT_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISLT_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISLT_INT32_function GB_ISLT_f_INT32
+#define GB_DEF_GxB_ISLT_INT32_ztype int32_t
+#define GB_DEF_GxB_ISLT_INT32_xtype int32_t
+#define GB_DEF_GxB_ISLT_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISLT_UINT32_function GB_ISLT_f_UINT32
+#define GB_DEF_GxB_ISLT_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISLT_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISLT_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISLT_INT64_function GB_ISLT_f_INT64
+#define GB_DEF_GxB_ISLT_INT64_ztype int64_t
+#define GB_DEF_GxB_ISLT_INT64_xtype int64_t
+#define GB_DEF_GxB_ISLT_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISLT_UINT64_function GB_ISLT_f_UINT64
+#define GB_DEF_GxB_ISLT_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISLT_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISLT_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISLT_FP32_function GB_ISLT_f_FP32
+#define GB_DEF_GxB_ISLT_FP32_ztype float
+#define GB_DEF_GxB_ISLT_FP32_xtype float
+#define GB_DEF_GxB_ISLT_FP32_ytype float
+
+#define GB_DEF_GxB_ISLT_FP64_function GB_ISLT_f_FP64
+#define GB_DEF_GxB_ISLT_FP64_ztype double
+#define GB_DEF_GxB_ISLT_FP64_xtype double
+#define GB_DEF_GxB_ISLT_FP64_ytype double
+
+// op: ISGE
+#define GB_DEF_GxB_ISGE_BOOL_function GB_ISGE_f_BOOL
+#define GB_DEF_GxB_ISGE_BOOL_ztype bool
+#define GB_DEF_GxB_ISGE_BOOL_xtype bool
+#define GB_DEF_GxB_ISGE_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISGE_INT8_function GB_ISGE_f_INT8
+#define GB_DEF_GxB_ISGE_INT8_ztype int8_t
+#define GB_DEF_GxB_ISGE_INT8_xtype int8_t
+#define GB_DEF_GxB_ISGE_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISGE_UINT8_function GB_ISGE_f_UINT8
+#define GB_DEF_GxB_ISGE_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISGE_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISGE_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISGE_INT16_function GB_ISGE_f_INT16
+#define GB_DEF_GxB_ISGE_INT16_ztype int16_t
+#define GB_DEF_GxB_ISGE_INT16_xtype int16_t
+#define GB_DEF_GxB_ISGE_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISGE_UINT16_function GB_ISGE_f_UINT16
+#define GB_DEF_GxB_ISGE_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISGE_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISGE_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISGE_INT32_function GB_ISGE_f_INT32
+#define GB_DEF_GxB_ISGE_INT32_ztype int32_t
+#define GB_DEF_GxB_ISGE_INT32_xtype int32_t
+#define GB_DEF_GxB_ISGE_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISGE_UINT32_function GB_ISGE_f_UINT32
+#define GB_DEF_GxB_ISGE_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISGE_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISGE_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISGE_INT64_function GB_ISGE_f_INT64
+#define GB_DEF_GxB_ISGE_INT64_ztype int64_t
+#define GB_DEF_GxB_ISGE_INT64_xtype int64_t
+#define GB_DEF_GxB_ISGE_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISGE_UINT64_function GB_ISGE_f_UINT64
+#define GB_DEF_GxB_ISGE_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISGE_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISGE_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISGE_FP32_function GB_ISGE_f_FP32
+#define GB_DEF_GxB_ISGE_FP32_ztype float
+#define GB_DEF_GxB_ISGE_FP32_xtype float
+#define GB_DEF_GxB_ISGE_FP32_ytype float
+
+#define GB_DEF_GxB_ISGE_FP64_function GB_ISGE_f_FP64
+#define GB_DEF_GxB_ISGE_FP64_ztype double
+#define GB_DEF_GxB_ISGE_FP64_xtype double
+#define GB_DEF_GxB_ISGE_FP64_ytype double
+
+// op: ISLE
+#define GB_DEF_GxB_ISLE_BOOL_function GB_ISLE_f_BOOL
+#define GB_DEF_GxB_ISLE_BOOL_ztype bool
+#define GB_DEF_GxB_ISLE_BOOL_xtype bool
+#define GB_DEF_GxB_ISLE_BOOL_ytype bool
+
+#define GB_DEF_GxB_ISLE_INT8_function GB_ISLE_f_INT8
+#define GB_DEF_GxB_ISLE_INT8_ztype int8_t
+#define GB_DEF_GxB_ISLE_INT8_xtype int8_t
+#define GB_DEF_GxB_ISLE_INT8_ytype int8_t
+
+#define GB_DEF_GxB_ISLE_UINT8_function GB_ISLE_f_UINT8
+#define GB_DEF_GxB_ISLE_UINT8_ztype uint8_t
+#define GB_DEF_GxB_ISLE_UINT8_xtype uint8_t
+#define GB_DEF_GxB_ISLE_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_ISLE_INT16_function GB_ISLE_f_INT16
+#define GB_DEF_GxB_ISLE_INT16_ztype int16_t
+#define GB_DEF_GxB_ISLE_INT16_xtype int16_t
+#define GB_DEF_GxB_ISLE_INT16_ytype int16_t
+
+#define GB_DEF_GxB_ISLE_UINT16_function GB_ISLE_f_UINT16
+#define GB_DEF_GxB_ISLE_UINT16_ztype uint16_t
+#define GB_DEF_GxB_ISLE_UINT16_xtype uint16_t
+#define GB_DEF_GxB_ISLE_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_ISLE_INT32_function GB_ISLE_f_INT32
+#define GB_DEF_GxB_ISLE_INT32_ztype int32_t
+#define GB_DEF_GxB_ISLE_INT32_xtype int32_t
+#define GB_DEF_GxB_ISLE_INT32_ytype int32_t
+
+#define GB_DEF_GxB_ISLE_UINT32_function GB_ISLE_f_UINT32
+#define GB_DEF_GxB_ISLE_UINT32_ztype uint32_t
+#define GB_DEF_GxB_ISLE_UINT32_xtype uint32_t
+#define GB_DEF_GxB_ISLE_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_ISLE_INT64_function GB_ISLE_f_INT64
+#define GB_DEF_GxB_ISLE_INT64_ztype int64_t
+#define GB_DEF_GxB_ISLE_INT64_xtype int64_t
+#define GB_DEF_GxB_ISLE_INT64_ytype int64_t
+
+#define GB_DEF_GxB_ISLE_UINT64_function GB_ISLE_f_UINT64
+#define GB_DEF_GxB_ISLE_UINT64_ztype uint64_t
+#define GB_DEF_GxB_ISLE_UINT64_xtype uint64_t
+#define GB_DEF_GxB_ISLE_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_ISLE_FP32_function GB_ISLE_f_FP32
+#define GB_DEF_GxB_ISLE_FP32_ztype float
+#define GB_DEF_GxB_ISLE_FP32_xtype float
+#define GB_DEF_GxB_ISLE_FP32_ytype float
+
+#define GB_DEF_GxB_ISLE_FP64_function GB_ISLE_f_FP64
+#define GB_DEF_GxB_ISLE_FP64_ztype double
+#define GB_DEF_GxB_ISLE_FP64_xtype double
+#define GB_DEF_GxB_ISLE_FP64_ytype double
+
+// op: LOR
+#define GB_DEF_GxB_LOR_BOOL_function GB_LOR_f_BOOL
+#define GB_DEF_GxB_LOR_BOOL_ztype bool
+#define GB_DEF_GxB_LOR_BOOL_xtype bool
+#define GB_DEF_GxB_LOR_BOOL_ytype bool
+
+#define GB_DEF_GxB_LOR_INT8_function GB_LOR_f_INT8
+#define GB_DEF_GxB_LOR_INT8_ztype int8_t
+#define GB_DEF_GxB_LOR_INT8_xtype int8_t
+#define GB_DEF_GxB_LOR_INT8_ytype int8_t
+
+#define GB_DEF_GxB_LOR_UINT8_function GB_LOR_f_UINT8
+#define GB_DEF_GxB_LOR_UINT8_ztype uint8_t
+#define GB_DEF_GxB_LOR_UINT8_xtype uint8_t
+#define GB_DEF_GxB_LOR_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_LOR_INT16_function GB_LOR_f_INT16
+#define GB_DEF_GxB_LOR_INT16_ztype int16_t
+#define GB_DEF_GxB_LOR_INT16_xtype int16_t
+#define GB_DEF_GxB_LOR_INT16_ytype int16_t
+
+#define GB_DEF_GxB_LOR_UINT16_function GB_LOR_f_UINT16
+#define GB_DEF_GxB_LOR_UINT16_ztype uint16_t
+#define GB_DEF_GxB_LOR_UINT16_xtype uint16_t
+#define GB_DEF_GxB_LOR_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_LOR_INT32_function GB_LOR_f_INT32
+#define GB_DEF_GxB_LOR_INT32_ztype int32_t
+#define GB_DEF_GxB_LOR_INT32_xtype int32_t
+#define GB_DEF_GxB_LOR_INT32_ytype int32_t
+
+#define GB_DEF_GxB_LOR_UINT32_function GB_LOR_f_UINT32
+#define GB_DEF_GxB_LOR_UINT32_ztype uint32_t
+#define GB_DEF_GxB_LOR_UINT32_xtype uint32_t
+#define GB_DEF_GxB_LOR_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_LOR_INT64_function GB_LOR_f_INT64
+#define GB_DEF_GxB_LOR_INT64_ztype int64_t
+#define GB_DEF_GxB_LOR_INT64_xtype int64_t
+#define GB_DEF_GxB_LOR_INT64_ytype int64_t
+
+#define GB_DEF_GxB_LOR_UINT64_function GB_LOR_f_UINT64
+#define GB_DEF_GxB_LOR_UINT64_ztype uint64_t
+#define GB_DEF_GxB_LOR_UINT64_xtype uint64_t
+#define GB_DEF_GxB_LOR_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_LOR_FP32_function GB_LOR_f_FP32
+#define GB_DEF_GxB_LOR_FP32_ztype float
+#define GB_DEF_GxB_LOR_FP32_xtype float
+#define GB_DEF_GxB_LOR_FP32_ytype float
+
+#define GB_DEF_GxB_LOR_FP64_function GB_LOR_f_FP64
+#define GB_DEF_GxB_LOR_FP64_ztype double
+#define GB_DEF_GxB_LOR_FP64_xtype double
+#define GB_DEF_GxB_LOR_FP64_ytype double
+
+// op: LAND
+#define GB_DEF_GxB_LAND_BOOL_function GB_LAND_f_BOOL
+#define GB_DEF_GxB_LAND_BOOL_ztype bool
+#define GB_DEF_GxB_LAND_BOOL_xtype bool
+#define GB_DEF_GxB_LAND_BOOL_ytype bool
+
+#define GB_DEF_GxB_LAND_INT8_function GB_LAND_f_INT8
+#define GB_DEF_GxB_LAND_INT8_ztype int8_t
+#define GB_DEF_GxB_LAND_INT8_xtype int8_t
+#define GB_DEF_GxB_LAND_INT8_ytype int8_t
+
+#define GB_DEF_GxB_LAND_UINT8_function GB_LAND_f_UINT8
+#define GB_DEF_GxB_LAND_UINT8_ztype uint8_t
+#define GB_DEF_GxB_LAND_UINT8_xtype uint8_t
+#define GB_DEF_GxB_LAND_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_LAND_INT16_function GB_LAND_f_INT16
+#define GB_DEF_GxB_LAND_INT16_ztype int16_t
+#define GB_DEF_GxB_LAND_INT16_xtype int16_t
+#define GB_DEF_GxB_LAND_INT16_ytype int16_t
+
+#define GB_DEF_GxB_LAND_UINT16_function GB_LAND_f_UINT16
+#define GB_DEF_GxB_LAND_UINT16_ztype uint16_t
+#define GB_DEF_GxB_LAND_UINT16_xtype uint16_t
+#define GB_DEF_GxB_LAND_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_LAND_INT32_function GB_LAND_f_INT32
+#define GB_DEF_GxB_LAND_INT32_ztype int32_t
+#define GB_DEF_GxB_LAND_INT32_xtype int32_t
+#define GB_DEF_GxB_LAND_INT32_ytype int32_t
+
+#define GB_DEF_GxB_LAND_UINT32_function GB_LAND_f_UINT32
+#define GB_DEF_GxB_LAND_UINT32_ztype uint32_t
+#define GB_DEF_GxB_LAND_UINT32_xtype uint32_t
+#define GB_DEF_GxB_LAND_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_LAND_INT64_function GB_LAND_f_INT64
+#define GB_DEF_GxB_LAND_INT64_ztype int64_t
+#define GB_DEF_GxB_LAND_INT64_xtype int64_t
+#define GB_DEF_GxB_LAND_INT64_ytype int64_t
+
+#define GB_DEF_GxB_LAND_UINT64_function GB_LAND_f_UINT64
+#define GB_DEF_GxB_LAND_UINT64_ztype uint64_t
+#define GB_DEF_GxB_LAND_UINT64_xtype uint64_t
+#define GB_DEF_GxB_LAND_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_LAND_FP32_function GB_LAND_f_FP32
+#define GB_DEF_GxB_LAND_FP32_ztype float
+#define GB_DEF_GxB_LAND_FP32_xtype float
+#define GB_DEF_GxB_LAND_FP32_ytype float
+
+#define GB_DEF_GxB_LAND_FP64_function GB_LAND_f_FP64
+#define GB_DEF_GxB_LAND_FP64_ztype double
+#define GB_DEF_GxB_LAND_FP64_xtype double
+#define GB_DEF_GxB_LAND_FP64_ytype double
+
+// op: LXOR
+#define GB_DEF_GxB_LXOR_BOOL_function GB_LXOR_f_BOOL
+#define GB_DEF_GxB_LXOR_BOOL_ztype bool
+#define GB_DEF_GxB_LXOR_BOOL_xtype bool
+#define GB_DEF_GxB_LXOR_BOOL_ytype bool
+
+#define GB_DEF_GxB_LXOR_INT8_function GB_LXOR_f_INT8
+#define GB_DEF_GxB_LXOR_INT8_ztype int8_t
+#define GB_DEF_GxB_LXOR_INT8_xtype int8_t
+#define GB_DEF_GxB_LXOR_INT8_ytype int8_t
+
+#define GB_DEF_GxB_LXOR_UINT8_function GB_LXOR_f_UINT8
+#define GB_DEF_GxB_LXOR_UINT8_ztype uint8_t
+#define GB_DEF_GxB_LXOR_UINT8_xtype uint8_t
+#define GB_DEF_GxB_LXOR_UINT8_ytype uint8_t
+
+#define GB_DEF_GxB_LXOR_INT16_function GB_LXOR_f_INT16
+#define GB_DEF_GxB_LXOR_INT16_ztype int16_t
+#define GB_DEF_GxB_LXOR_INT16_xtype int16_t
+#define GB_DEF_GxB_LXOR_INT16_ytype int16_t
+
+#define GB_DEF_GxB_LXOR_UINT16_function GB_LXOR_f_UINT16
+#define GB_DEF_GxB_LXOR_UINT16_ztype uint16_t
+#define GB_DEF_GxB_LXOR_UINT16_xtype uint16_t
+#define GB_DEF_GxB_LXOR_UINT16_ytype uint16_t
+
+#define GB_DEF_GxB_LXOR_INT32_function GB_LXOR_f_INT32
+#define GB_DEF_GxB_LXOR_INT32_ztype int32_t
+#define GB_DEF_GxB_LXOR_INT32_xtype int32_t
+#define GB_DEF_GxB_LXOR_INT32_ytype int32_t
+
+#define GB_DEF_GxB_LXOR_UINT32_function GB_LXOR_f_UINT32
+#define GB_DEF_GxB_LXOR_UINT32_ztype uint32_t
+#define GB_DEF_GxB_LXOR_UINT32_xtype uint32_t
+#define GB_DEF_GxB_LXOR_UINT32_ytype uint32_t
+
+#define GB_DEF_GxB_LXOR_INT64_function GB_LXOR_f_INT64
+#define GB_DEF_GxB_LXOR_INT64_ztype int64_t
+#define GB_DEF_GxB_LXOR_INT64_xtype int64_t
+#define GB_DEF_GxB_LXOR_INT64_ytype int64_t
+
+#define GB_DEF_GxB_LXOR_UINT64_function GB_LXOR_f_UINT64
+#define GB_DEF_GxB_LXOR_UINT64_ztype uint64_t
+#define GB_DEF_GxB_LXOR_UINT64_xtype uint64_t
+#define GB_DEF_GxB_LXOR_UINT64_ytype uint64_t
+
+#define GB_DEF_GxB_LXOR_FP32_function GB_LXOR_f_FP32
+#define GB_DEF_GxB_LXOR_FP32_ztype float
+#define GB_DEF_GxB_LXOR_FP32_xtype float
+#define GB_DEF_GxB_LXOR_FP32_ytype float
+
+#define GB_DEF_GxB_LXOR_FP64_function GB_LXOR_f_FP64
+#define GB_DEF_GxB_LXOR_FP64_ztype double
+#define GB_DEF_GxB_LXOR_FP64_xtype double
+#define GB_DEF_GxB_LXOR_FP64_ytype double
+
+
+//------------------------------------------------------
+// binary operators of the form z=f(x,y): TxT -> bool
+//------------------------------------------------------
+
+// op: EQ
+#define GB_DEF_GrB_EQ_BOOL_function GB_EQ_f_BOOL
+#define GB_DEF_GrB_EQ_BOOL_ztype bool
+#define GB_DEF_GrB_EQ_BOOL_xtype bool
+#define GB_DEF_GrB_EQ_BOOL_ytype bool
+
+#define GB_DEF_GrB_EQ_INT8_function GB_EQ_f_INT8
+#define GB_DEF_GrB_EQ_INT8_ztype bool
+#define GB_DEF_GrB_EQ_INT8_xtype int8_t
+#define GB_DEF_GrB_EQ_INT8_ytype int8_t
+
+#define GB_DEF_GrB_EQ_UINT8_function GB_EQ_f_UINT8
+#define GB_DEF_GrB_EQ_UINT8_ztype bool
+#define GB_DEF_GrB_EQ_UINT8_xtype uint8_t
+#define GB_DEF_GrB_EQ_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_EQ_INT16_function GB_EQ_f_INT16
+#define GB_DEF_GrB_EQ_INT16_ztype bool
+#define GB_DEF_GrB_EQ_INT16_xtype int16_t
+#define GB_DEF_GrB_EQ_INT16_ytype int16_t
+
+#define GB_DEF_GrB_EQ_UINT16_function GB_EQ_f_UINT16
+#define GB_DEF_GrB_EQ_UINT16_ztype bool
+#define GB_DEF_GrB_EQ_UINT16_xtype uint16_t
+#define GB_DEF_GrB_EQ_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_EQ_INT32_function GB_EQ_f_INT32
+#define GB_DEF_GrB_EQ_INT32_ztype bool
+#define GB_DEF_GrB_EQ_INT32_xtype int32_t
+#define GB_DEF_GrB_EQ_INT32_ytype int32_t
+
+#define GB_DEF_GrB_EQ_UINT32_function GB_EQ_f_UINT32
+#define GB_DEF_GrB_EQ_UINT32_ztype bool
+#define GB_DEF_GrB_EQ_UINT32_xtype uint32_t
+#define GB_DEF_GrB_EQ_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_EQ_INT64_function GB_EQ_f_INT64
+#define GB_DEF_GrB_EQ_INT64_ztype bool
+#define GB_DEF_GrB_EQ_INT64_xtype int64_t
+#define GB_DEF_GrB_EQ_INT64_ytype int64_t
+
+#define GB_DEF_GrB_EQ_UINT64_function GB_EQ_f_UINT64
+#define GB_DEF_GrB_EQ_UINT64_ztype bool
+#define GB_DEF_GrB_EQ_UINT64_xtype uint64_t
+#define GB_DEF_GrB_EQ_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_EQ_FP32_function GB_EQ_f_FP32
+#define GB_DEF_GrB_EQ_FP32_ztype bool
+#define GB_DEF_GrB_EQ_FP32_xtype float
+#define GB_DEF_GrB_EQ_FP32_ytype float
+
+#define GB_DEF_GrB_EQ_FP64_function GB_EQ_f_FP64
+#define GB_DEF_GrB_EQ_FP64_ztype bool
+#define GB_DEF_GrB_EQ_FP64_xtype double
+#define GB_DEF_GrB_EQ_FP64_ytype double
+
+// op: NE
+#define GB_DEF_GrB_NE_BOOL_function GB_NE_f_BOOL
+#define GB_DEF_GrB_NE_BOOL_ztype bool
+#define GB_DEF_GrB_NE_BOOL_xtype bool
+#define GB_DEF_GrB_NE_BOOL_ytype bool
+
+#define GB_DEF_GrB_NE_INT8_function GB_NE_f_INT8
+#define GB_DEF_GrB_NE_INT8_ztype bool
+#define GB_DEF_GrB_NE_INT8_xtype int8_t
+#define GB_DEF_GrB_NE_INT8_ytype int8_t
+
+#define GB_DEF_GrB_NE_UINT8_function GB_NE_f_UINT8
+#define GB_DEF_GrB_NE_UINT8_ztype bool
+#define GB_DEF_GrB_NE_UINT8_xtype uint8_t
+#define GB_DEF_GrB_NE_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_NE_INT16_function GB_NE_f_INT16
+#define GB_DEF_GrB_NE_INT16_ztype bool
+#define GB_DEF_GrB_NE_INT16_xtype int16_t
+#define GB_DEF_GrB_NE_INT16_ytype int16_t
+
+#define GB_DEF_GrB_NE_UINT16_function GB_NE_f_UINT16
+#define GB_DEF_GrB_NE_UINT16_ztype bool
+#define GB_DEF_GrB_NE_UINT16_xtype uint16_t
+#define GB_DEF_GrB_NE_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_NE_INT32_function GB_NE_f_INT32
+#define GB_DEF_GrB_NE_INT32_ztype bool
+#define GB_DEF_GrB_NE_INT32_xtype int32_t
+#define GB_DEF_GrB_NE_INT32_ytype int32_t
+
+#define GB_DEF_GrB_NE_UINT32_function GB_NE_f_UINT32
+#define GB_DEF_GrB_NE_UINT32_ztype bool
+#define GB_DEF_GrB_NE_UINT32_xtype uint32_t
+#define GB_DEF_GrB_NE_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_NE_INT64_function GB_NE_f_INT64
+#define GB_DEF_GrB_NE_INT64_ztype bool
+#define GB_DEF_GrB_NE_INT64_xtype int64_t
+#define GB_DEF_GrB_NE_INT64_ytype int64_t
+
+#define GB_DEF_GrB_NE_UINT64_function GB_NE_f_UINT64
+#define GB_DEF_GrB_NE_UINT64_ztype bool
+#define GB_DEF_GrB_NE_UINT64_xtype uint64_t
+#define GB_DEF_GrB_NE_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_NE_FP32_function GB_NE_f_FP32
+#define GB_DEF_GrB_NE_FP32_ztype bool
+#define GB_DEF_GrB_NE_FP32_xtype float
+#define GB_DEF_GrB_NE_FP32_ytype float
+
+#define GB_DEF_GrB_NE_FP64_function GB_NE_f_FP64
+#define GB_DEF_GrB_NE_FP64_ztype bool
+#define GB_DEF_GrB_NE_FP64_xtype double
+#define GB_DEF_GrB_NE_FP64_ytype double
+
+// op: GT
+#define GB_DEF_GrB_GT_BOOL_function GB_GT_f_BOOL
+#define GB_DEF_GrB_GT_BOOL_ztype bool
+#define GB_DEF_GrB_GT_BOOL_xtype bool
+#define GB_DEF_GrB_GT_BOOL_ytype bool
+
+#define GB_DEF_GrB_GT_INT8_function GB_GT_f_INT8
+#define GB_DEF_GrB_GT_INT8_ztype bool
+#define GB_DEF_GrB_GT_INT8_xtype int8_t
+#define GB_DEF_GrB_GT_INT8_ytype int8_t
+
+#define GB_DEF_GrB_GT_UINT8_function GB_GT_f_UINT8
+#define GB_DEF_GrB_GT_UINT8_ztype bool
+#define GB_DEF_GrB_GT_UINT8_xtype uint8_t
+#define GB_DEF_GrB_GT_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_GT_INT16_function GB_GT_f_INT16
+#define GB_DEF_GrB_GT_INT16_ztype bool
+#define GB_DEF_GrB_GT_INT16_xtype int16_t
+#define GB_DEF_GrB_GT_INT16_ytype int16_t
+
+#define GB_DEF_GrB_GT_UINT16_function GB_GT_f_UINT16
+#define GB_DEF_GrB_GT_UINT16_ztype bool
+#define GB_DEF_GrB_GT_UINT16_xtype uint16_t
+#define GB_DEF_GrB_GT_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_GT_INT32_function GB_GT_f_INT32
+#define GB_DEF_GrB_GT_INT32_ztype bool
+#define GB_DEF_GrB_GT_INT32_xtype int32_t
+#define GB_DEF_GrB_GT_INT32_ytype int32_t
+
+#define GB_DEF_GrB_GT_UINT32_function GB_GT_f_UINT32
+#define GB_DEF_GrB_GT_UINT32_ztype bool
+#define GB_DEF_GrB_GT_UINT32_xtype uint32_t
+#define GB_DEF_GrB_GT_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_GT_INT64_function GB_GT_f_INT64
+#define GB_DEF_GrB_GT_INT64_ztype bool
+#define GB_DEF_GrB_GT_INT64_xtype int64_t
+#define GB_DEF_GrB_GT_INT64_ytype int64_t
+
+#define GB_DEF_GrB_GT_UINT64_function GB_GT_f_UINT64
+#define GB_DEF_GrB_GT_UINT64_ztype bool
+#define GB_DEF_GrB_GT_UINT64_xtype uint64_t
+#define GB_DEF_GrB_GT_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_GT_FP32_function GB_GT_f_FP32
+#define GB_DEF_GrB_GT_FP32_ztype bool
+#define GB_DEF_GrB_GT_FP32_xtype float
+#define GB_DEF_GrB_GT_FP32_ytype float
+
+#define GB_DEF_GrB_GT_FP64_function GB_GT_f_FP64
+#define GB_DEF_GrB_GT_FP64_ztype bool
+#define GB_DEF_GrB_GT_FP64_xtype double
+#define GB_DEF_GrB_GT_FP64_ytype double
+
+// op: LT
+#define GB_DEF_GrB_LT_BOOL_function GB_LT_f_BOOL
+#define GB_DEF_GrB_LT_BOOL_ztype bool
+#define GB_DEF_GrB_LT_BOOL_xtype bool
+#define GB_DEF_GrB_LT_BOOL_ytype bool
+
+#define GB_DEF_GrB_LT_INT8_function GB_LT_f_INT8
+#define GB_DEF_GrB_LT_INT8_ztype bool
+#define GB_DEF_GrB_LT_INT8_xtype int8_t
+#define GB_DEF_GrB_LT_INT8_ytype int8_t
+
+#define GB_DEF_GrB_LT_UINT8_function GB_LT_f_UINT8
+#define GB_DEF_GrB_LT_UINT8_ztype bool
+#define GB_DEF_GrB_LT_UINT8_xtype uint8_t
+#define GB_DEF_GrB_LT_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_LT_INT16_function GB_LT_f_INT16
+#define GB_DEF_GrB_LT_INT16_ztype bool
+#define GB_DEF_GrB_LT_INT16_xtype int16_t
+#define GB_DEF_GrB_LT_INT16_ytype int16_t
+
+#define GB_DEF_GrB_LT_UINT16_function GB_LT_f_UINT16
+#define GB_DEF_GrB_LT_UINT16_ztype bool
+#define GB_DEF_GrB_LT_UINT16_xtype uint16_t
+#define GB_DEF_GrB_LT_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_LT_INT32_function GB_LT_f_INT32
+#define GB_DEF_GrB_LT_INT32_ztype bool
+#define GB_DEF_GrB_LT_INT32_xtype int32_t
+#define GB_DEF_GrB_LT_INT32_ytype int32_t
+
+#define GB_DEF_GrB_LT_UINT32_function GB_LT_f_UINT32
+#define GB_DEF_GrB_LT_UINT32_ztype bool
+#define GB_DEF_GrB_LT_UINT32_xtype uint32_t
+#define GB_DEF_GrB_LT_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_LT_INT64_function GB_LT_f_INT64
+#define GB_DEF_GrB_LT_INT64_ztype bool
+#define GB_DEF_GrB_LT_INT64_xtype int64_t
+#define GB_DEF_GrB_LT_INT64_ytype int64_t
+
+#define GB_DEF_GrB_LT_UINT64_function GB_LT_f_UINT64
+#define GB_DEF_GrB_LT_UINT64_ztype bool
+#define GB_DEF_GrB_LT_UINT64_xtype uint64_t
+#define GB_DEF_GrB_LT_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_LT_FP32_function GB_LT_f_FP32
+#define GB_DEF_GrB_LT_FP32_ztype bool
+#define GB_DEF_GrB_LT_FP32_xtype float
+#define GB_DEF_GrB_LT_FP32_ytype float
+
+#define GB_DEF_GrB_LT_FP64_function GB_LT_f_FP64
+#define GB_DEF_GrB_LT_FP64_ztype bool
+#define GB_DEF_GrB_LT_FP64_xtype double
+#define GB_DEF_GrB_LT_FP64_ytype double
+
+// op: GE
+#define GB_DEF_GrB_GE_BOOL_function GB_GE_f_BOOL
+#define GB_DEF_GrB_GE_BOOL_ztype bool
+#define GB_DEF_GrB_GE_BOOL_xtype bool
+#define GB_DEF_GrB_GE_BOOL_ytype bool
+
+#define GB_DEF_GrB_GE_INT8_function GB_GE_f_INT8
+#define GB_DEF_GrB_GE_INT8_ztype bool
+#define GB_DEF_GrB_GE_INT8_xtype int8_t
+#define GB_DEF_GrB_GE_INT8_ytype int8_t
+
+#define GB_DEF_GrB_GE_UINT8_function GB_GE_f_UINT8
+#define GB_DEF_GrB_GE_UINT8_ztype bool
+#define GB_DEF_GrB_GE_UINT8_xtype uint8_t
+#define GB_DEF_GrB_GE_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_GE_INT16_function GB_GE_f_INT16
+#define GB_DEF_GrB_GE_INT16_ztype bool
+#define GB_DEF_GrB_GE_INT16_xtype int16_t
+#define GB_DEF_GrB_GE_INT16_ytype int16_t
+
+#define GB_DEF_GrB_GE_UINT16_function GB_GE_f_UINT16
+#define GB_DEF_GrB_GE_UINT16_ztype bool
+#define GB_DEF_GrB_GE_UINT16_xtype uint16_t
+#define GB_DEF_GrB_GE_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_GE_INT32_function GB_GE_f_INT32
+#define GB_DEF_GrB_GE_INT32_ztype bool
+#define GB_DEF_GrB_GE_INT32_xtype int32_t
+#define GB_DEF_GrB_GE_INT32_ytype int32_t
+
+#define GB_DEF_GrB_GE_UINT32_function GB_GE_f_UINT32
+#define GB_DEF_GrB_GE_UINT32_ztype bool
+#define GB_DEF_GrB_GE_UINT32_xtype uint32_t
+#define GB_DEF_GrB_GE_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_GE_INT64_function GB_GE_f_INT64
+#define GB_DEF_GrB_GE_INT64_ztype bool
+#define GB_DEF_GrB_GE_INT64_xtype int64_t
+#define GB_DEF_GrB_GE_INT64_ytype int64_t
+
+#define GB_DEF_GrB_GE_UINT64_function GB_GE_f_UINT64
+#define GB_DEF_GrB_GE_UINT64_ztype bool
+#define GB_DEF_GrB_GE_UINT64_xtype uint64_t
+#define GB_DEF_GrB_GE_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_GE_FP32_function GB_GE_f_FP32
+#define GB_DEF_GrB_GE_FP32_ztype bool
+#define GB_DEF_GrB_GE_FP32_xtype float
+#define GB_DEF_GrB_GE_FP32_ytype float
+
+#define GB_DEF_GrB_GE_FP64_function GB_GE_f_FP64
+#define GB_DEF_GrB_GE_FP64_ztype bool
+#define GB_DEF_GrB_GE_FP64_xtype double
+#define GB_DEF_GrB_GE_FP64_ytype double
+
+// op: LE
+#define GB_DEF_GrB_LE_BOOL_function GB_LE_f_BOOL
+#define GB_DEF_GrB_LE_BOOL_ztype bool
+#define GB_DEF_GrB_LE_BOOL_xtype bool
+#define GB_DEF_GrB_LE_BOOL_ytype bool
+
+#define GB_DEF_GrB_LE_INT8_function GB_LE_f_INT8
+#define GB_DEF_GrB_LE_INT8_ztype bool
+#define GB_DEF_GrB_LE_INT8_xtype int8_t
+#define GB_DEF_GrB_LE_INT8_ytype int8_t
+
+#define GB_DEF_GrB_LE_UINT8_function GB_LE_f_UINT8
+#define GB_DEF_GrB_LE_UINT8_ztype bool
+#define GB_DEF_GrB_LE_UINT8_xtype uint8_t
+#define GB_DEF_GrB_LE_UINT8_ytype uint8_t
+
+#define GB_DEF_GrB_LE_INT16_function GB_LE_f_INT16
+#define GB_DEF_GrB_LE_INT16_ztype bool
+#define GB_DEF_GrB_LE_INT16_xtype int16_t
+#define GB_DEF_GrB_LE_INT16_ytype int16_t
+
+#define GB_DEF_GrB_LE_UINT16_function GB_LE_f_UINT16
+#define GB_DEF_GrB_LE_UINT16_ztype bool
+#define GB_DEF_GrB_LE_UINT16_xtype uint16_t
+#define GB_DEF_GrB_LE_UINT16_ytype uint16_t
+
+#define GB_DEF_GrB_LE_INT32_function GB_LE_f_INT32
+#define GB_DEF_GrB_LE_INT32_ztype bool
+#define GB_DEF_GrB_LE_INT32_xtype int32_t
+#define GB_DEF_GrB_LE_INT32_ytype int32_t
+
+#define GB_DEF_GrB_LE_UINT32_function GB_LE_f_UINT32
+#define GB_DEF_GrB_LE_UINT32_ztype bool
+#define GB_DEF_GrB_LE_UINT32_xtype uint32_t
+#define GB_DEF_GrB_LE_UINT32_ytype uint32_t
+
+#define GB_DEF_GrB_LE_INT64_function GB_LE_f_INT64
+#define GB_DEF_GrB_LE_INT64_ztype bool
+#define GB_DEF_GrB_LE_INT64_xtype int64_t
+#define GB_DEF_GrB_LE_INT64_ytype int64_t
+
+#define GB_DEF_GrB_LE_UINT64_function GB_LE_f_UINT64
+#define GB_DEF_GrB_LE_UINT64_ztype bool
+#define GB_DEF_GrB_LE_UINT64_xtype uint64_t
+#define GB_DEF_GrB_LE_UINT64_ytype uint64_t
+
+#define GB_DEF_GrB_LE_FP32_function GB_LE_f_FP32
+#define GB_DEF_GrB_LE_FP32_ztype bool
+#define GB_DEF_GrB_LE_FP32_xtype float
+#define GB_DEF_GrB_LE_FP32_ytype float
+
+#define GB_DEF_GrB_LE_FP64_function GB_LE_f_FP64
+#define GB_DEF_GrB_LE_FP64_ztype bool
+#define GB_DEF_GrB_LE_FP64_xtype double
+#define GB_DEF_GrB_LE_FP64_ytype double
+
+
+//------------------------------------------------------
+// binary operators of the form z=f(x,y): bool x bool -> bool
+//------------------------------------------------------
+
+#define GB_DEF_GrB_LOR_function GB_LOR_f_BOOL
+#define GB_DEF_GrB_LOR_ztype bool
+#define GB_DEF_GrB_LOR_xtype bool
+#define GB_DEF_GrB_LOR_ytype bool
+
+#define GB_DEF_GrB_LAND_function GB_LAND_f_BOOL
+#define GB_DEF_GrB_LAND_ztype bool
+#define GB_DEF_GrB_LAND_xtype bool
+#define GB_DEF_GrB_LAND_ytype bool
+
+#define GB_DEF_GrB_LXOR_function GB_LXOR_f_BOOL
+#define GB_DEF_GrB_LXOR_ztype bool
+#define GB_DEF_GrB_LXOR_xtype bool
+#define GB_DEF_GrB_LXOR_ytype bool
+
+
+//------------------------------------------------------
+// built-in monoids
+//------------------------------------------------------
+
+// op: MIN
+#define GB_DEF_GxB_MIN_BOOL_MONOID_add GB_MIN_f_BOOL
+#define GB_DEF_GxB_MIN_INT8_MONOID_add GB_MIN_f_INT8
+#define GB_DEF_GxB_MIN_UINT8_MONOID_add GB_MIN_f_UINT8
+#define GB_DEF_GxB_MIN_INT16_MONOID_add GB_MIN_f_INT16
+#define GB_DEF_GxB_MIN_UINT16_MONOID_add GB_MIN_f_UINT16
+#define GB_DEF_GxB_MIN_INT32_MONOID_add GB_MIN_f_INT32
+#define GB_DEF_GxB_MIN_UINT32_MONOID_add GB_MIN_f_UINT32
+#define GB_DEF_GxB_MIN_INT64_MONOID_add GB_MIN_f_INT64
+#define GB_DEF_GxB_MIN_UINT64_MONOID_add GB_MIN_f_UINT64
+#define GB_DEF_GxB_MIN_FP32_MONOID_add GB_MIN_f_FP32
+#define GB_DEF_GxB_MIN_FP64_MONOID_add GB_MIN_f_FP64
+// op: MAX
+#define GB_DEF_GxB_MAX_BOOL_MONOID_add GB_MAX_f_BOOL
+#define GB_DEF_GxB_MAX_INT8_MONOID_add GB_MAX_f_INT8
+#define GB_DEF_GxB_MAX_UINT8_MONOID_add GB_MAX_f_UINT8
+#define GB_DEF_GxB_MAX_INT16_MONOID_add GB_MAX_f_INT16
+#define GB_DEF_GxB_MAX_UINT16_MONOID_add GB_MAX_f_UINT16
+#define GB_DEF_GxB_MAX_INT32_MONOID_add GB_MAX_f_INT32
+#define GB_DEF_GxB_MAX_UINT32_MONOID_add GB_MAX_f_UINT32
+#define GB_DEF_GxB_MAX_INT64_MONOID_add GB_MAX_f_INT64
+#define GB_DEF_GxB_MAX_UINT64_MONOID_add GB_MAX_f_UINT64
+#define GB_DEF_GxB_MAX_FP32_MONOID_add GB_MAX_f_FP32
+#define GB_DEF_GxB_MAX_FP64_MONOID_add GB_MAX_f_FP64
+// op: PLUS
+#define GB_DEF_GxB_PLUS_BOOL_MONOID_add GB_PLUS_f_BOOL
+#define GB_DEF_GxB_PLUS_INT8_MONOID_add GB_PLUS_f_INT8
+#define GB_DEF_GxB_PLUS_UINT8_MONOID_add GB_PLUS_f_UINT8
+#define GB_DEF_GxB_PLUS_INT16_MONOID_add GB_PLUS_f_INT16
+#define GB_DEF_GxB_PLUS_UINT16_MONOID_add GB_PLUS_f_UINT16
+#define GB_DEF_GxB_PLUS_INT32_MONOID_add GB_PLUS_f_INT32
+#define GB_DEF_GxB_PLUS_UINT32_MONOID_add GB_PLUS_f_UINT32
+#define GB_DEF_GxB_PLUS_INT64_MONOID_add GB_PLUS_f_INT64
+#define GB_DEF_GxB_PLUS_UINT64_MONOID_add GB_PLUS_f_UINT64
+#define GB_DEF_GxB_PLUS_FP32_MONOID_add GB_PLUS_f_FP32
+#define GB_DEF_GxB_PLUS_FP64_MONOID_add GB_PLUS_f_FP64
+// op: TIMES
+#define GB_DEF_GxB_TIMES_BOOL_MONOID_add GB_TIMES_f_BOOL
+#define GB_DEF_GxB_TIMES_INT8_MONOID_add GB_TIMES_f_INT8
+#define GB_DEF_GxB_TIMES_UINT8_MONOID_add GB_TIMES_f_UINT8
+#define GB_DEF_GxB_TIMES_INT16_MONOID_add GB_TIMES_f_INT16
+#define GB_DEF_GxB_TIMES_UINT16_MONOID_add GB_TIMES_f_UINT16
+#define GB_DEF_GxB_TIMES_INT32_MONOID_add GB_TIMES_f_INT32
+#define GB_DEF_GxB_TIMES_UINT32_MONOID_add GB_TIMES_f_UINT32
+#define GB_DEF_GxB_TIMES_INT64_MONOID_add GB_TIMES_f_INT64
+#define GB_DEF_GxB_TIMES_UINT64_MONOID_add GB_TIMES_f_UINT64
+#define GB_DEF_GxB_TIMES_FP32_MONOID_add GB_TIMES_f_FP32
+#define GB_DEF_GxB_TIMES_FP64_MONOID_add GB_TIMES_f_FP64
+
+#define GB_DEF_GxB_MIN_INT8_MONOID_identity   INT8_MAX
+#define GB_DEF_GxB_MIN_UINT8_MONOID_identity  UINT8_MAX
+#define GB_DEF_GxB_MIN_INT16_MONOID_identity  INT16_MAX
+#define GB_DEF_GxB_MIN_UINT16_MONOID_identity UINT16_MAX
+#define GB_DEF_GxB_MIN_INT32_MONOID_identity  INT32_MAX
+#define GB_DEF_GxB_MIN_UINT32_MONOID_identity UINT32_MAX
+#define GB_DEF_GxB_MIN_INT64_MONOID_identity  INT64_MAX
+#define GB_DEF_GxB_MIN_UINT64_MONOID_identity UINT64_MAX
+#define GB_DEF_GxB_MIN_FP32_MONOID_identity   INFINITY
+#define GB_DEF_GxB_MIN_FP64_MONOID_identity   INFINITY
+
+#define GB_DEF_GxB_MAX_INT8_MONOID_identity   INT8_MIN
+#define GB_DEF_GxB_MAX_UINT8_MONOID_identity  0
+#define GB_DEF_GxB_MAX_INT16_MONOID_identity  INT16_MIN
+#define GB_DEF_GxB_MAX_UINT16_MONOID_identity 0
+#define GB_DEF_GxB_MAX_INT32_MONOID_identity  INT32_MIN
+#define GB_DEF_GxB_MAX_UINT32_MONOID_identity 0
+#define GB_DEF_GxB_MAX_INT64_MONOID_identity  INT64_MIN
+#define GB_DEF_GxB_MAX_UINT64_MONOID_identity 0
+#define GB_DEF_GxB_MAX_FP32_MONOID_identity   (-INFINITY)
+#define GB_DEF_GxB_MAX_FP64_MONOID_identity   (-INFINITY)
+
+#define GB_DEF_GxB_PLUS_INT8_MONOID_identity   0
+#define GB_DEF_GxB_PLUS_UINT8_MONOID_identity  0
+#define GB_DEF_GxB_PLUS_INT16_MONOID_identity  0
+#define GB_DEF_GxB_PLUS_UINT16_MONOID_identity 0
+#define GB_DEF_GxB_PLUS_INT32_MONOID_identity  0
+#define GB_DEF_GxB_PLUS_UINT32_MONOID_identity 0
+#define GB_DEF_GxB_PLUS_INT64_MONOID_identity  0
+#define GB_DEF_GxB_PLUS_UINT64_MONOID_identity 0
+#define GB_DEF_GxB_PLUS_FP32_MONOID_identity   0
+#define GB_DEF_GxB_PLUS_FP64_MONOID_identity   0
+
+#define GB_DEF_GxB_TIMES_INT8_MONOID_identity   1
+#define GB_DEF_GxB_TIMES_UINT8_MONOID_identity  1
+#define GB_DEF_GxB_TIMES_INT16_MONOID_identity  1
+#define GB_DEF_GxB_TIMES_UINT16_MONOID_identity 1
+#define GB_DEF_GxB_TIMES_INT32_MONOID_identity  1
+#define GB_DEF_GxB_TIMES_UINT32_MONOID_identity 1
+#define GB_DEF_GxB_TIMES_INT64_MONOID_identity  1
+#define GB_DEF_GxB_TIMES_UINT64_MONOID_identity 1
+#define GB_DEF_GxB_TIMES_FP32_MONOID_identity   1
+#define GB_DEF_GxB_TIMES_FP64_MONOID_identity   1
+
+#define GB_DEF_GxB_LOR_BOOL_MONOID_identity    false
+#define GB_DEF_GxB_LAND_BOOL_MONOID_identity   true
+#define GB_DEF_GxB_LXOR_BOOL_MONOID_identity   false
+#define GB_DEF_GxB_EQ_BOOL_MONOID_identity     true
+
+GrB_Info GB_AxB_user
+(
+    const GrB_Desc_Value AxB_method,
+    const GrB_Semiring s,
+
+    GrB_Matrix *Chandle,
+    const GrB_Matrix M,
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    bool flipxy,                // if true, A and B have been swapped
+
+    // for heap method only:
+    int64_t *restrict List,
+    GB_pointer_pair *restrict pA_pair,
+    GB_Element *restrict Heap,
+    const int64_t bjnz_max
+) ;
 
 #endif
 

@@ -19,26 +19,26 @@
 #endif
 
 // C=A*B is successful, just free temporary matrices
-#define FREE_WORK                           \
+#define GB_FREE_WORK                        \
 {                                           \
     GB_MATRIX_FREE (&A2) ;                  \
     GB_MATRIX_FREE (&B2) ;                  \
 }
 
 // C=A*B failed, free everything, including C, and all thread-local workspace
-#define FREE_ALL                            \
+#define GB_FREE_ALL                         \
 {                                           \
-    FREE_WORK ;                             \
+    GB_FREE_WORK ;                          \
     GB_MATRIX_FREE (Chandle) ;              \
     GB_wfree ( ) ;                          \
 }
 
-#define OK(method)                          \
+#define GB_OK(method)                       \
 {                                           \
     info = method ;                         \
     if (info != GrB_SUCCESS)                \
     {                                       \
-        FREE_ALL ;                          \
+        GB_FREE_ALL ;                       \
         return (info) ;                     \
     }                                       \
 }
@@ -58,14 +58,14 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M, "M for numeric C<M>=A*B", D0)) ;
-    ASSERT_OK (GB_check (A_in, "A for Gustavson C=A*B", D0)) ;
-    ASSERT_OK (GB_check (B_in, "B for Gustavson C=A*B", D0)) ;
-    ASSERT (!PENDING (M))    ; ASSERT (!ZOMBIES (M)) ;
-    ASSERT (!PENDING (A_in)) ; ASSERT (!ZOMBIES (A_in)) ;
-    ASSERT (!PENDING (B_in)) ; ASSERT (!ZOMBIES (B_in)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for numeric C<M>=A*B", GB0)) ;
+    ASSERT_OK (GB_check (A_in, "A for Gustavson C=A*B", GB0)) ;
+    ASSERT_OK (GB_check (B_in, "B for Gustavson C=A*B", GB0)) ;
+    ASSERT (!GB_PENDING (M))    ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (A_in)) ; ASSERT (!GB_ZOMBIES (A_in)) ;
+    ASSERT (!GB_PENDING (B_in)) ; ASSERT (!GB_ZOMBIES (B_in)) ;
     ASSERT (A_in->vdim == B_in->vlen) ;
-    ASSERT_OK (GB_check (semiring, "semiring for numeric A*B", D0)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for numeric A*B", GB0)) ;
 
     //--------------------------------------------------------------------------
     // determine size and hypersparsity of C
@@ -90,16 +90,16 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
         // ensure Mark is at least of size cvlen+1.  the Mark array is not used
         // for the masked matrix multiply.  This is costly if C is hypersparse,
         // but in that case the heap method will be used instead.
-        OK (GB_Mark_walloc (cvlen+1)) ;  // OK: not used if C hypersparse
+        GB_OK (GB_Mark_walloc (cvlen+1)) ;  // OK: not used if C hypersparse
         Mark = GB_thread_local.Mark ;
     }
 
     //--------------------------------------------------------------------------
-    // estimate NNZ(C) and allocate C (just the pattern)
+    // estimate nnz(C) and allocate C (just the pattern)
     //--------------------------------------------------------------------------
 
-    OK (GB_AxB_alloc (Chandle, GrB_BOOL, cvlen, cvdim, M, A, B, false,
-        cvlen + NNZ (A) + NNZ (B))) ;
+    GB_OK (GB_AxB_alloc (Chandle, GrB_BOOL, cvlen, cvdim, M, A, B, false,
+        cvlen + GB_NNZ (A) + GB_NNZ (B))) ;
 
     GrB_Matrix C = (*Chandle) ;
     ASSERT (C != NULL) ;
@@ -111,13 +111,13 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     if (M == NULL)
     {
-        bool A_is_hyper = IS_HYPER (A) ;
-        if (A_is_hyper || IS_HYPER (B) || IS_HYPER (C))
+        bool A_is_hyper = GB_IS_HYPER (A) ;
+        if (A_is_hyper || GB_IS_HYPER (B) || GB_IS_HYPER (C))
         { 
             // symbolic analysis when one or more matrix is hypersparse
-            #define HYPER
+            #define GB_HYPER_CASE
             #include "GB_AxB_Gustavson_symbolic.c"
-            #undef HYPER
+            #undef GB_HYPER_CASE
         }
         else
         { 
@@ -174,20 +174,20 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     { 
         // out of memory
         double memory = GBYTES (C->nzmax, zsize) ;
-        FREE_ALL ;
-        return (OUT_OF_MEMORY (memory)) ;
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     C->x_shallow = false ;
 
     // this workspace is costly if the matrices are hypersparse, but in that
     // case the heap method is used instead.
-    OK (GB_Work_walloc (cvlen, zsize)) ;     // OK: not used if C hypersparse
+    GB_OK (GB_Work_walloc (cvlen, zsize)) ; // OK: not used if C hypersparse
     int8_t *Flag = NULL ;
     if (M != NULL)
     { 
         // allocate Flag
-        OK (GB_Flag_walloc (cvlen)) ;        // OK: not used if C hypersparse
+        GB_OK (GB_Flag_walloc (cvlen)) ;    // OK: not used if C hypersparse
     }
 
     // w has size cvlen+1, each entry of size zsize.  Not initialized.
@@ -232,8 +232,8 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // data is moved.  The CSR/CSC format of A2 and B2 is not relevant, so
     // they are kept the same as A_in and B_in.
 
-    OK (GB_shallow_cast (&A2, atype_required, A_in->is_csc, A_in)) ;
-    OK (GB_shallow_cast (&B2, btype_required, B_in->is_csc, B_in)) ;
+    GB_OK (GB_shallow_cast (&A2, atype_required, A_in->is_csc, A_in)) ;
+    GB_OK (GB_shallow_cast (&B2, btype_required, B_in->is_csc, B_in)) ;
 
     A = A2 ;
     B = B2 ;
@@ -247,10 +247,10 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // compute C = A*B for built-in types and operators
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A->type, "A type for builtin", D0)) ;
-    ASSERT_OK (GB_check (B->type, "B type for builtin", D0)) ;
-    ASSERT_OK (GB_check (C->type, "C type for builtin", D0)) ;
-    ASSERT_OK (GB_check (semiring, "semiring for builtin", D0)) ;
+    ASSERT_OK (GB_check (A->type, "A type for builtin", GB0)) ;
+    ASSERT_OK (GB_check (B->type, "B type for builtin", GB0)) ;
+    ASSERT_OK (GB_check (C->type, "C type for builtin", GB0)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for builtin", GB0)) ;
 
 #ifndef GBCOMPACT
 
@@ -269,15 +269,27 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     if (done)
     { 
         // C = A*B has been done via a hard-coded case
-        ASSERT_OK (GB_check (C, "C hard-coded for numeric C=A*B", D0)) ;
+        ASSERT_OK (GB_check (C, "C hard-coded for numeric C=A*B", GB0)) ;
         ASSERT (*Chandle == C) ;
-        FREE_WORK ;
+        GB_FREE_WORK ;
         // the masked version uses and then clears the Flag
         if (M != NULL) ASSERT_FLAG_IS_CLEAR ;
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
 #endif
+
+    //--------------------------------------------------------------------------
+    // user semirings created at compile time
+    //--------------------------------------------------------------------------
+
+    if (semiring->object_kind == GB_USER_COMPILED)
+    { 
+        info = GB_AxB_user (GxB_AxB_GUSTAVSON, semiring, Chandle, M, A, B,
+            flipxy, NULL, NULL, NULL, 0) ;
+        GB_FREE_WORK ;
+        return (info) ;
+    }
 
     //--------------------------------------------------------------------------
     // generic Gustavson C=A*B for any valid semiring, built-in or user-defined
@@ -285,61 +297,47 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     // Define operations for GB_AxB_Gustavson_mask and GB_AxB_Gustavson_nomask
 
-    #define IDENTITY \
+    #define GB_IDENTITY \
         identity
 
     // x [i] = y
-    #define COPY_SCALAR_TO_ARRAY(x,i,y,s)           \
+    #define GB_COPY_SCALAR_TO_ARRAY(x,i,y,s)        \
         memcpy (x +((i)*s), y, s) ;
 
     // x = y [i]
-    #define COPY_ARRAY_TO_SCALAR(x,y,i,s)           \
+    #define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)        \
         memcpy (x, y +((i)*s), s) ;
 
     // x [i] = y [j]
-    #define COPY_ARRAY_TO_ARRAY(x,i,y,j,s)          \
+    #define GB_COPY_ARRAY_TO_ARRAY(x,i,y,j,s)       \
         memcpy (x +((i)*s), y +((j)*s), s) ;
 
+    #define GB_MULTOP(z,x,y) fmult (z, x, y) ;
+
     // generic multiply-add operation (with no mask)
-    #define MULTADD_NOMASK                          \
+    #define GB_MULTADD_NOMASK                       \
     {                                               \
         /* w [i] += A(i,k) * B(k,j) */              \
-        if (flipxy)                                 \
-        {                                           \
-            /* zwork = bkj * A(i,k) */              \
-            fmult (zwork, bkj, Ax +(pA*asize)) ;    \
-        }                                           \
-        else                                        \
-        {                                           \
-            /* zwork = A(i,k) * bkj */              \
-            fmult (zwork, Ax +(pA*asize), bkj) ;    \
-        }                                           \
+        /* zwork = A(i,k) * bkj */                  \
+        GB_MULTIPLY (zwork, Ax +(pA*asize), bkj) ;     \
         fadd (w +(i*zsize), w +(i*zsize), zwork) ; /* (z x alias) */ \
     }
 
     // generic multiply-add operation (with mask)
-    #define MULTADD_WITH_MASK                                   \
+    #define GB_MULTADD_WITH_MASK                                \
     {                                                           \
         /* w [i] += A(i,k) * B(k,j) */                          \
         if (flag > 0)                                           \
         {                                                       \
-            if (flipxy)                                         \
-            {                                                   \
-                /* w [i] = bkj * A(i,k) */                      \
-                fmult (w +(i*zsize), bkj, Ax +(pA*asize)) ;     \
-            }                                                   \
-            else                                                \
-            {                                                   \
-                /* w [i] = A(i,k) * bkj */                      \
-                fmult (w +(i*zsize), Ax +(pA*asize), bkj) ;     \
-            }                                                   \
+            /* w [i] = A(i,k) * bkj */                          \
+            GB_MULTIPLY (w +(i*zsize), Ax +(pA*asize), bkj) ;   \
             /* first time C(i,j) seen */                        \
             Flag [i] = -1 ;                                     \
         }                                                       \
         else                                                    \
         {                                                       \
             /* C(i,j) seen before, update it */                 \
-            MULTADD_NOMASK ;                                    \
+            GB_MULTADD_NOMASK ;                                 \
         }                                                       \
     }
 
@@ -355,36 +353,26 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     void *restrict identity = add->identity ;
 
-    // get A, B, and C numerical components
     void *restrict Cx = C->x ;
-    const void *restrict Ax = A->x ;
-    const void *restrict Bx = B->x ;
 
-    #include "GB_AxB_Gustavson_meta.c"
+    #define GB_HANDLE_FLIPXY true
+    #define GB_XTYPE void
+    #define GB_YTYPE void
+    #include "GB_AxB_Gustavson_flipxy.c"
 
     //--------------------------------------------------------------------------
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    FREE_WORK ;     // free A2 and B2
+    GB_FREE_WORK ;     // free A2 and B2
 
     // cannot fail since C->plen is the upper bound: # non-empty columns of B
     ASSERT (info == GrB_SUCCESS) ;
     // if it could fail, do this:
-    // OK (info) ;     // check result and return if an error occurred
+    // GB_OK (info) ;     // check result and return if an error occurred
 
-    ASSERT_OK (GB_check (C, "C output for numeric C=A*B", D0)) ;
+    ASSERT_OK (GB_check (C, "C output for numeric C=A*B", GB0)) ;
     ASSERT (*Chandle == C) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
-
-#undef IDENTITY
-#undef COPY_SCALAR_TO_ARRAY
-#undef COPY_ARRAY_TO_SCALAR
-#undef COPY_ARRAY_TO_ARRAY
-#undef MULTADD_NOMASK
-#undef MULTADD_WITH_MASK
-#undef FREE_WORK
-#undef FREE_ALL
-#undef OK
 

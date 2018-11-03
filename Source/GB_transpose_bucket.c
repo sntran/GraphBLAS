@@ -56,14 +56,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     ASSERT (Chandle != NULL) ;
     (*Chandle) = NULL ;
-    ASSERT_OK (GB_check (ctype, "ctype for transpose", D0)) ;
+    ASSERT_OK (GB_check (ctype, "ctype for transpose", GB0)) ;
     // OK if the matrix A is jumbled; this function is intended to sort it.
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for GB_transpose_bucket", D0)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for transpose_bucket", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
 
     if (op != NULL)
     { 
-        ASSERT_OK (GB_check (op, "op for transpose", D0)) ;
+        ASSERT_OK (GB_check (op, "op for transpose", GB0)) ;
         ASSERT (ctype == op->ztype) ;
         ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
     }
@@ -75,7 +75,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // The bucket transpose only works when C is not hypersparse.
     // A can be hypersparse.
 
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
 
     // [ C->p is malloc'd but not initialized.  It is NON-hypersparse.
     GrB_Info info ;
@@ -121,7 +121,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     // compute the vector pointers for C
     C->nvec_nonempty = GB_cumsum (C->p, rowcount, A->vlen) ;
-    C->magic = MAGIC ;      // C is now initialized ]
+    C->magic = GB_MAGIC ;      // C is now initialized ]
 
     //--------------------------------------------------------------------------
     // transpose A into C
@@ -143,9 +143,9 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C transpose of A", D0)) ;
+    ASSERT_OK (GB_check (C, "C transpose of A", GB0)) ;
     ASSERT (!C->is_hyper) ;
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

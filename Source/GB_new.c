@@ -11,11 +11,11 @@
 // See GB_create instead.
 
 // If the Ap_option is GB_Ap_calloc, the A->p and A->h are allocated and
-// initialized, and A->magic is set to MAGIC to denote a valid matrix.
+// initialized, and A->magic is set to GB_MAGIC to denote a valid matrix.
 // Otherwise, the matrix has not yet been fully initialized, and A->magic is
-// set to MAGIC2 to denote this.  This case only occurs internally in
+// set to GB_MAGIC2 to denote this.  This case only occurs internally in
 // GraphBLAS.  The internal function that calls GB_new must then allocate or
-// initialize A->p itself, and then set A->magic = MAGIC when it does so.
+// initialize A->p itself, and then set A->magic = GB_MAGIC when it does so.
 
 // Only GrB_SUCCESS and GrB_OUT_OF_MEMORY can be returned by this function.
 
@@ -55,7 +55,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     //--------------------------------------------------------------------------
 
     ASSERT (Ahandle != NULL) ;
-    ASSERT_OK (GB_check (type, "type for GB_new", D0)) ;
+    ASSERT_OK (GB_check (type, "type for GB_new", GB0)) ;
     ASSERT (vlen >= 0 && vlen <= GB_INDEX_MAX)
     ASSERT (vdim >= 0 && vdim <= GB_INDEX_MAX) ;
 
@@ -69,7 +69,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         GB_CALLOC_MEMORY (*Ahandle, 1, sizeof (struct GB_Matrix_opaque)) ;
         if (*Ahandle == NULL)
         { 
-            return (NO_MEMORY) ;
+            return (GB_NO_MEMORY) ;
         }
         allocated_header = true ;
     }
@@ -81,7 +81,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     //--------------------------------------------------------------------------
 
     // basic information
-    A->magic = MAGIC2 ;                 // object is not yet valid
+    A->magic = GB_MAGIC2 ;                 // object is not yet valid
     A->type = type ;
 
     // CSR/CSC format
@@ -119,7 +119,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     // content that is freed or reset in GB_ph_free
     if (is_hyper)
     { 
-        A->plen = IMIN (plen, vdim) ;
+        A->plen = GB_IMIN (plen, vdim) ;
         A->nvec = 0 ;           // no vectors present
     }
     else
@@ -138,7 +138,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     // (GB_ix_free then calls GB_pending_free and GB_queue_remove):
     A->i = NULL ;
     A->x = NULL ;
-    A->nzmax = 0 ;              // note NNZ(A) checks nzmax==0 before Ap[nvec]
+    A->nzmax = 0 ;              // GB_NNZ(A) checks nzmax==0 before Ap[nvec]
     A->i_shallow = false ;
     A->x_shallow = false ;
     A->nzombies = 0 ;
@@ -167,7 +167,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     if (Ap_option == GB_Ap_calloc)
     {
         // Sets the vector pointers to zero, which defines all vectors as empty
-        A->magic = MAGIC ;
+        A->magic = GB_MAGIC ;
         memory += GBYTES (A->plen+1, sizeof (int64_t)) ;
         GB_CALLOC_MEMORY (A->p, A->plen+1, sizeof (int64_t)) ;
         ok = (A->p != NULL) ;
@@ -182,11 +182,11 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     else if (Ap_option == GB_Ap_malloc)
     {
         // This is faster but can only be used internally by GraphBLAS since
-        // the matrix is allocated but not yet fully initialized.  The
-        // caller must set A->p [0..plen] and then set A->magic to MAGIC,
-        // before returning the matrix to the user application.
-        // NNZ(A) must check A->nzmax == 0 since A->p [A->nvec] is undefined.
-        A->magic = MAGIC2 ;
+        // the matrix is allocated but not yet fully initialized.  The caller
+        // must set A->p [0..plen] and then set A->magic to GB_MAGIC, before
+        // returning the matrix to the user application.  GB_NNZ(A) must check
+        // A->nzmax == 0 since A->p [A->nvec] is undefined.
+        A->magic = GB_MAGIC2 ;
         memory += GBYTES (A->plen+1, sizeof (int64_t)) ;
         GB_MALLOC_MEMORY (A->p, A->plen+1, sizeof (int64_t)) ;
         ok = (A->p != NULL) ;
@@ -200,8 +200,8 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     else // Ap_option == GB_Ap_null
     { 
         // A is not initialized yet; A->p and A->h are both NULL.
-        // NNZ(A) must check A->nzmax == 0 since A->p is not allocated.
-        A->magic = MAGIC2 ;
+        // GB_NNZ(A) must check A->nzmax == 0 since A->p is not allocated.
+        A->magic = GB_MAGIC2 ;
         A->p = NULL ;
         A->h = NULL ;
         ok = true ;
@@ -215,14 +215,14 @@ GrB_Info GB_new                 // create matrix, except for indices & values
             // only free the header if it was allocated here
             GB_MATRIX_FREE (Ahandle) ;
         }
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     // The vector pointers A->p are initialized only if Ap_calloc is true
     if (Ap_option == GB_Ap_calloc)
     { 
-        ASSERT_OK (GB_check (A, "new matrix from GB_new", D0)) ;
+        ASSERT_OK (GB_check (A, "new matrix from GB_new", GB0)) ;
     }
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

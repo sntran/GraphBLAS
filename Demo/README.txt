@@ -35,6 +35,10 @@ simple_timer.c          a simple yet portable timer
 tricount.c              six triangle counting methods using GraphBLAS
 usercomplex.c           user-defined double complex type
 wathen.c                GraphBLAS version of the MATLAB wathen.m
+dpagerank.c             PageRank via real semiring
+drowscale.c             row scaling for dpagerank
+ipagerank.c             PageRank via integer semiring
+irowscale.c             row scaling for ipagerank
 
 --------------------------------------------------------------------------------
 in Demo/Program:
@@ -45,8 +49,9 @@ complex_demo.c          demo program to test complex type
 kron_demo.c             demo program to test GxB_kron
 mis_demo.c              demo program to test mis
 tri_demo.c              demo program to test tricount
-simple_demo.c           demo program to test  simple_rand and simple_timer
+simple_demo.c           demo program to test simple_rand and simple_timer
 wildtype_demo.c         demo program with arbitrary struct as user-defined type
+pagerank_demo.c         demo program to test dpagerank and ipagerank
 
 --------------------------------------------------------------------------------
 in Demo/Output:
@@ -58,11 +63,13 @@ mis_demo.out            output of mis_demo
 simple_test.out         output of simple_demo
 tri_demo.out            output of tri_demo
 wildtype_demo.out       output of wildtype_demo
+pagerank_demo.out       output of pagerank_demo
 
-go_out_cholesky.txt     output of Demo/go on an IBM Minsky system
-go_out_laptop.txt       output of Demo/go on a MacBook Pro
-go2_out_laptop.txt      output of Demo/go2 on a MacBook Pro
-go3_out_laptop.txt      output of Demo/go2 on a MacBook Pro
+Output/V210             output files from Sept 11, 2018 (Version 2.1.0)
+    go2_out_laptop.txt
+    go3_out_laptop.txt
+    go_out_cholesky.txt
+    go_out_laptop.txt
 
 Output/V112:            output files from Dec 23, 2017 (Version 1.1.2
                         of SuiteSparse:GraphBLAS); same as filenames above
@@ -93,6 +100,9 @@ tri_matlab.m            run a set of GraphChallenge matrices
 tri_matlab_out.txt      output of tri_matlab.m
 kron_demo.m             kron demo
 kron_test.m             kron test
+dpagerank.m             pagerank with real values
+ipagerank.m             pagerank with integers
+rowscale.m              rowscaling for dpagerank.m and ipagerank.m
 
 --------------------------------------------------------------------------------
 in Demo/Matrix:

@@ -7,6 +7,10 @@
 
 //------------------------------------------------------------------------------
 
+// This function has never appeared in the user guide and will be deprecated.
+// Its functionality will be replaced by GxB_get.  The function will be deleted
+// in SuiteSparse:GraphBLAS 3.0.
+
 #include "GB.h"
 
 GrB_Info GxB_stats
@@ -19,14 +23,14 @@ GrB_Info GxB_stats
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_stats (&stats) ;") ;
-    RETURN_IF_NULL (stats) ;
+    GB_WHERE ("GxB_stats (&stats) ;") ;
+    GB_RETURN_IF_NULL (stats) ;
 
     //--------------------------------------------------------------------------
     // get statistics
     //--------------------------------------------------------------------------
 
     GB_stats (stats) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

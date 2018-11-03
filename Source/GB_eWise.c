@@ -38,16 +38,16 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK3 (C, M, A, B)) ;
+    ASSERT (GB_ALIAS_OK3 (C, M, A, B)) ;
 
-    RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_eWise", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_eWise", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_eWise", D0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_eWise", D0)) ;
-    ASSERT_OK (GB_check (A, "A for GB_eWise", D0)) ;
-    ASSERT_OK (GB_check (B, "B for GB_eWise", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_eWise", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_eWise", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_eWise", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for GB_eWise", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for GB_eWise", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for GB_eWise", GB0)) ;
 
     // T has the same type as the output z for z=op(a,b)
     GrB_Type T_type = op->ztype ;
@@ -71,7 +71,7 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
         // C = A is done for entries in A but not C
         if (!GB_Type_compatible (C->type, A->type))
         { 
-            return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
                 "first input of type [%s]\n"
                 "cannot be typecast to final output of type [%s]",
                 A->type->name, C->type->name))) ;
@@ -79,7 +79,7 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
         // C = B is done for entries in B but not C
         if (!GB_Type_compatible (C->type, B->type))
         { 
-            return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
                 "second input of type [%s]\n"
                 "cannot be typecast to final output of type [%s]",
                 B->type->name, C->type->name))) ;
@@ -87,16 +87,16 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     }
 
     // check the dimensions
-    int64_t anrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t ancols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
-    int64_t bnrows = (B_transpose) ? NCOLS (B) : NROWS (B) ;
-    int64_t bncols = (B_transpose) ? NROWS (B) : NCOLS (B) ;
-    int64_t cnrows = NROWS (C) ;
-    int64_t cncols = NCOLS (C) ;
+    int64_t anrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t ancols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    int64_t bnrows = (B_transpose) ? GB_NCOLS (B) : GB_NROWS (B) ;
+    int64_t bncols = (B_transpose) ? GB_NROWS (B) : GB_NCOLS (B) ;
+    int64_t cnrows = GB_NROWS (C) ;
+    int64_t cncols = GB_NCOLS (C) ;
     if (anrows != bnrows || ancols != bncols ||
         cnrows != anrows || cncols != bncols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "output is "GBd"-by-"GBd"\n"
             "first input is "GBd"-by-"GBd"%s\n"
@@ -107,13 +107,13 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     }
 
     // quick return if an empty mask M is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
-    WAIT (B) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
+    GB_WAIT (B) ;
 
     //--------------------------------------------------------------------------
     // handle CSR and CSC formats

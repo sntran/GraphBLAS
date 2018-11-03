@@ -15,9 +15,9 @@
 // Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
 
 // The method used is a binary search of the vector containing A(row,col),
-// which is very fast.  Logging the GrB_NO_VALUE status with the ERROR (...)
+// which is very fast.  Logging the GrB_NO_VALUE status with the GB_ERROR (...)
 // macro is likely much slower than searching for the entry.  Thus, a
-// specialized macro, REPORT_NO_VALUE, is used, which simply logs the status
+// specialized macro, GB_REPORT_NO_VALUE, is used, which simply logs the status
 // and the row and column indices.
 
 #include "GB.h"
@@ -39,35 +39,37 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     // delete any lingering zombies and assemble any pending tuples
     // do this as early as possible (see Table 2.4 in spec)
     ASSERT (A != NULL) ;
-    WAIT (A) ;
-    RETURN_IF_NULL (x) ;
+    GB_WAIT (A) ;
+    GB_RETURN_IF_NULL (x) ;
     ASSERT (xcode <= GB_UDT_code) ;
 
     // check row and column indices
-    if (row >= NROWS (A))
+    if (row >= GB_NROWS (A))
     { 
-        return (ERROR (GrB_INVALID_INDEX, (LOG,
-            "Row index "GBu" out of range; must be < "GBd, row, NROWS (A)))) ;
+        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG,
+            "Row index "GBu" out of range; must be < "GBd,
+            row, GB_NROWS (A)))) ;
     }
-    if (col >= NCOLS (A))
+    if (col >= GB_NCOLS (A))
     { 
-        return (ERROR (GrB_INVALID_INDEX, (LOG,
-            "Column index "GBu" out of range; must be < "GBd, col, NCOLS (A))));
+        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG,
+            "Column index "GBu" out of range; must be < "GBd,
+            col, GB_NCOLS (A)))) ;
     }
 
     // xcode and A must be compatible
     if (!GB_code_compatible (xcode, A->type->code))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "entry A(i,j) of type [%s] cannot be typecast\n"
             "to output scalar x of type [%s]",
             A->type->name, GB_code_string (xcode)))) ;
     }
 
-    if (NNZ (A) == 0)
+    if (GB_NNZ (A) == 0)
     { 
         // quick return
-        return (REPORT_NO_VALUE (row, col)) ;
+        return (GB_REPORT_NO_VALUE (row, col)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -104,7 +106,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
         if (!found)
         { 
             // vector j is empty
-            return (REPORT_NO_VALUE (row, col)) ;
+            return (GB_REPORT_NO_VALUE (row, col)) ;
         }
         ASSERT (j == Ah [pleft]) ;
         k = pleft ;
@@ -125,7 +127,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     if (pleft > pright)
     { 
         // no entries in vector j
-        return (REPORT_NO_VALUE (row, col)) ;
+        return (GB_REPORT_NO_VALUE (row, col)) ;
     }
 
     // Time taken for this step is at most O(log(nnz(A(:,j))).
@@ -140,7 +142,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     {
         size_t asize = A->type->size ;
         // found A (row,col), return its value
-        if (xcode == GB_UDT_code || xcode == A->type->code)
+        if (xcode > GB_FP64_code || xcode == A->type->code)
         { 
             // copy the values without typecasting
             memcpy (x, A->x +(pleft*asize), asize) ;
@@ -150,7 +152,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
             // typecast the value from A into x
             GB_cast_array (x, xcode, A->x +(pleft*asize), A->type->code, 1) ;
         }
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
     else
     { 
@@ -159,7 +161,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
         // not keep track of its identity value; that depends on the semiring.
         // So the user would need to interpret this status of 'no value' and
         // take whatever action is appropriate.
-        return (REPORT_NO_VALUE (row, col)) ;
+        return (GB_REPORT_NO_VALUE (row, col)) ;
     }
 }
 

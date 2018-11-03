@@ -286,9 +286,9 @@ GrB_BinaryOp operator_pending ; // operator to assemble pending tuples
 // has been marked for deletion, but hasn't been deleted yet because it is more
 // efficient to delete all zombies all at once, rather than one (or a few) at a
 // time.  An entry A(i,j) is marked as a zombie by 'flipping' its index via
-// FLIP(i).  A flipped index is negative, and the actual index can be obtained
-// by UNFLIP(i).  FLIP(i) is a function that is its own inverse:
-// FLIP(FLIP(x))=x for all x.
+// GB_FLIP(i).  A flipped index is negative, and the actual index can be
+// obtained by GB_UNFLIP(i).  GB_FLIP(i) is a function that is its own inverse:
+// GB_FLIP(GB_FLIP(x))=x for all x.
 
 // Using zombies allows entries to be marked for deletion.  Their index is
 // still important, for two reasons: (1) the indices in each vector of the

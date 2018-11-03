@@ -35,7 +35,7 @@ bool GB_Index_multiply      // true if ok, false if overflow
     }
 
     // a + b is now safe to compute
-    if ((a + b) > (GB_INDEX_MAX / IMIN (a,b)))
+    if ((a + b) > (GB_INDEX_MAX / GB_IMIN (a,b)))
     { 
         // a * b may overflow
         return (false) ;

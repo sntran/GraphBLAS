@@ -27,13 +27,13 @@ GrB_Info GxB_Matrix_select  // C<Mask> = accum (C, select(A,k)) or select(A',k)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Matrix_select (C, Mask, accum, op, A, k, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (Mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GxB_Matrix_select (C, Mask, accum, op, A, k, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     //--------------------------------------------------------------------------
     // select the entries and optionally transpose; assemble pending tuples

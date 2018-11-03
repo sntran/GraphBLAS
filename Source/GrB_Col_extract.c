@@ -31,23 +31,20 @@ GrB_Info GrB_Col_extract        // w<mask> = accum (w, A(I,j)) or (A(j,I))'
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Col_extract (w, mask, accum, A, I, ni, j, desc)") ;
-
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-
-    // w and mask are valid n-by-1 vectors in CSC format
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (IMPLIES (mask != NULL, VECTOR_OK (mask))) ;
+    GB_WHERE ("GrB_Col_extract (w, mask, accum, A, I, ni, j, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (GB_IMPLIES (mask != NULL, GB_VECTOR_OK (mask))) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
-    GrB_Index ancols = (A_transpose ? NROWS (A) : NCOLS (A)) ;
+    GrB_Index ancols = (A_transpose ? GB_NROWS (A) : GB_NCOLS (A)) ;
     if (j >= ancols)
     { 
-        return (ERROR (GrB_INVALID_INDEX, (LOG,
+        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG,
             "Column index j "GBu" out of range; must be < "GBu, j, ancols))) ;
     }
 

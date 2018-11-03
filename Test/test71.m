@@ -164,7 +164,7 @@ for k = 1:nmat
 
     % count the triangles in MATLAB and in GraphBLAS
 
-    [nt1 t1] = GB_mex_tricount (3, x, x, x, Uint) ;      % C<U>=U*U
+    [nt1 t1] = GB_mex_tricount (3, x, x, Uint, x) ;      % C<L>=L*L
     fprintf ('triangles: %d\n', nt1) ;
     fprintf ('GraphBLAS outer product: %14.6f sec (rate %6.2f million/sec)', t1, 1e-6*nz/t1) ;
     T (k,1) = t1 ;
@@ -172,7 +172,7 @@ for k = 1:nmat
 
     fprintf ('\n') ;
 
-    [nt2 t2] = GB_mex_tricount (5, x, x, Lint, Uint) ;  % C<U>=L'*U
+    [nt2 t2] = GB_mex_tricount (5, x, x, Uint, Lint) ;  % C<U>=L'*U
     fprintf ('GraphBLAS dot   product: %14.6f sec (rate %6.2f million/sec)', t2, 1e-6*nz/t2) ;
     T (k,2) = t2 ;
     assert (nt1 == nt2) ;

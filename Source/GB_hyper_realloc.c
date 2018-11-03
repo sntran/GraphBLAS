@@ -45,13 +45,13 @@ GrB_Info GB_hyper_realloc
         bool ok = ok1 && ok2 ;
 
         // always succeeds if the space shrinks
-        ASSERT (IMPLIES (plen_new <= plen_old, ok)) ;
+        ASSERT (GB_IMPLIES (plen_new <= plen_old, ok)) ;
 
         if (!ok)
         { 
             // out of memory; free all content of A
             GB_phix_free (A) ;
-            return (OUT_OF_MEMORY (GBYTES (2*plen_new+1, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (2*plen_new+1, sizeof (int64_t))));
         }
 
         // size of A->p and A->h has been changed
@@ -62,6 +62,6 @@ GrB_Info GB_hyper_realloc
     // return result
     //--------------------------------------------------------------------------
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

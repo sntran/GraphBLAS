@@ -30,19 +30,17 @@ GrB_Info GrB_vxm                    // w'<Mask> = accum (w, u'*A)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_vxm (w, mask, accum, semiring, u, A, desc)") ;
-
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
-    ASSERT (VECTOR_OK (u)) ;
+    GB_WHERE ("GrB_vxm (w, mask, accum, semiring, u, A, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, ignore, A_transpose,
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx, A_transpose,
         AxB_method) ;
 
     //--------------------------------------------------------------------------

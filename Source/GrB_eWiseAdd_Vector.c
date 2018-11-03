@@ -11,19 +11,19 @@
 
 #include "GB.h"
 
-#define EWISE(op)                                                           \
+#define GB_EWISE(op)                                                        \
 {                                                                           \
     /* check inputs */                                                      \
-    RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (u) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (v) ;                                          \
-    RETURN_IF_FAULTY (mask) ;                                               \
-    ASSERT (VECTOR_OK (w)) ;                                                \
-    ASSERT (VECTOR_OK (u)) ;                                                \
-    ASSERT (VECTOR_OK (v)) ;                                                \
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;                             \
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                       \
+    GB_RETURN_IF_FAULTY (mask) ;                                            \
+    ASSERT (GB_VECTOR_OK (w)) ;                                             \
+    ASSERT (GB_VECTOR_OK (u)) ;                                             \
+    ASSERT (GB_VECTOR_OK (v)) ;                                             \
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;                          \
     /* get the descriptor */                                                \
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;      \
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;   \
     /* C<mask> = accum (C,T) where T = A+B, A'+B, A+B', or A'+B' */         \
     return (GB_eWise (                                                      \
         (GrB_Matrix) w,    C_replace,   /* w and its descriptor        */   \
@@ -55,14 +55,14 @@ GrB_Info GrB_eWiseAdd_Vector_BinaryOp       // w<mask> = accum (w, u+v)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Vector_BinaryOp (w, mask, accum, add, u, v, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (add) ;
+    GB_WHERE ("GrB_eWiseAdd_Vector_BinaryOp (w, mask, accum, add, u, v, desc)");
+    GB_RETURN_IF_NULL_OR_FAULTY (add) ;
 
     //--------------------------------------------------------------------------
     // apply the eWise kernel (using set union)
     //--------------------------------------------------------------------------
 
-    EWISE (add) ;
+    GB_EWISE (add) ;
 }
 
 //------------------------------------------------------------------------------
@@ -85,14 +85,15 @@ GrB_Info GrB_eWiseAdd_Vector_Monoid         // w<mask> = accum (w, u+v)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Vector_Monoid (w, mask, accum, monoid, u, v, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (monoid) ;
+    GB_WHERE ("GrB_eWiseAdd_Vector_Monoid (w, mask, accum, monoid, u, v,"
+        " desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
 
     //--------------------------------------------------------------------------
     // eWise add using the monoid operator
     //--------------------------------------------------------------------------
 
-    EWISE (monoid->op) ;
+    GB_EWISE (monoid->op) ;
 }
 
 //------------------------------------------------------------------------------
@@ -115,16 +116,13 @@ GrB_Info GrB_eWiseAdd_Vector_Semiring       // w<Mask> = accum (w, u+v)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Vector_Semiring (w, mask, accum, semiring, u, v,"
+    GB_WHERE ("GrB_eWiseAdd_Vector_Semiring (w, mask, accum, semiring, u, v,"
         " desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
     // eWise add using the semiring monoid operator
     //--------------------------------------------------------------------------
 
-    EWISE (semiring->add->op) ;
+    GB_EWISE (semiring->add->op) ;
 }
-
-#undef EWISE
-

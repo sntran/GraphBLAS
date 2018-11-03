@@ -21,7 +21,7 @@ void mexFunction
 {
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -31,7 +31,7 @@ void mexFunction
     GB_mx_mxArray_to_BinaryOp (&binaryop, pargin [0], "binaryop",
         GB_PLUS_opcode, mxDOUBLE_CLASS, false, false) ;
 
-    GrB_Info info = GB_check (binaryop, "binaryop", D3) ;
+    GrB_Info info = GB_check (binaryop, "binaryop", GB3) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt (GrB_error ( )) ;

@@ -93,7 +93,7 @@ GB_Global_struct GB_Global =
 
     // default format
     .hyper_ratio = GB_HYPER_DEFAULT,
-    .is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW),    // default is GxB_BY_COL
+    .is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW),    // default is GxB_BY_ROW
 
     // malloc tracking, for testing, statistics, and debugging only
     .nmalloc = 0,               // memory block counter
@@ -119,11 +119,11 @@ GrB_Info GrB_init           // start up GraphBLAS
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_init (mode)") ;
+    GB_WHERE ("GrB_init (mode)") ;
 
     if (! (mode == GrB_BLOCKING || mode == GrB_NONBLOCKING))
     { 
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "Unknown mode: %d; must be %d (GrB_NONBLOCKING) or %d"
             " (GrB_BLOCKING)", mode, GrB_NONBLOCKING, GrB_BLOCKING))) ;
     }
@@ -191,7 +191,7 @@ GrB_Info GrB_init           // start up GraphBLAS
 
     if (! I_was_first)
     { 
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "GrB_init must not be called twice"))) ;
     }
 
@@ -209,6 +209,6 @@ GrB_Info GrB_init           // start up GraphBLAS
         GB_Global.inuse = 0 ;
         GB_Global.maxused = 0 ;
     }
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

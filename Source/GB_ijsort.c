@@ -25,7 +25,7 @@ GrB_Info GB_ijsort
     GB_MALLOC_MEMORY (I2, ni, sizeof (GrB_Index)) ;
     if (I2 == NULL)
     { 
-        return (OUT_OF_MEMORY (GBYTES (ni, sizeof (GrB_Index)))) ;
+        return (GB_OUT_OF_MEMORY (GBYTES (ni, sizeof (GrB_Index)))) ;
     }
 
     //--------------------------------------------------------------------------
@@ -59,6 +59,6 @@ GrB_Info GB_ijsort
     *p_I2 = I2 ;        // I2 has size ni, but only I2 [0..ni2-1] is defined
     *p_ni = ni2 ;
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

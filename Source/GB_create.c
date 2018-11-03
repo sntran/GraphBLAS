@@ -98,6 +98,6 @@ GrB_Info GB_create              // create a new matrix, including A->i and A->x
     // return result
     //--------------------------------------------------------------------------
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -32,20 +32,20 @@ GrB_Info GB_transplant          // transplant one matrix into another
 
     ASSERT (Ahandle != NULL) ;
     GrB_Matrix A = *Ahandle ;
-    ASSERT (NOT_ALIASED (C, A)) ;
+    ASSERT (GB_NOT_ALIASED (C, A)) ;
 
     ASSERT (C != NULL) ;
-    ASSERT_OK (GB_check (A, "A before transplant", D0)) ;
-    ASSERT_OK (GB_check (ctype, "new type for C", D0)) ;
-    ASSERT (!PENDING (A)) ;
+    ASSERT_OK (GB_check (A, "A before transplant", GB0)) ;
+    ASSERT_OK (GB_check (ctype, "new type for C", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ;
 
     // zombies in A can be safely transplanted into C
-    ASSERT (ZOMBIES_OK (A)) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;
 
     // the ctype and A->type must be compatible.  C->type is ignored
     ASSERT (GB_Type_compatible (ctype, A->type)) ;
 
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
 
     //--------------------------------------------------------------------------
     // clear C and transplant the type, size, and hypersparsity
@@ -53,8 +53,8 @@ GrB_Info GB_transplant          // transplant one matrix into another
 
     // free all content of C
     GB_phix_free (C) ;
-    ASSERT (!PENDING (C)) ;
-    ASSERT (!ZOMBIES (C)) ;
+    ASSERT (!GB_PENDING (C)) ;
+    ASSERT (!GB_ZOMBIES (C)) ;
     ASSERT (C->nzmax == 0) ;
 
     // It is now safe to change the type, dimension, and hypersparsity of C
@@ -97,7 +97,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
                 // out of memory; free A and all content of C
                 GB_phix_free (C) ;
                 GB_MATRIX_FREE (Ahandle) ;
-                return (OUT_OF_MEMORY (memory)) ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
 
             // copy A->p and A->h into the newly created C->p and C->h
@@ -116,7 +116,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
                 // out of memory; free A and all content of C
                 GB_phix_free (C) ;
                 GB_MATRIX_FREE (Ahandle) ;
-                return (OUT_OF_MEMORY (memory)) ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
 
             // copy A->p into the newly created C->p
@@ -152,14 +152,14 @@ GrB_Info GB_transplant          // transplant one matrix into another
     C->p_shallow = false ;
     C->h_shallow = false ;
 
-    C->magic = MAGIC ;          // C is now initialized
+    C->magic = GB_MAGIC ;          // C is now initialized
 
     if (anz == 0)
     { 
         // quick return if A has no entries
-        ASSERT_OK (GB_check (C, "C empty transplant", D0)) ;
+        ASSERT_OK (GB_check (C, "C empty transplant", GB0)) ;
         GB_MATRIX_FREE (Ahandle) ;
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -174,7 +174,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     bool allocate_Ci = (A->i_shallow) ;
     bool allocate_Cx = (A->x_shallow || C->type != A->type) ;
     C->nzmax = (allocate_Cx || allocate_Ci) ? anz : A->nzmax ;
-    C->nzmax = IMAX (C->nzmax, 1) ;
+    C->nzmax = GB_IMAX (C->nzmax, 1) ;
 
     // allocate new components if needed
     bool ok = true ;
@@ -199,15 +199,15 @@ GrB_Info GB_transplant          // transplant one matrix into another
         // out of memory; free A and all content of C
         GB_phix_free (C) ;
         GB_MATRIX_FREE (Ahandle) ;
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     //--------------------------------------------------------------------------
     // transplant or copy A->x numerical values
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C->type, "target C->type for values", D0)) ;
-    ASSERT_OK (GB_check (A->type, "source A->type for values", D0)) ;
+    ASSERT_OK (GB_check (C->type, "target C->type for values", GB0)) ;
+    ASSERT_OK (GB_check (A->type, "source A->type for values", GB0)) ;
 
     if (C->type == A->type)
     {
@@ -273,7 +273,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     //--------------------------------------------------------------------------
 
     GB_MATRIX_FREE (Ahandle) ;
-    ASSERT_OK (GB_check (C, "C after transplant", D0)) ;
-    return (REPORT_SUCCESS) ;
+    ASSERT_OK (GB_check (C, "C after transplant", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -20,16 +20,16 @@ GrB_Info GxB_Semiring_add           // return the additive monoid of a semiring
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Semiring_add (&add, semiring)") ;
-    RETURN_IF_NULL (add) ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
-    ASSERT_OK (GB_check (semiring, "semiring for add", D0)) ;
+    GB_WHERE ("GxB_Semiring_add (&add, semiring)") ;
+    GB_RETURN_IF_NULL (add) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    ASSERT_OK (GB_check (semiring, "semiring for add", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the ztype
     //--------------------------------------------------------------------------
 
     (*add) = semiring->add ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

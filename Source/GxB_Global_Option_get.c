@@ -20,7 +20,7 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Global_Option_get (field, &value)") ;
+    GB_WHERE ("GxB_Global_Option_get (field, &value)") ;
 
     //--------------------------------------------------------------------------
     // get the option
@@ -41,7 +41,7 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             hyper_ratio = va_arg (ap, double *) ;
             va_end (ap) ;
 
-            RETURN_IF_NULL (hyper_ratio) ;
+            GB_RETURN_IF_NULL (hyper_ratio) ;
             (*hyper_ratio) = hyper ;
             break ;
 
@@ -51,19 +51,19 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             format = va_arg (ap, GxB_Format_Value *) ;
             va_end (ap) ;
 
-            RETURN_IF_NULL (format) ;
+            GB_RETURN_IF_NULL (format) ;
             (*format) = fmt ;
             break ;
 
         default : 
 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
                     field, GxB_HYPER, GxB_FORMAT))) ;
 
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

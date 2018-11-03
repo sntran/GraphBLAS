@@ -8,16 +8,8 @@
 #ifndef GB_HEAP
 #define GB_HEAP
 
-// The Heap is an array of Elements: Heap [1..nheap].  Each entry in the Heap
-// is an Element, with a key and name.
-
-typedef struct
-{
-    int64_t key ;       // the key for this Element, for ordering in the Heap
-    int64_t name ;      // the name of the Element; not used in these functions
-                        // but required by the caller
-}
-Element ;
+// The Heap is an array of GB_Elements: Heap [1..nheap].  Each entry in the
+// Heap is a GB_Element, with a key and name.
 
 #ifndef NDEBUG
 
@@ -37,8 +29,8 @@ Element ;
 
 static inline bool GB_heap_check
 (
-    const Element *restrict Heap,   // Heap [1..nheap], not modified
-    const int64_t nheap             // the number of nodes in the Heap
+    const GB_Element *restrict Heap,    // Heap [1..nheap], not modified
+    const int64_t nheap                 // the number of nodes in the Heap
 )
 {
 
@@ -86,9 +78,9 @@ static inline bool GB_heap_check
 
 static inline bool GB_heap_pathcheck
 (
-    int64_t p,                      // node to check, in range 1..nheap
-    const Element *restrict Heap,   // Heap [1..nheap], not modified
-    const int64_t nheap             // the number of nodes in the Heap
+    int64_t p,                          // node to check, in range 1..nheap
+    const GB_Element *restrict Heap,    // Heap [1..nheap], not modified
+    const int64_t nheap                 // the number of nodes in the Heap
 )
 {
 
@@ -123,9 +115,9 @@ static inline bool GB_heap_pathcheck
 
 static inline void GB_heapify
 (
-    int64_t p,                  // node that needs to be heapified
-    Element *restrict Heap,     // Heap [1..nheap]; modified
-    const int64_t nheap         // the number of nodes in the Heap
+    int64_t p,                      // node that needs to be heapified
+    GB_Element *restrict Heap,      // Heap [1..nheap]; modified
+    const int64_t nheap             // the number of nodes in the Heap
 )
 {
 
@@ -147,7 +139,7 @@ static inline void GB_heapify
     //--------------------------------------------------------------------------
 
     // Get the element e at node p in the Heap; the one that needs heapifying.
-    Element e = Heap [p] ;
+    GB_Element e = Heap [p] ;
 
     // There is now a "hole" at Heap [p], with no element in it.
 
@@ -256,7 +248,7 @@ static inline void GB_heapify
 
 static inline void GB_heap_build
 (
-    Element *restrict Heap,     // Heap [1..nheap]; modified
+    GB_Element *restrict Heap,  // Heap [1..nheap]; modified
     const int64_t nheap         // the number of nodes in the Heap
 )
 {
@@ -291,7 +283,7 @@ static inline void GB_heap_build
 static inline void GB_heap_delete
 (
     int64_t p,                  // node that needs to be deleted
-    Element *restrict Heap,     // Heap [1..nheap]
+    GB_Element *restrict Heap,  // Heap [1..nheap]
     int64_t *restrict nheap     // the number of nodes in the Heap;
                                 // decremented on output
 )
@@ -328,8 +320,8 @@ static inline void GB_heap_delete
 
 static inline int64_t GB_heap_getminlist    // returns Heap [1].key
 (
-    const Element *restrict Heap,   // Heap [1..nheap], not modified
-    const int64_t nheap,            // the number of nodes in the Heap
+    const GB_Element *restrict Heap,    // Heap [1..nheap], not modified
+    const int64_t nheap,                // the number of nodes in the Heap
 
     // output
     int64_t *restrict List,     // List [0..nlist-1] is a list of all nodes p

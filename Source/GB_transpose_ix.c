@@ -35,11 +35,11 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_ix", D0)) ;
-    ASSERT_OK (GB_check (R_type, "R type for transpose_ix", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_ix", GB0)) ;
+    ASSERT_OK (GB_check (R_type, "R type for transpose_ix", GB0)) ;
     ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
     ASSERT (GB_Type_compatible (A->type, R_type)) ;
-    ASSERT (!ZOMBIES (A)) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
 
     //--------------------------------------------------------------------------
     // get the input matrix
@@ -52,18 +52,18 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
 
-    #define WORKER(rtype,atype)                                 \
+    #define GB_WORKER(rtype,atype)                              \
     {                                                           \
         rtype *rx = (rtype *) Rx ;                              \
         atype *ax = (atype *) Ax ;                              \
-        for_each_vector (A)                                     \
+        GB_for_each_vector (A)                                  \
         {                                                       \
-            for_each_entry (j, p, pend)                         \
+            GB_for_each_entry (j, p, pend)                      \
             {                                                   \
                 int64_t q = Rp [Ai [p]]++ ;                     \
                 Ri [q] = j ;                                    \
                 /* rx [q] = ax [p], type casting */             \
-                CAST (rx [q], ax [p]) ;                         \
+                GB_CAST (rx [q], ax [p]) ;                      \
             }                                                   \
         }                                                       \
         return ;                                                \
@@ -83,8 +83,6 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     ASSERT (code2 <= GB_UDT_code) ;
     #include "GB_2type_template.c"
 
-    #undef WORKER
-
     //--------------------------------------------------------------------------
     // generic worker
     //--------------------------------------------------------------------------
@@ -93,12 +91,12 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // fall through the switch factory to here, which can never be
     // typecasted.  Because the generic worker does no typecasting, the
     // switch factory cannot be disabled.
-    ASSERT (A->type == R_type && A->type->code == GB_UDT_code) ;
+    ASSERT (A->type == R_type && A->type->code > GB_FP64_code) ;
 
     int64_t asize = A->type->size ;
-    for_each_vector (A)
+    GB_for_each_vector (A)
     {
-        for_each_entry (j, p, pend)
+        GB_for_each_entry (j, p, pend)
         { 
             int64_t q = Rp [Ai [p]]++ ;
             Ri [q] = j ;

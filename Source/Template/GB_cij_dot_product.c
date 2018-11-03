@@ -19,34 +19,34 @@
 // assignment.
 
 // cij += A(k,i) * B(k,j)
-#define DOT_MULTADD(pA,pB)                                      \
-    DOT_GETA (pA) ;         /* aki = A(k,i) */                  \
-    DOT_GETB (pB) ;         /* bkj = B(k,j) */                  \
-    DOT_MULT (bkj) ;        /* t = aki * bkj */                 \
-    DOT_ADD ;               /* cij += t */
+#define GB_DOT_MULTADD(pA,pB)                                   \
+    GB_DOT_GETA (pA) ;         /* aki = A(k,i) */               \
+    GB_DOT_GETB (pB) ;         /* bkj = B(k,j) */               \
+    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
+    GB_DOT_ADD ;               /* cij += t */
 
 // cij = t (and flag cij as existing) or cij += t
-#define DOT_ACCUM \
+#define GB_DOT_ACCUM \
 {                                                               \
     if (cij_exists)                                             \
     {                                                           \
-        DOT_ADD ;           /* cij += t */                      \
+        GB_DOT_ADD ;           /* cij += t */                   \
     }                                                           \
     else                                                        \
     {                                                           \
         /* cij = A(k,i) * B(k,j), and add to the pattern */     \
         cij_exists = true ;                                     \
-        DOT_COPY ;          /* cij = t */                       \
+        GB_DOT_COPY ;          /* cij = t */                    \
     }                                                           \
 }
 
 // cij += A(k,i) * B(k,j), for merge operation
-#define DOT_MERGE                                               \
+#define GB_DOT_MERGE                                            \
 {                                                               \
-    DOT_GETA (pA++) ;       /* aki = A(k,i) */                  \
-    DOT_GETB (pB++) ;       /* bkj = B(k,j) */                  \
-    DOT_MULT (bkj) ;        /* t = aki * bkj */                 \
-    DOT_ACCUM ;             /* cij = t or += t */               \
+    GB_DOT_GETA (pA++) ;       /* aki = A(k,i) */               \
+    GB_DOT_GETB (pB++) ;       /* bkj = B(k,j) */               \
+    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
+    GB_DOT_ACCUM ;             /* cij = t or += t */            \
 }
 
 {
@@ -78,7 +78,7 @@
         Ci = C->i ;
         Cx = C->x ;
         // reacquire cij since C->x has moved
-        DOT_REACQUIRE ;
+        GB_DOT_REACQUIRE ;
     }
 
     //--------------------------------------------------------------------------
@@ -113,10 +113,10 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        DOT_CLEAR ;                         // cij = identity
+        GB_DOT_CLEAR ;                         // cij = identity
         for (int64_t k = 0 ; k < bvlen ; k++)
         { 
-            DOT_MULTADD (pA+k, pB+k) ;      // cij += A(k,i) * B(k,j)
+            GB_DOT_MULTADD (pA+k, pB+k) ;      // cij += A(k,i) * B(k,j)
         }
 
     }
@@ -128,11 +128,11 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        DOT_CLEAR ;                         // cij = identity
+        GB_DOT_CLEAR ;                         // cij = identity
         for ( ; pB < pB_end ; pB++)
         { 
             int64_t k = Bi [pB] ;
-            DOT_MULTADD (pA+k, pB) ;        // cij += A(k,i) * B(k,j)
+            GB_DOT_MULTADD (pA+k, pB) ;        // cij += A(k,i) * B(k,j)
         }
 
     }
@@ -144,11 +144,11 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        DOT_CLEAR ;                         // cij = identity
+        GB_DOT_CLEAR ;                         // cij = identity
         for ( ; pA < pA_end ; pA++)
         { 
             int64_t k = Ai [pA] ;
-            DOT_MULTADD (pA, pB+k) ;        // cij += A(k,i) * B(k,j)
+            GB_DOT_MULTADD (pA, pB+k) ;        // cij += A(k,i) * B(k,j)
         }
 
     }
@@ -181,7 +181,7 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
-                DOT_MERGE ;
+                GB_DOT_MERGE ;
             }
         }
 
@@ -216,7 +216,7 @@
             }
 
             Flag = GB_thread_local.Flag ;
-            Work = (DOT_WORK_TYPE *) GB_thread_local.Work ;
+            Work = (GB_DOT_WORK_TYPE *) GB_thread_local.Work ;
         }
 
         if (!B_scattered)
@@ -226,7 +226,7 @@
             { 
                 int64_t k = Bi [pB] ;
                 // Work [k] = Bx [pB] ;
-                DOT_SCATTER ;
+                GB_DOT_SCATTER ;
                 Flag [k] = 1 ;
             }
             B_scattered = true ;
@@ -238,9 +238,9 @@
             if (Flag [k])
             { 
                 // cij += A(k,i) * Work [k], where Work [k] == B(k,j)
-                DOT_GETA (pA) ;             // aki = A (k,i)
-                DOT_MULT (DOT_WORK(k)) ;    // t = aki * Work [k]
-                DOT_ACCUM ;                 // cij = t or += t
+                GB_DOT_GETA (pA) ;              // aki = A (k,i)
+                GB_DOT_MULT (GB_DOT_WORK(k)) ;  // t = aki * Work [k]
+                GB_DOT_ACCUM ;                  // cij = t or += t
             }
         }
 
@@ -274,7 +274,7 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
-                DOT_MERGE ;
+                GB_DOT_MERGE ;
             }
         }
 
@@ -303,7 +303,7 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
-                DOT_MERGE ;
+                GB_DOT_MERGE ;
             }
         }
     }
@@ -315,12 +315,12 @@
     if (cij_exists)
     { 
         // C(i,j) = cij
-        DOT_SAVE ;
+        GB_DOT_SAVE ;
         Ci [cnz++] = i ;
     }
 }
 
-#undef DOT_MULTADD
-#undef DOT_MERGE
-#undef DOT_ACCUM
+#undef GB_DOT_MULTADD
+#undef GB_DOT_MERGE
+#undef GB_DOT_ACCUM
 

@@ -39,11 +39,11 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
 
     // find the densest column of B
     int64_t b = 0 ;
-    for_each_vector (B)
+    GB_for_each_vector (B)
     { 
         int64_t GBI1_initj (Iter, j, pB_start, pB_end) ;
         int64_t bjnz = pB_end - pB_start ;
-        b = IMAX (b, bjnz) ;
+        b = GB_IMAX (b, bjnz) ;
     }
 
     double heap_memory = GBYTES (b+1, 5 * sizeof (int64_t)) ;
@@ -57,8 +57,8 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
     double gs_memory = GBYTES (m, csize + sizeof (int8_t)) ;
 
     bool use_heap ;
-    int64_t bnz = NNZ (B) ;
-    int64_t anz = NNZ (A) ;
+    int64_t bnz = GB_NNZ (B) ;
+    int64_t anz = GB_NNZ (A) ;
 
     if (AxB_method == GxB_DEFAULT)
     {
@@ -70,11 +70,11 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
             // have size 2, which is very small and will be very fast.
             use_heap = true ;
         }
-        else if (bnz <= 3*k || bnz <= m || anz <= IMIN (k,m))
+        else if (bnz <= 3*k || bnz <= m || anz <= GB_IMIN (k,m))
         { 
             // If B is very sparse, with an average of 3 entries per column,
             // then it is a good candidate for the heap method.  The heap
-            // method will use O(b) memory, which is at most O(NNZ(B)).  The
+            // method will use O(b) memory, which is at most O(nnz(B)).  The
             // size of A, B, and C could be dwarfed by the O(m) gather/scatter
             // memory, which makes Gustavson's prohibitively expensive.  If A
             // is extremely sparse (the 2nd condition above) then the heap
@@ -97,7 +97,7 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
         else
         { 
             // Otherwise, do not use the heap method; use Gustavson's method
-            // instead.  Since NNZ(B) > m and Gustavson's method requires
+            // instead.  Since nnz(B) > m and Gustavson's method requires
             // O(m) workspace, the size of the workspace will be less than the
             // size of the input matrices.  In this case Gustavson's method
             // tends to be faster than the heap method.

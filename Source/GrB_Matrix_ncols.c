@@ -20,15 +20,15 @@ GrB_Info GrB_Matrix_ncols   // get the number of columns of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_ncols (&ncols, A)") ;
-    RETURN_IF_NULL (ncols) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_Matrix_ncols (&ncols, A)") ;
+    GB_RETURN_IF_NULL (ncols) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // return the number of columns
     //--------------------------------------------------------------------------
 
-    (*ncols) = NCOLS (A) ;
-    return (REPORT_SUCCESS) ;
+    (*ncols) = GB_NCOLS (A) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

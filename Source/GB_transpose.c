@@ -108,11 +108,11 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
     bool in_place = (in_place_A || in_place_C) ;
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for GB_transpose", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (ctype, "ctype for GB_transpose", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (op_in, "op for GB_transpose", D0)) ;
-    ASSERT (!PENDING (A)) ;
-    ASSERT (!ZOMBIES (A)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for GB_transpose", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (ctype, "ctype for GB_transpose", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (op_in, "op for GB_transpose", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -128,7 +128,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     int64_t avdim = A->vdim ;
     int64_t aplen = A->plen ;
     int64_t anvec = A->nvec ;
-    int64_t anz   = NNZ (A) ;
+    int64_t anz   = GB_NNZ (A) ;
 
     bool A_is_hyper = A->is_hyper ;
     bool A_is_csc   = A->is_csc ;
@@ -148,7 +148,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     bool Ax_shallow = A->x_shallow ;
 
     // free prior content of A, if transpose is done in place
-    #define FREE_IN_PLACE_A                                                  \
+    #define GB_FREE_IN_PLACE_A                                               \
     {                                                                        \
         if (in_place)                                                        \
         {                                                                    \
@@ -167,7 +167,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     }
 
     // free the new C matrix, unless C=A' is being done in place of A
-    #define FREE_C                                                  \
+    #define GB_FREE_C                                               \
     {                                                               \
         if (!in_place_A)                                            \
         {                                                           \
@@ -177,10 +177,10 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     }
 
     // free both A (if in place) and C (if not in place of A)
-    #define FREE_A_AND_C                                            \
+    #define GB_FREE_A_AND_C                                         \
     {                                                               \
-        FREE_IN_PLACE_A ;                                           \
-        FREE_C ;                                                    \
+        GB_FREE_IN_PLACE_A ;                                        \
+        GB_FREE_C ;                                                 \
     }
 
     //--------------------------------------------------------------------------
@@ -226,7 +226,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     // C = A'
     //--------------------------------------------------------------------------
 
-    ASSERT (IMPLIES (avlen == 0 || avdim == 0, anz == 0)) ;
+    ASSERT (GB_IMPLIES (avlen == 0 || avdim == 0, anz == 0)) ;
 
     bool allocate_new_Cx = (ctype != atype) || (op != NULL) ;
 
@@ -237,7 +237,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // quick return if A is empty
         //======================================================================
 
-        FREE_IN_PLACE_A ;
+        GB_FREE_IN_PLACE_A ;
 
         // A is empty; create a new empty matrix C, with the new type and
         // dimensions.  C is hypersparse for now but may convert when
@@ -248,10 +248,10 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            FREE_C ;
+            GB_FREE_C ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (*Chandle, "C transpose empty", D0)) ;
+        ASSERT_OK (GB_check (*Chandle, "C transpose empty", GB0)) ;
 
     }
     else if (avdim == 1)
@@ -263,7 +263,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // transpose a vector (avlen-by-1) into a "row" matrix (1-by-avlen).
         // A must be already sorted on input
-        ASSERT_OK (GB_check (A, "the vector A must already be sorted", D0)) ;
+        ASSERT_OK (GB_check (A, "the vector A must already be sorted", GB0)) ;
 
         //----------------------------------------------------------------------
         // allocate space
@@ -282,7 +282,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         { 
             // out of memory
             ASSERT (!in_place) ;    // cannot fail if in place
-            FREE_C ;
+            GB_FREE_C ;
             return (info) ;
         }
 
@@ -314,8 +314,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             GB_FREE_MEMORY (Cp, anz+1, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ci, anz  , sizeof (int64_t)) ;
             GB_FREE_MEMORY (Cx, anz  , csize) ;
-            FREE_A_AND_C ;
-            return (OUT_OF_MEMORY (memory)) ;
+            GB_FREE_A_AND_C ;
+            return (GB_OUT_OF_MEMORY (memory)) ;
         }
 
         //----------------------------------------------------------------------
@@ -363,13 +363,13 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         { 
             Cp [k] = k ;
         }
-        C->magic = MAGIC ;
+        C->magic = GB_MAGIC ;
 
         //----------------------------------------------------------------------
         // free prior space
         //----------------------------------------------------------------------
 
-        FREE_IN_PLACE_A ;
+        GB_FREE_IN_PLACE_A ;
 
     }
     else if (avlen == 1)
@@ -381,7 +381,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // transpose a "row" matrix (1-by-avdim) into a vector (avdim-by-1).
         // if A->vlen is 1, all vectors of A are implicitly sorted
-        ASSERT_OK (GB_check (A, "1-by-n input A already sorted", D0)) ;
+        ASSERT_OK (GB_check (A, "1-by-n input A already sorted", GB0)) ;
 
         //----------------------------------------------------------------------
         // allocate space
@@ -400,7 +400,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         { 
             // out of memory
             ASSERT (!in_place) ;        // cannot fail if in place
-            FREE_C ;
+            GB_FREE_C ;
             return (info) ;
         }
 
@@ -443,8 +443,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             GB_FREE_MEMORY (Cp, 2    , sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ci, anz  , sizeof (int64_t)) ;
             GB_FREE_MEMORY (Cx, anz  , csize) ;
-            FREE_A_AND_C ;
-            return (OUT_OF_MEMORY (memory)) ;
+            GB_FREE_A_AND_C ;
+            return (GB_OUT_OF_MEMORY (memory)) ;
         }
 
         //----------------------------------------------------------------------
@@ -511,13 +511,13 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // fill the vector pointers C->p
         Cp [0] = 0 ;
         Cp [1] = anz ;
-        C->magic = MAGIC ;
+        C->magic = GB_MAGIC ;
 
         //----------------------------------------------------------------------
         // free prior space
         //----------------------------------------------------------------------
 
-        FREE_IN_PLACE_A ;
+        GB_FREE_IN_PLACE_A ;
 
     }
     else
@@ -527,7 +527,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // transpose a general matrix
         //======================================================================
 
-        ASSERT_OK_OR_JUMBLED (GB_check (A, "A GB_transpose jumbled ok", D0)) ;
+        ASSERT_OK_OR_JUMBLED (GB_check (A, "A GB_transpose jumbled ok", GB0)) ;
         ASSERT (avdim > 1 && avlen > 1) ;
 
         // T=A' with optional typecasting, or T=op(A')
@@ -649,21 +649,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // allocate kwork in GB_builder
             qusage += GBYTES (anz, sizeof (int64_t)) ;
-            qsort_memory = IMAX (qsort_memory, qusage) ;
-
-            // allocate T->p and T->h in GB_builder; this size is a wild guess
-            /*
-            int64_t tnvec_guess = 0 ;
-            qusage += GBYTES (tnvec_guess, sizeof (int64_t)) ;
-            qsort_memory = IMAX (qsort_memory, qusage) ;
-            */
+            qsort_memory = GB_IMAX (qsort_memory, qusage) ;
 
             // free Tj in GB_builder
             qusage -= GBYTES (anz, sizeof (int64_t)) ;
 
             // allocate the final T->x
             qusage += GBYTES (anz, csize) ;
-            qsort_memory = IMAX (qsort_memory, qusage) ;
+            qsort_memory = GB_IMAX (qsort_memory, qusage) ;
 
             //------------------------------------------------------------------
             // memory usage for transpose via bucket sort
@@ -718,17 +711,17 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             if (Ti == NULL)
             { 
                 // out of memory
-                FREE_C ;
-                return (OUT_OF_MEMORY (memory)) ;
+                GB_FREE_C ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
 
             // Construct the "row" indices of C, which are "column" indices of
             // A.  This array becomes the permanent T->i on output.  This phase
             // must be done before Chandle is created below, since that step
             // destroys A.  See also GB_extractTuples, where J is extracted.
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
-                for_each_entry (j, p, pend)
+                GB_for_each_entry (j, p, pend)
                 { 
                     Ti [p] = j ;
                 }
@@ -752,7 +745,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 // out of memory
                 ASSERT (!in_place) ;        // cannot fail if in place
                 GB_FREE_MEMORY (Ti, anz, sizeof (int64_t)) ;
-                FREE_C ;
+                GB_FREE_C ;
                 return (info) ;
             }
 
@@ -796,8 +789,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 GB_FREE_MEMORY (Ti, anz, sizeof (int64_t)) ;
                 GB_FREE_MEMORY (Tj, anz, sizeof (int64_t)) ;
                 GB_FREE_MEMORY (Tx, anz, csize) ;
-                FREE_A_AND_C ;
-                return (OUT_OF_MEMORY (memory)) ;
+                GB_FREE_A_AND_C ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
 
             //------------------------------------------------------------------
@@ -811,7 +804,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 // Tj is a shallow copy of Ai, and is freed by GB_builder.
                 Tj = Ai ;
                 ASSERT (in_place) ;
-                // set Ai to NULL so it is not freed by FREE_IN_PLACE_A
+                // set Ai to NULL so it is not freed by GB_FREE_IN_PLACE_A
                 Ai = NULL ;
             }
             else
@@ -890,12 +883,12 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // Free the prior content of the input matrix, if done in place.
             // Ap, Ah, and Ai have already been freed, but Ax has not.
-            FREE_IN_PLACE_A ;
+            GB_FREE_IN_PLACE_A ;
 
             if (info != GrB_SUCCESS)
             { 
                 // out of memory in GB_builder
-                FREE_A_AND_C ;
+                GB_FREE_A_AND_C ;
                 return (info) ;
             }
 
@@ -938,11 +931,11 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             if (info != GrB_SUCCESS)
             { 
                 // out of memory in GB_transpose_bucket
-                FREE_C ;
+                GB_FREE_C ;
                 return (info) ;
             }
 
-            ASSERT_OK (GB_check (T, "T from bucket", D0)) ;
+            ASSERT_OK (GB_check (T, "T from bucket", GB0)) ;
 
             if (in_place_A)
             { 
@@ -973,22 +966,18 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     // transplant the hyper_ratio from A to C
     C->hyper_ratio = A_hyper_ratio ;
 
-    ASSERT_OK (GB_check (C, "C to conform in GB_transpose", D0)) ;
+    ASSERT_OK (GB_check (C, "C to conform in GB_transpose", GB0)) ;
 
     info = GB_to_hyper_conform (C) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        FREE_C ;
+        GB_FREE_C ;
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (C, "C conformed in GB_transpose", D0)) ;
-    ASSERT_OK (GB_check (*Chandle, "Chandle conformed in GB_transpose", D0)) ;
-    return (REPORT_SUCCESS) ;
+    ASSERT_OK (GB_check (C, "C conformed in GB_transpose", GB0)) ;
+    ASSERT_OK (GB_check (*Chandle, "Chandle conformed in GB_transpose", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
-
-#undef FREE_IN_PLACE_A
-#undef FREE_C
-#undef FREE_A_AND_C
 

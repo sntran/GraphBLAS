@@ -28,17 +28,15 @@ GrB_Info GrB_Col_assign             // C<mask>(Rows,col) = accum (C(Rows,col),u)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Col_assign (C, mask, accum, u, Rows, nRows, col, desc)") ;
-
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
-
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
-    ASSERT (VECTOR_OK (u)) ;
+    GB_WHERE ("GrB_Col_assign (C, mask, accum, u, Rows, nRows, col, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // C(Rows,col)<mask> = accum (C(Rows,col), u)

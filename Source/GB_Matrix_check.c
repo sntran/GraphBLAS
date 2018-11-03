@@ -13,10 +13,11 @@ GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
 (
     const GrB_Matrix A,     // GraphBLAS matrix to print and check
     const char *name,       // name of the matrix
-    int pr                  // 0: print nothing, 1: print header and errors,
+    int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
+    FILE *f                 // file for output
 )
 { 
-    return (GB_matvec_check (A, name, pr, "matrix")) ;
+    return (GB_matvec_check (A, name, pr, f, "matrix")) ;
 }
 

@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-#define BUILD(type,T)                                                         \
+#define GB_BUILD(type,T)                                                      \
 GrB_Info GrB_Matrix_build_ ## T     /* build a matrix from (I,J,X) tuples */  \
 (                                                                             \
     GrB_Matrix C,                   /* matrix to build                    */  \
@@ -20,23 +20,21 @@ GrB_Info GrB_Matrix_build_ ## T     /* build a matrix from (I,J,X) tuples */  \
     const GrB_BinaryOp dup          /* binary op to assemble duplicates   */  \
 )                                                                             \
 {                                                                             \
-    WHERE ("GrB_Matrix_build_" GB_STR(T) " (C, I, J, X, nvals, dup)") ;       \
-    RETURN_IF_NULL_OR_FAULTY (C) ;                                            \
+    GB_WHERE ("GrB_Matrix_build_" GB_STR(T) " (C, I, J, X, nvals, dup)") ;    \
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                         \
     return (GB_user_build (C, I, J, X, nvals, dup, GB_ ## T ## _code, true)) ;\
 }
 
-BUILD (bool     , BOOL   ) ;
-BUILD (int8_t   , INT8   ) ;
-BUILD (uint8_t  , UINT8  ) ;
-BUILD (int16_t  , INT16  ) ;
-BUILD (uint16_t , UINT16 ) ;
-BUILD (int32_t  , INT32  ) ;
-BUILD (uint32_t , UINT32 ) ;
-BUILD (int64_t  , INT64  ) ;
-BUILD (uint64_t , UINT64 ) ;
-BUILD (float    , FP32   ) ;
-BUILD (double   , FP64   ) ;
-BUILD (void     , UDT    ) ;
-
-#undef BUILD
+GB_BUILD (bool     , BOOL   ) ;
+GB_BUILD (int8_t   , INT8   ) ;
+GB_BUILD (uint8_t  , UINT8  ) ;
+GB_BUILD (int16_t  , INT16  ) ;
+GB_BUILD (uint16_t , UINT16 ) ;
+GB_BUILD (int32_t  , INT32  ) ;
+GB_BUILD (uint32_t , UINT32 ) ;
+GB_BUILD (int64_t  , INT64  ) ;
+GB_BUILD (uint64_t , UINT64 ) ;
+GB_BUILD (float    , FP32   ) ;
+GB_BUILD (double   , FP64   ) ;
+GB_BUILD (void     , UDT    ) ;
 

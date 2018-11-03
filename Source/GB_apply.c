@@ -29,16 +29,16 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (C, M, A)) ;
+    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
 
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL_OR_FAULTY (op) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (op) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_apply", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_apply", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_apply", D0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_apply", D0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_apply", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_apply", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_apply", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_apply", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for GB_apply", GB0)) ;
+    ASSERT_OK (GB_check (A, "A input for GB_apply", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type T_type = op->ztype ;
@@ -52,7 +52,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // A must also be compatible with op->xtype
     if (!GB_Type_compatible (A->type, op->xtype))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "incompatible type for z=%s(x):\n"
             "input A type [%s]\n"
             "cannot be typecast to operator x of type [%s]",
@@ -60,25 +60,25 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     }
 
     // check the dimensions
-    int64_t tnrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t tncols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
-    if (NROWS (C) != tnrows || NCOLS (C) != tncols)
+    int64_t tnrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t tncols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    if (GB_NROWS (C) != tnrows || GB_NCOLS (C) != tncols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "output is "GBd"-by-"GBd"\n"
             "input is "GBd"-by-"GBd"%s",
-            NROWS (C), NCOLS (C),
+            GB_NROWS (C), GB_NCOLS (C),
             tnrows, tncols, A_transpose ? " (transposed)" : ""))) ;
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // T = op(A) or op(A')

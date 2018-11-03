@@ -34,7 +34,7 @@ bool GB_size_t_multiply     // true if ok, false if overflow
     }
 
     // a + b is now safe to compute
-    if ((a + b) > (SIZE_MAX / IMIN (a,b)))
+    if ((a + b) > (SIZE_MAX / GB_IMIN (a,b)))
     { 
         // a * b may overflow
         return (false) ;

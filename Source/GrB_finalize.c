@@ -13,7 +13,7 @@
 // held internally in thread-local storage.  It can be called at any time and
 // can be followed by GraphBLAS function.
 
-// The error condition is not modified with "return (REPORT_SUCCESS)" so that
+// The error condition is not modified with "return (GB_REPORT_SUCCESS)" so that
 // GrB_error can be called to report any prior error.
 
 #include "GB.h"

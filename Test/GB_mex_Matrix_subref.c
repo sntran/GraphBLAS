@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_Matrix_subref: C=A(I,J) or C=A(J,I)'
+// GB_mex_Matrix_subref: C=A(I,J)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -35,7 +35,7 @@ void mexFunction
     bool ignore ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -66,7 +66,7 @@ void mexFunction
         mexErrMsgTxt ("J failed") ;
     }
 
-    // C = A(I,J) or A(J,I)', no need to check dimensions of C
+    // C = A(I,J)
     METHOD (GB_subref_numeric (&C, true /* CSC */, A, I, ni, J, nj, true)) ;
 
     // return C to MATLAB

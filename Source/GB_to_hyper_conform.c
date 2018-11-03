@@ -29,9 +29,9 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     // access the row indices at all, so it works fine if the columns have
     // jumbled row indices.
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A to conform", D0)) ;
-    ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (A)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A to conform", GB0)) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (A)) ;
 
     //--------------------------------------------------------------------------
     // convert to hypersparse or non-hypersparse
@@ -39,11 +39,11 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
 
     GrB_Info info = GrB_SUCCESS ;
 
-    if (GB_to_hyper_check (A, A->nvec_nonempty, A->vdim))
+    if (GB_to_hyper_test (A, A->nvec_nonempty, A->vdim))
     { 
         info = GB_to_hyper (A) ;
     }
-    else if (GB_to_nonhyper_check (A, A->nvec_nonempty, A->vdim))
+    else if (GB_to_nonhyper_test (A, A->nvec_nonempty, A->vdim))
     { 
         info = GB_to_nonhyper (A) ;
     }
@@ -56,7 +56,7 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     if (info != GrB_SUCCESS)
     { 
         // out of memory; all content has been freed
-        ASSERT (A->magic == MAGIC2) ;
+        ASSERT (A->magic == GB_MAGIC2) ;
         return (info) ;
     }
 
@@ -64,7 +64,7 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A conformed", D0)) ;
-    return (REPORT_SUCCESS) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A conformed", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

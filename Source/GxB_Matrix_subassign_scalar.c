@@ -17,7 +17,7 @@
 
 #include "GB.h"
 
-#define ASSIGN(type,T,ampersand)                                               \
+#define GB_ASSIGN(type,T,ampersand)                                            \
 GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<Mask> += x              */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
@@ -31,26 +31,24 @@ GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<Mask> += x              */ \
     const GrB_Descriptor desc       /* descriptor for C(Rows,Cols) and Mask */ \
 )                                                                              \
 {                                                                              \
-    WHERE ("GxB_Matrix_subassign_" GB_STR(T)                                   \
+    GB_WHERE ("GxB_Matrix_subassign_" GB_STR(T)                                \
         " (C, Mask, accum, x, Rows, nRows, Cols, nCols, desc)") ;              \
-    RETURN_IF_NULL_OR_FAULTY (C) ;                                             \
-    RETURN_IF_FAULTY (Mask) ;                                                  \
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
+    GB_RETURN_IF_FAULTY (Mask) ;                                               \
     return (GB_subassign_scalar (C, Mask, accum,                               \
         ampersand x, GB_## T ## _code, Rows, nRows, Cols, nCols, desc)) ;      \
 }
 
-ASSIGN (bool     , BOOL   , &) ;
-ASSIGN (int8_t   , INT8   , &) ;
-ASSIGN (uint8_t  , UINT8  , &) ;
-ASSIGN (int16_t  , INT16  , &) ;
-ASSIGN (uint16_t , UINT16 , &) ;
-ASSIGN (int32_t  , INT32  , &) ;
-ASSIGN (uint32_t , UINT32 , &) ;
-ASSIGN (int64_t  , INT64  , &) ;
-ASSIGN (uint64_t , UINT64 , &) ;
-ASSIGN (float    , FP32   , &) ;
-ASSIGN (double   , FP64   , &) ;
-ASSIGN (void *   , UDT    ,  ) ;
-
-#undef ASSIGN
+GB_ASSIGN (bool     , BOOL   , &) ;
+GB_ASSIGN (int8_t   , INT8   , &) ;
+GB_ASSIGN (uint8_t  , UINT8  , &) ;
+GB_ASSIGN (int16_t  , INT16  , &) ;
+GB_ASSIGN (uint16_t , UINT16 , &) ;
+GB_ASSIGN (int32_t  , INT32  , &) ;
+GB_ASSIGN (uint32_t , UINT32 , &) ;
+GB_ASSIGN (int64_t  , INT64  , &) ;
+GB_ASSIGN (uint64_t , UINT64 , &) ;
+GB_ASSIGN (float    , FP32   , &) ;
+GB_ASSIGN (double   , FP64   , &) ;
+GB_ASSIGN (void *   , UDT    ,  ) ;
 

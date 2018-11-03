@@ -18,7 +18,7 @@
     const int64_t *Ap = A->p ;
     const int64_t *Ai = A->i ;
 
-    #ifdef HYPER
+    #ifdef GB_HYPER_CASE
     const int64_t *Ah = A->h ;
     int64_t anvec = A->nvec ;
     #endif
@@ -37,15 +37,15 @@
     // symbolic pattern of C = A*B
     //--------------------------------------------------------------------------
 
-    #ifdef HYPER
-    for_each_vector (B)
+    #ifdef GB_HYPER_CASE
+    GB_for_each_vector (B)
     #else
     int64_t n = C->vdim ;
     for (int64_t j = 0 ; j < n ; j++)
     #endif
     {
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         int64_t GBI1_initj (Iter, j, pB_start, pB_end) ;
         #else
         int64_t pB_start = Bp [j] ;
@@ -61,7 +61,7 @@
         int64_t cmax = cnz + cvlen ;
         if (cmax > C->nzmax)
         { 
-            OK (GB_ix_realloc (C, 4*(C->nzmax + cvlen), false)) ;
+            GB_OK (GB_ix_realloc (C, 4*(C->nzmax + cvlen), false)) ;
             Ci = C->i ;
         }
 
@@ -71,7 +71,7 @@
 
         int64_t bjnz = pB_end - pB_start ;
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         int64_t pleft = 0 ;
         int64_t pright = anvec-1 ;
         #endif
@@ -83,7 +83,7 @@
             // B (:,j) is empty; nothing to do
             //------------------------------------------------------------------
 
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             continue ;
             #endif
 
@@ -100,7 +100,7 @@
 
             // find A(:,k)
             int64_t pA_start, pA_end ;
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k,
                 &pA_start, &pA_end) ;
             #else
@@ -130,7 +130,7 @@
             int64_t p1, p1_end, p2, p2_end ;
 
             // find A(:,k1) and A(:,k2)
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k1,
                 &p1, &p1_end) ;
             // Use pleft of k1 to trim the search for k2 since k1 < k2
@@ -179,7 +179,7 @@
             // flag++
             int64_t flag = GB_Mark_reset (1, 0) ;
 
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             // trim on right
             if (A_is_hyper)
             { 
@@ -199,7 +199,7 @@
 
                 // find A(:,k), reusing pleft since Bi [...] is sorted
                 int64_t pA_start, pA_end ;
-                #ifdef HYPER
+                #ifdef GB_HYPER_CASE
                 GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k,
                     &pA_start, &pA_end) ;
                 #else
@@ -244,13 +244,13 @@
         // log the end of vector C(:,j)
         //----------------------------------------------------------------------
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         // this cannot fail since C->plen is the upper bound: the number
         // of non-empty columns of B.
         info = (GB_jappend (C, j, &jlast, cnz, &cnz_last)) ;
         ASSERT (info == GrB_SUCCESS) ;
         // if it could fail:
-        // OK (info) ;              // check result and return on error
+        // GB_OK (info) ;              // check result and return on error
         #else
         Cp [j+1] = cnz ;
         if (cnz > cnz_last) C->nvec_nonempty++ ;
@@ -265,10 +265,10 @@
     // finalize C and clear the Mark
     //--------------------------------------------------------------------------
 
-    #ifdef HYPER
+    #ifdef GB_HYPER_CASE
     GB_jwrapup (C, jlast, cnz) ;
     #else
-    C->magic = MAGIC ;
+    C->magic = GB_MAGIC ;
     #endif
 
     // clear the Mark array
@@ -280,5 +280,6 @@
 
     info = GB_ix_realloc (C, cnz, false) ;
     ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "C symbolic Gustavson C=A*B", D0)) ;
+    ASSERT_OK (GB_check (C, "C symbolic Gustavson C=A*B", GB0)) ;
 }
+

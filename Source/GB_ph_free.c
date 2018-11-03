@@ -57,6 +57,6 @@ void GB_ph_free                 // free A->p and A->h of a matrix
 
     // If this matrix is used as input to a user-callable GraphBLAS function,
     // it will generate an error: GrB_INVALID_OBJECT.
-    A->magic = MAGIC2 ;
+    A->magic = GB_MAGIC2 ;
 }
 

@@ -35,6 +35,7 @@ logstat ;             % start the log.txt
 % quick tests for statement coverage
 
 logstat ('test98') ;  % GB_mex_mxm, typecast on the fly
+logstat ('test92') ;  % GB_subref_symbolic
 logstat ('test97') ;  % GB_mex_assign, scalar expansion and zombies
 logstat ('test01') ;  % error handling
 logstat ('test02') ;  % matrix copy and dup tests
@@ -65,6 +66,7 @@ logstat ('test84') ;  % GrB_assign (row and column with C in CSR format)
 logstat ('test85') ;  % GrB_transpose (1-by-n with typecasting)
 logstat ('test88') ;  % hypersparse matrices with heap-based method
 logstat ('test00') ;  % GB_mex_mis
+logstat ('test93') ;  % pagerank
 logstat ('test77') ;  % quick tests of GxB_kron
 logstat ('test76') ;  % GxB_resize
 logstat ('test27') ;  % quick test of GxB_select (band)
@@ -76,6 +78,7 @@ logstat ('test25') ;  % quick test of GxB_select
 logstat ('test53') ;  % quick test of GB_mex_Matrix_extract
 logstat ('test24') ;  % test of GrB_Matrix_reduce
 logstat ('test10') ;  % GrB_apply
+logstat ('test90') ;  % test pre-compiled user-defined semirings
 logstat ('test21b') ; % quick test of GB_mex_assign
 logstat ('test21') ;  % quick test of GB_mex_subassign
 logstat ('test16') ;  % user-defined complex operators
@@ -92,6 +95,7 @@ logstat ('test20') ;  % quick test of GB_mex_mxm on a few semirings
 
 if (longtests)
     % useful tests but not needed for statement coverage
+    logstat ('test89') ;  % performance test of complex A*B
     logstat ('test13') ;  % simple tests of GB_mex_transpose
     logstat ('test22') ;  % quick test of GB_mex_transpose
     logstat ('test26(1)') ;  % longer test of GxB_select

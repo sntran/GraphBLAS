@@ -142,7 +142,7 @@ int main (int argc, char **argv)
 
     double t_mark [2] = { 0, 0 } ;
     int64_t ntri1 ;
-    OK (tricount (&ntri1, 4, NULL, NULL, L, NULL, t_mark)) ;
+    OK (tricount (&ntri1, 3, NULL, NULL, L, NULL, t_mark)) ;
 
     printf ("tricount time:   %14.6f sec (outer product method)\n",
         t_mark [0] + t_mark [1]) ;

@@ -40,7 +40,7 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 4 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

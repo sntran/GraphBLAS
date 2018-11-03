@@ -190,7 +190,7 @@ int main (int argc, char **argv)
     // iset2 = iset
     OK (GrB_Vector_dup (&iset2, iset)) ;
     // iset2 = iset2 or A*iset, using the Boolean semiring
-    OK (GrB_mxv (iset2, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, A, iset, NULL)) ;
+    OK (GrB_vxm (iset2, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, iset, A, NULL)) ;
     OK (GrB_Vector_nvals (&nvals, iset2)) ;
     if (nvals != n)
     {

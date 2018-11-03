@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// gbcover_util.c: utilities for test coverage
+// GB_cover_util.c: utilities for test coverage
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -14,72 +14,72 @@
 #include "GB_mex.h"
 
 //------------------------------------------------------------------------------
-// gbcover_get: copy coverage counts from the MATLAB workspace
+// GB_cover_get: copy coverage counts from the MATLAB workspace
 //------------------------------------------------------------------------------
 
 // This function is called when a GraphBLAS mexFunction starts.
 // GraphBLAS_gbcov is an int64 MATLAB array in the global MATLAB workspace.
-// Its size is controlled by gbcover_max, defined in gbcover_finish.c.  If the
+// Its size is controlled by GB_cover_max, defined in GB_cover_finish.c.  If the
 // array is empty in the workspace, or if it doesn't exist, it is created with
-// the correct size.  Then the internal gbcov array is copied into it.
+// the correct size.  Then the internal GB_cov array is copied into it.
 
-void gbcover_get ( )
+void GB_cover_get ( )
 {
 
     // get GraphBLAS_gbcov from MATLAB global workspace
-    mxArray *gbcov_matlab = NULL ;
-    gbcov_matlab = (mxArray *) mexGetVariablePtr ("global", "GraphBLAS_gbcov") ;
+    mxArray *GB_cov_matlab = NULL ;
+    GB_cov_matlab = (mxArray *) mexGetVariablePtr ("global", "GraphBLAS_gbcov") ;
 
-    if (gbcov_matlab == NULL || mxIsEmpty (gbcov_matlab))
+    if (GB_cov_matlab == NULL || mxIsEmpty (GB_cov_matlab))
     {
         // doesn't exist; create it and set it to zero
-        gbcov_matlab = mxCreateNumericMatrix (1, gbcover_max,
+        GB_cov_matlab = mxCreateNumericMatrix (1, GB_cover_max,
             mxINT64_CLASS, mxREAL) ;
         // copy it back to the global MATLAB workspace
-        mexPutVariable ("global", "GraphBLAS_gbcov", gbcov_matlab) ;
+        mexPutVariable ("global", "GraphBLAS_gbcov", GB_cov_matlab) ;
     }
 
     // it should exist now, but double-check
-    if (gbcov_matlab == NULL || mxIsEmpty (gbcov_matlab))
+    if (GB_cov_matlab == NULL || mxIsEmpty (GB_cov_matlab))
     {
-        mexErrMsgTxt ("gbcov_matlab still null!") ;
+        mexErrMsgTxt ("GB_cov_matlab still null!") ;
     }
 
     // get a pointer to the content of the GraphBLAS_gbcov array in the
     // MATLAB workspace
-    int64_t *g = (int64_t *) mxGetData (gbcov_matlab) ;
+    int64_t *g = (int64_t *) mxGetData (GB_cov_matlab) ;
 
     // getting paranoid here; this should never happen
     if (g == NULL) mexErrMsgTxt ("g null!") ;
-    // if (gbcov == NULL) mexErrMsgTxt ("gbcov is NULL!") ;
+    // if (GB_cov == NULL) mexErrMsgTxt ("GB_cov is NULL!") ;
 
-    // copy the count from the MATLAB GraphBLAS_gbcov into gbcov
-    memcpy (gbcov, g, gbcover_max * sizeof (int64_t)) ;
+    // copy the count from the MATLAB GraphBLAS_gbcov into GB_cov
+    memcpy (GB_cov, g, GB_cover_max * sizeof (int64_t)) ;
 }
 
 //------------------------------------------------------------------------------
-// gbcover_put: copy coverage counts back to the MATLAB workspace
+// GB_cover_put: copy coverage counts back to the MATLAB workspace
 //------------------------------------------------------------------------------
 
 // This function is called when a GraphBLAS mexFunction finishes.  It copies
-// the updated statement coverage counters in the gbcov array back to the
+// the updated statement coverage counters in the GB_cov array back to the
 // GraphBLAS_gbcov array in the MATLAB global workspace where it can be
 // analyzed.
 
-void gbcover_put ( )
+void GB_cover_put ( )
 {
-    // printf ("gbcover_put: %d\n", gbcover_max) ;
+    // printf ("GB_cover_put: %d\n", GB_cover_max) ;
 
     // create a MATLAB array with the right size
-    mxArray * gbcov_matlab = mxCreateNumericMatrix (1, gbcover_max,
+    mxArray * GB_cov_matlab = mxCreateNumericMatrix (1, GB_cover_max,
             mxINT64_CLASS, mxREAL) ;
 
-    // copy the updated gbcov counter array into the MATLAB array
-    int64_t *g = (int64_t *) mxGetData (gbcov_matlab) ;
-    memcpy (g, gbcov, gbcover_max * sizeof (int64_t)) ;
+    // copy the updated GB_cov counter array into the MATLAB array
+    int64_t *g = (int64_t *) mxGetData (GB_cov_matlab) ;
+    memcpy (g, GB_cov, GB_cover_max * sizeof (int64_t)) ;
 
     // put the MATLAB array into the global workspace, overwriting the
     // version that was already there
-    mexPutVariable ("global", "GraphBLAS_gbcov", gbcov_matlab) ;
+    mexPutVariable ("global", "GraphBLAS_gbcov", GB_cov_matlab) ;
 }
 

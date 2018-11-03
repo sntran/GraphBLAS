@@ -73,7 +73,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (NOT_ALIASED_2 (C, M, A)) ;
+    ASSERT (GB_NOT_ALIASED_2 (C, M, A)) ;
 
     //--------------------------------------------------------------------------
     // check empty mask conditions
@@ -88,12 +88,12 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // an empty mask is complemented
             if (!C_replace)
             { 
-                // No work to do.  This the same as the RETURN_IF_QUICK_MASK
+                // No work to do.  This the same as the GB_RETURN_IF_QUICK_MASK
                 // case in other GraphBLAS functions, except here only the
                 // sub-case of C_replace=false is handled.  The C_replace=true
                 // sub-case needs to delete all entries in C(I,J), which is
                 // handled below, not here.
-                return (REPORT_SUCCESS) ;
+                return (GB_REPORT_SUCCESS) ;
             }
         }
         else
@@ -109,7 +109,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     }
     else
     { 
-        nzMask = NNZ (M) ;
+        nzMask = GB_NNZ (M) ;
     }
 
     // C_replace now has its effective value: it is true only if true on input
@@ -124,15 +124,17 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     GrB_Info info ;
 
     // the matrix C may have pending tuples and/or zombies
-    ASSERT_OK (GB_check (C, "C for subassign kernel", D0)) ;
-    ASSERT (PENDING_OK (C)) ; ASSERT (ZOMBIES_OK (C)) ;
+    ASSERT_OK (GB_check (C, "C for subassign kernel", GB0)) ;
+    ASSERT (GB_PENDING_OK (C)) ; ASSERT (GB_ZOMBIES_OK (C)) ;
     ASSERT (scalar_code <= GB_UDT_code) ;
 
     // C(I,J) = A, so I is in 0:C->vlen-1 and J is in 0:C->vdim-1
+    int64_t cvlen = C->vlen ;
+    int64_t cvdim = C->vdim ;
     int64_t nI, nJ, Icolon [3], Jcolon [3] ;
     int Ikind, Jkind ;
-    GB_ijlength (I, ni, C->vlen, &nI, &Ikind, Icolon) ;
-    GB_ijlength (J, nj, C->vdim, &nJ, &Jkind, Jcolon) ;
+    GB_ijlength (I, ni, cvlen, &nI, &Ikind, Icolon) ;
+    GB_ijlength (J, nj, cvdim, &nJ, &Jkind, Jcolon) ;
 
     // If the descriptor says that A must be transposed, it has already been
     // transposed in the caller.  Thus C(I,J), A, and M (if present) all
@@ -161,11 +163,11 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     else
     { 
         // A is an nI-by-nJ matrix, with no pending computations
-        ASSERT_OK (GB_check (A, "A for subassign kernel", D0)) ;
+        ASSERT_OK (GB_check (A, "A for subassign kernel", GB0)) ;
         ASSERT (nI == A->vlen && nJ == A->vdim) ;
-        ASSERT (!PENDING (A)) ;   ASSERT (!ZOMBIES (A)) ;
+        ASSERT (!GB_PENDING (A)) ;   ASSERT (!GB_ZOMBIES (A)) ;
         ASSERT (scalar == NULL) ;
-        anz = NNZ (A) ;
+        anz = GB_NNZ (A) ;
         is_dense = (mn_ok && anz == (int64_t) mn) ;
         atype = A->type ;
         acode = atype->code ;
@@ -178,8 +180,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     if (M != NULL)
     { 
         // M can have no pending tuples nor zombies
-        ASSERT_OK (GB_check (M, "M for subassign kernel", D0)) ;
-        ASSERT (!PENDING (M)) ;  ASSERT (!ZOMBIES (M)) ;
+        ASSERT_OK (GB_check (M, "M for subassign kernel", GB0)) ;
+        ASSERT (!GB_PENDING (M)) ;  ASSERT (!GB_ZOMBIES (M)) ;
         ASSERT (nI == M->vlen && nJ == M->vdim) ;
     }
 
@@ -316,10 +318,10 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // prior work must be finished.  This potentially costly.
 
         // delete any lingering zombies and assemble any pending tuples
-        WAIT (C) ;
+        GB_WAIT (C) ;
     }
 
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for assign", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for assign", GB0)) ;
 
     //--------------------------------------------------------------------------
     // keep track of the current accum operator
@@ -355,24 +357,25 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     // column S(:,j), it finds the entry C(iC,jC), and also determines if the
     // C(iC,jC) entry is a zombie.  The column indices j and jC are implicit.
 
-    #define C_S_LOOKUP                                                      \
+    #define GB_C_S_LOOKUP                                                   \
         int64_t pC = Sx [pS] ;                                              \
         int64_t iC = Ci [pC] ;                                              \
-        bool is_zombie = IS_ZOMBIE (iC) ;                                   \
-        if (is_zombie) iC = FLIP (iC) ;
+        bool is_zombie = GB_IS_ZOMBIE (iC) ;                                \
+        if (is_zombie) iC = GB_FLIP (iC) ;
 
     //--------------------------------------------------------------------------
-    // get C(iC,jC) when C(:,jC) is dense
+    // C(:,jC) is dense: iC = I [iA], and then look up C(iC,jC)
     //--------------------------------------------------------------------------
 
     // C(:,jC) is dense, and thus can be accessed with a constant-time lookup
-    // with the index iC, where the index iC comes from the pattern of M.
+    // with the index iC, where the index iC comes from I [iA] or via a
+    // colon notation for I.
 
-    #define CDENSE_M_LOOKUP                                                 \
-        int64_t iC = Mi [pM] ;                                              \
+    #define GB_CDENSE_I_LOOKUP                                              \
+        int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;                     \
         int64_t pC = pC_start + iC ;                                        \
-        bool is_zombie = IS_ZOMBIE (Ci [pC]) ;                              \
-        ASSERT (UNFLIP (Ci [pC]) == iC) ;
+        bool is_zombie = GB_IS_ZOMBIE (Ci [pC]) ;                           \
+        ASSERT (GB_UNFLIP (Ci [pC]) == iC) ;
 
     //--------------------------------------------------------------------------
     // get the C(:,jC) vector where jC = J [j]
@@ -380,7 +383,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
     // C may be standard sparse, or hypersparse
 
-    #define jC_LOOKUP                                                       \
+    #define GB_jC_LOOKUP                                                    \
         /* lookup jC in C */                                                \
         /* jC = J [j] ; or J is ":" or jbegin:jend or jbegin:jinc:jend */   \
         jC = GB_ijlist (J, j, Jkind, Jcolon) ;                              \
@@ -388,10 +391,10 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         GB_lookup (C_is_hyper, Ch, Cp, &pleft, pright, jC, &pC_start, &pC_end) ;
 
     //--------------------------------------------------------------------------
-    // get C(iC,jC)
+    // get C(iC,jC) via binary search of C(:,jC)
     //--------------------------------------------------------------------------
 
-    #define iC_LOOKUP                                                          \
+    #define GB_iC_BINARY_SEARCH                                                \
         int64_t pC = pC_start ;                                                \
         int64_t pright = pC_end - 1 ;                                          \
         bool found, is_zombie ;                                                \
@@ -403,34 +406,34 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
     // An entry S(i,j), A(i,j), or M(i,j) has been processed;
     // move to the next one.
-    #define NEXT(X) (p ## X)++ ;
+    #define GB_NEXT(X) (p ## X)++ ;
 
     //--------------------------------------------------------------------------
     // basic operations
     //--------------------------------------------------------------------------
 
-    #define COPY_scalar_to_C                                            \
+    #define GB_COPY_scalar_to_C                                         \
     {                                                                   \
         /* C(iC,jC) = scalar, already typecasted into cwork      */     \
         ASSERT (scalar_expansion) ;                                     \
         memcpy (Cx +(pC*csize), cwork, csize) ;                         \
     }
 
-    #define COPY_aij_to_C                                               \
+    #define GB_COPY_aij_to_C                                            \
     {                                                                   \
         /* C(iC,jC) = A(i,j), with typecasting                   */     \
         ASSERT (!scalar_expansion) ;                                    \
         cast_A_to_C (Cx +(pC*csize), Ax +(pA*asize), csize) ;           \
     }
 
-    #define COPY_aij_to_ywork                                           \
+    #define GB_COPY_aij_to_ywork                                        \
     {                                                                   \
         /* ywork = A(i,j), with typecasting                      */     \
         ASSERT (!scalar_expansion) ;                                    \
         cast_A_to_Y (ywork, Ax +(pA*asize), asize) ;                    \
     }
 
-    #define ACCUMULATE                                                  \
+    #define GB_ACCUMULATE                                               \
     {                                                                   \
         /* C(iC,jC) = accum (C(iC,jC), ywork)                    */     \
         cast_C_to_X (xwork, Cx +(pC*csize), csize) ;                    \
@@ -438,14 +441,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         cast_Z_to_C (Cx +(pC*csize), zwork, csize) ;                    \
     }                                                                   \
 
-    #define DELETE                                                      \
+    #define GB_DELETE                                                   \
     {                                                                   \
         /* turn C(iC,jC) into a zombie */                               \
         C->nzombies++ ;                                                 \
-        Ci [pC] = FLIP (iC) ;                                           \
+        Ci [pC] = GB_FLIP (iC) ;                                        \
     }
 
-    #define UNDELETE                                                    \
+    #define GB_UNDELETE                                                 \
     {                                                                   \
         /* bring a zombie C(iC,jC) back to life;                 */     \
         /* the value of C(iC,jC) must also be assigned.          */     \
@@ -453,7 +456,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         C->nzombies-- ;                                                 \
     }
 
-    #define INSERT(aij)                                                 \
+    #define GB_INSERT(aij)                                              \
     {                                                                   \
         /* C(iC,jC) = aij, inserting a pending tuple.  aij is */        \
         /* either A(i,j) or the scalar for scalar expansion */          \
@@ -489,7 +492,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         //      pending tuples inserted here, by GxB_subassign.
 
         // (2) zombie entries.  These are entries that are still present in the
-        // pattern but marked for deletion (via FLIP(i) for the row index).
+        // pattern but marked for deletion (via GB_FLIP(i) for the row index).
 
         // For the current GxB_subassign, there are 16 cases to handle,
         // all combinations of the following options:
@@ -501,7 +504,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
         // Complementing an empty mask:  This does not require the matrix A
         // at all so it is handled as a special case.  It corresponds to
-        // the RETURN_IF_QUICK_MASK option in other GraphBLAS operations.
+        // the GB_RETURN_IF_QUICK_MASK option in other GraphBLAS operations.
         // Thus only 12 cases are considered in the tables below:
 
         //      These 4 cases are listed in Four Tables below:
@@ -578,7 +581,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             //          implicit GrB_SECOND_Ctype operator, I=i, J=j, and a
             //          1-by-1 matrix A containing a single entry (not an
             //          implicit entry; there is no "." for A).  That is,
-            //          NNZ(A)==1.  No mask, and the descriptor is the default;
+            //          nnz(A)==1.  No mask, and the descriptor is the default;
             //          C_replace effectively false, mask not complemented, A
             //          not transposed.  As a result, GrB_setElement can be
             //          freely mixed with calls to GxB_subassign with C_replace
@@ -777,17 +780,17 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             //      ( delete ):
 
             //          C(I(i),J(j)) becomes a zombie, by flipping its row
-            //          index via the FLIP function.
+            //          index via the GB_FLIP function.
 
             //      ( undelete ):
 
-            //          C(I(i),J(j)) = A(i,j) was a zombie and is no longer
-            //          a zombie.  Its row index is restored with another FLIP.
+            //          C(I(i),J(j)) = A(i,j) was a zombie and is no longer a
+            //          zombie.  Its row index is restored with GB_FLIP.
 
             //      ( X ):
 
             //          C(I(i),J(j)) was a zombie, and still is a zombie.
-            //          row index is < 0, and actual index is FLIP(I(i))
+            //          row index is < 0, and actual index is GB_FLIP(I(i))
 
             //      ( C ):
 
@@ -842,159 +845,109 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // C_replace has no impact on this action.
 
             // [X A 1] matrix case
-            #define X_A_1_matrix                                            \
+            #define GB_X_A_1_matrix                                         \
             {                                                               \
                 /* ----[X A 1]                                           */ \
                 /* action: ( undelete ): bring a zombie back to life     */ \
-                UNDELETE ;                                                  \
-                COPY_aij_to_C ;                                             \
+                GB_UNDELETE ;                                               \
+                GB_COPY_aij_to_C ;                                          \
             }
 
             // [X A 1] scalar case
-            #define X_A_1_scalar                                            \
+            #define GB_X_A_1_scalar                                         \
             {                                                               \
                 /* ----[X A 1]                                           */ \
                 /* action: ( undelete ): bring a zombie back to life     */ \
-                UNDELETE ;                                                  \
-                COPY_scalar_to_C ;                                          \
+                GB_UNDELETE ;                                               \
+                GB_COPY_scalar_to_C ;                                       \
             }
 
             // [C A 1] scalar case, with accum
-            #define C_A_1_accum_matrix                                      \
+            #define GB_C_A_1_accum_matrix                                   \
             {                                                               \
                 /* ----[C A 1] with accum, scalar expansion              */ \
                 /* action: ( =C+A ): apply the accumulator               */ \
-                COPY_aij_to_ywork ;                                         \
-                ACCUMULATE ;                                                \
+                GB_COPY_aij_to_ywork ;                                      \
+                GB_ACCUMULATE ;                                             \
             }                                                               \
 
             // [C A 1] scalar case, with accum
-            #define C_A_1_accum_scalar                                      \
+            #define GB_C_A_1_accum_scalar                                   \
             {                                                               \
                 /* ----[C A 1] with accum, scalar expansion              */ \
                 /* action: ( =C+A ): apply the accumulator               */ \
-                ACCUMULATE ;                                                \
+                GB_ACCUMULATE ;                                             \
             }
-
-            #if 0
-            // [C A 1] matrix case
-            #define C_A_1_matrix                                            \
-            {                                                               \
-                if (is_zombie)                                              \
-                {                                                           \
-                    /* ----[X A 1]                                       */ \
-                    /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_matrix ;                                          \
-                }                                                           \
-                else if (faccum == NULL)                                    \
-                {                                                           \
-                    /* ----[C A 1] no accum, scalar expansion            */ \
-                    /* action: ( =A ): copy A into C                     */ \
-                    COPY_aij_to_C ;                                         \
-                }                                                           \
-                else                                                        \
-                {                                                           \
-                    /* ----[C A 1] with accum, scalar expansion          */ \
-                    /* action: ( =C+A ): apply the accumulator           */ \
-                    C_A_1_accum_matrix ;                                    \
-                }                                                           \
-            }
-            #endif
 
             // [C A 1] matrix case when accum is present
-            #define withaccum_C_A_1_matrix                                  \
+            #define GB_withaccum_C_A_1_matrix                               \
             {                                                               \
-                ASSERT (accum != NULL) ; \
+                ASSERT (accum != NULL) ;                                    \
                 if (is_zombie)                                              \
                 {                                                           \
                     /* ----[X A 1]                                       */ \
                     /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_matrix ;                                          \
+                    GB_X_A_1_matrix ;                                       \
                 }                                                           \
                 else                                                        \
                 {                                                           \
                     /* ----[C A 1] with accum, scalar expansion          */ \
                     /* action: ( =C+A ): apply the accumulator           */ \
-                    C_A_1_accum_matrix ;                                    \
+                    GB_C_A_1_accum_matrix ;                                 \
                 }                                                           \
             }
 
             // [C A 1] matrix case when no accum is present
-            #define noaccum_C_A_1_matrix                                    \
+            #define GB_noaccum_C_A_1_matrix                                 \
             {                                                               \
-                ASSERT (accum == NULL) ; \
+                ASSERT (accum == NULL) ;                                    \
                 if (is_zombie)                                              \
                 {                                                           \
                     /* ----[X A 1]                                       */ \
                     /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_matrix ;                                          \
+                    GB_X_A_1_matrix ;                                       \
                 }                                                           \
                 else                                                        \
                 {                                                           \
                     /* ----[C A 1] no accum, scalar expansion            */ \
                     /* action: ( =A ): copy A into C                     */ \
-                    COPY_aij_to_C ;                                         \
+                    GB_COPY_aij_to_C ;                                      \
                 }                                                           \
             }
-
-            // [C A 1] scalar case
-            #if 0
-            #define C_A_1_scalar                                            \
-            {                                                               \
-                if (is_zombie)                                              \
-                {                                                           \
-                    /* ----[X A 1]                                       */ \
-                    /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_scalar ;                                          \
-                }                                                           \
-                else if (faccum == NULL)                                    \
-                {                                                           \
-                    /* ----[C A 1] no accum, scalar expansion            */ \
-                    /* action: ( =A ): copy A into C                     */ \
-                    COPY_scalar_to_C ;                                      \
-                }                                                           \
-                else                                                        \
-                {                                                           \
-                    /* ----[C A 1] with accum, scalar expansion          */ \
-                    /* action: ( =C+A ): apply the accumulator           */ \
-                    C_A_1_accum_scalar ;                                    \
-                }                                                           \
-            }
-            #endif
 
             // [C A 1] scalar case when accum is present
-            #define withaccum_C_A_1_scalar                                  \
+            #define GB_withaccum_C_A_1_scalar                               \
             {                                                               \
-                ASSERT (accum != NULL) ; \
+                ASSERT (accum != NULL) ;                                    \
                 if (is_zombie)                                              \
                 {                                                           \
                     /* ----[X A 1]                                       */ \
                     /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_scalar ;                                          \
+                    GB_X_A_1_scalar ;                                       \
                 }                                                           \
                 else                                                        \
                 {                                                           \
                     /* ----[C A 1] with accum, scalar expansion          */ \
                     /* action: ( =C+A ): apply the accumulator           */ \
-                    C_A_1_accum_scalar ;                                    \
+                    GB_C_A_1_accum_scalar ;                                 \
                 }                                                           \
             }
 
             // [C A 1] scalar case when no accum is present
-            #define noaccum_C_A_1_scalar                                    \
+            #define GB_noaccum_C_A_1_scalar                                 \
             {                                                               \
-                ASSERT (accum == NULL) ; \
+                ASSERT (accum == NULL) ;                                    \
                 if (is_zombie)                                              \
                 {                                                           \
                     /* ----[X A 1]                                       */ \
                     /* action: ( undelete ): bring a zombie back to life */ \
-                    X_A_1_scalar ;                                          \
+                    GB_X_A_1_scalar ;                                       \
                 }                                                           \
-                else \
+                else                                                        \
                 {                                                           \
                     /* ----[C A 1] no accum, scalar expansion            */ \
                     /* action: ( =A ): copy A into C                     */ \
-                    COPY_scalar_to_C ;                                      \
+                    GB_COPY_scalar_to_C ;                                   \
                 }                                                           \
             }
 
@@ -1021,18 +974,18 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // Otherwise the matrix C would be left in an incoherent partial
             // state of computation.  It's cleaner to just free it all.
 
-            #define D_A_1_scalar                                            \
+            #define GB_D_A_1_scalar                                         \
             {                                                               \
                 /* ----[. A 1]                                           */ \
                 /* action: ( insert )                                    */ \
-                INSERT (scalar) ;                                           \
+                GB_INSERT (scalar) ;                                        \
             }
 
-            #define D_A_1_matrix                                            \
+            #define GB_D_A_1_matrix                                         \
             {                                                               \
                 /* ----[. A 1]                                           */ \
                 /* action: ( insert )                                    */ \
-                INSERT (Ax +(pA*asize)) ;                                   \
+                GB_INSERT (Ax +(pA*asize)) ;                                \
             }
 
         //----------------------------------------------------------------------
@@ -1060,35 +1013,11 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // This condition cannot occur if A is a dense matrix,
             // nor for scalar expansion
 
-            #if 0
-            // [C . 1] matrix case
-            #define C_D_1_matrix                                            \
-            {                                                               \
-                ASSERT (!scalar_expansion && !is_dense) ;                   \
-                if (is_zombie)                                              \
-                {                                                           \
-                    /* ----[X . 1]                                       */ \
-                    /* action: ( X ): still a zombie                     */ \
-                }                                                           \
-                else if (faccum == NULL)                                    \
-                {                                                           \
-                    /* ----[C . 1] no accum                              */ \
-                    /* action: ( delete ): becomes a zombie              */ \
-                    DELETE ;                                                \
-                }                                                           \
-                else                                                        \
-                {                                                           \
-                    /* ----[C . 1] with accum                            */ \
-                    /* action: ( C ): no change                          */ \
-                }                                                           \
-            }
-            #endif
-
             // [C . 1] matrix case when no accum is present
-            #define noaccum_C_D_1_matrix                                    \
+            #define GB_noaccum_C_D_1_matrix                                 \
             {                                                               \
                 ASSERT (!scalar_expansion && !is_dense) ;                   \
-                ASSERT (accum == NULL) ; \
+                ASSERT (accum == NULL) ;                                    \
                 if (is_zombie)                                              \
                 {                                                           \
                     /* ----[X . 1]                                       */ \
@@ -1098,29 +1027,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 {                                                           \
                     /* ----[C . 1] no accum                              */ \
                     /* action: ( delete ): becomes a zombie              */ \
-                    DELETE ;                                                \
+                    GB_DELETE ;                                             \
                 }                                                           \
             }
-
-            #if 0
-            // [C . 1], matrix case when accum is present
-            // (this method is not needed when accum is present)
-            #define withaccum_C_D_1_matrix                                  \
-            {                                                               \
-                ASSERT (!scalar_expansion && !is_dense) ;                   \
-                ASSERT (accum != NULL) ; \
-                if (is_zombie)                                              \
-                {                                                           \
-                    /* ----[X . 1]                                       */ \
-                    /* action: ( X ): still a zombie                     */ \
-                }                                                           \
-                else                                                        \
-                {                                                           \
-                    /* ----[C . 1] with accum                            */ \
-                    /* action: ( C ): no change                          */ \
-                }                                                           \
-            }
-            #endif
 
         //----------------------------------------------------------------------
         // ----[C A 0] or [X A 0]: both C and A present but M=0
@@ -1152,7 +1061,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // fact that A is dense cannot be exploited when the mask M is
             // present.
 
-            #define C_A_0                                                   \
+            #define GB_C_A_0                                                \
             {                                                               \
                 if (is_zombie)                                              \
                 {                                                           \
@@ -1165,7 +1074,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     /* ----[C A 0] replace                               */ \
                     /* ----[C . 0] replace                               */ \
                     /* action: ( delete ): becomes a zombie              */ \
-                    DELETE ;                                                \
+                    GB_DELETE ;                                             \
                 }                                                           \
                 else                                                        \
                 {                                                           \
@@ -1212,7 +1121,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             // scalar expansion, but the existance of the entry A is not
             // relevant.
 
-            #define C_D_0 C_A_0
+            #define GB_C_D_0 GB_C_A_0
 
         //----------------------------------------------------------------------
         // ----[. A 0]: C not present, A present, M=0
@@ -1269,16 +1178,16 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
     // if C is hypersparse but all vectors are present, then
     // treat C as if it were non-hypersparse
-    bool C_is_hyper = C->is_hyper && (cnvec < C->vdim) ;
+    bool C_is_hyper = C->is_hyper && (cnvec < cvdim) ;
 
     bool S_Extraction = true ;
 
     bool C_Mask_scalar = (scalar_expansion && !C_replace &&
-        M != NULL && !Mask_comp && Ikind == GB_ALL) ;
+        M != NULL && !Mask_comp) ;
 
     if (C_Mask_scalar)
     { 
-        // C(:,J)<M>=scalar, mask present and not complemented,
+        // C(I,J)<M>=scalar or +=scalar, mask present and not complemented,
         // C_replace false, special case
         S_Extraction = false ;
     }
@@ -1288,7 +1197,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // need to be examined.  Not all entries in C(I,J) and M need to be
         // examined.  As a result, computing S=C(I,J) can dominate the time and
         // memory required for the S_Extraction method.
-        int64_t cnz = NNZ (C) ;
+        int64_t cnz = GB_NNZ (C) ;
         if (nI == 1 || nJ == 1 || cnz == 0)
         { 
             // No need to form S if it has just a single row or column.  If C
@@ -1303,17 +1212,17 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             {
                 // jC = J [j] ; or J is a colon expression
                 int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
-                if (jC < 0 || jC > C->vdim)
+                if (jC < 0 || jC > cvdim)
                 { 
                     // invalid vector; check them all in GB_subref_symbolic
                     break ;
                 }
                 // get the C(:,jC) vector where jC = J [j]
-                jC_LOOKUP ;
+                GB_jC_LOOKUP ;
                 cnz += pC_end - pC_start ;
                 if (cnz/8 > anz)
                 { 
-                    // NNZ(C) + NNZ(M) is much larger than NNZ(A).  Do not
+                    // nnz(C) + nnz(M) is much larger than nnz(A).  Do not
                     // construct S=C(I,J).  Instead, scan through all of A and
                     // use binary search to find the corresponding positions in
                     // C and M.
@@ -1363,8 +1272,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             return (info) ;
         }
 
-        ASSERT_OK (GB_check (C, "C for subref extraction", D0)) ;
-        ASSERT_OK (GB_check (S, "S extraction", D0)) ;
+        ASSERT_OK (GB_check (C, "C for subref extraction", GB0)) ;
+        ASSERT_OK (GB_check (S, "S extraction", GB0)) ;
 
         Si = S->i ;
         Sx = S->x ;
@@ -1372,7 +1281,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         #ifndef NDEBUG
         // this body of code explains what S contains.
         // S is nI-by-nJ where nI = length (I) and nJ = length (J)
-        for_each_vector (S)
+        GB_for_each_vector (S)
         {
             // prepare to iterate over the entries of vector S(:,jnew)
             int64_t GBI1_initj (Iter, jnew, pS_start, pS_end) ;
@@ -1387,7 +1296,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // iC = I [iA] ; or I is a colon expression
                 int64_t iC = GB_ijlist (I, inew, Ikind, Icolon) ;
                 int64_t p = Sx [pS] ;
-                ASSERT (p >= 0 && p < NNZ (C)) ;
+                ASSERT (p >= 0 && p < GB_NNZ (C)) ;
                 int64_t pC_start, pC_end, pleft = 0, pright = cnvec-1 ;
                 bool found = GB_lookup (C_is_hyper, Ch, Cp, &pleft, pright, jC,
                     &pC_start, &pC_end) ;
@@ -1397,7 +1306,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // assigned to C(iC,jC), and p = S(inew,jnew) gives the pointer
                 // into C to where the entry (C(iC,jC) appears in C:
                 ASSERT (pC_start <= p && p < pC_end) ;
-                ASSERT (iC == UNFLIP (Ci [p])) ;
+                ASSERT (iC == GB_UNFLIP (Ci [p])) ;
             }
         }
         #endif
@@ -1415,14 +1324,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
         bool I_unsorted, I_contig, J_unsorted, J_contig ;
         int64_t imin, imax, jmin, jmax ;
-        info = GB_ijproperties (I, ni, nJ, C->vlen, Ikind, Icolon,
+        info = GB_ijproperties (I, ni, nI, cvlen, Ikind, Icolon,
                     &I_unsorted, &I_contig, &imin, &imax, true) ;
         if (info != GrB_SUCCESS)
         { 
             // I invalid
             return (info) ;
         }
-        info = GB_ijproperties (J, nj, nJ, C->vdim, Jkind, Jcolon,
+        info = GB_ijproperties (J, nj, nJ, cvdim, Jkind, Jcolon,
                     &J_unsorted, &J_contig, &jmin, &jmax, false) ;
         if (info != GrB_SUCCESS)
         { 
@@ -1441,22 +1350,22 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // S = C(I,J) is required, and has just been computed above
         ASSERT (C_replace) ;
         ASSERT (S != NULL) ;
-        ASSERT_OK (GB_check (C, "C: empty mask compl, C_replace true", D0)) ;
-        ASSERT_OK (GB_check (S, "S pattern", D0)) ;
+        ASSERT_OK (GB_check (C, "C: empty mask compl, C_replace true", GB0)) ;
+        ASSERT_OK (GB_check (S, "S pattern", GB0)) ;
 
         // C(I,J) = "zero"; turn all entries in C(I,J) into zombies
 
-        for_each_vector (S)
+        GB_for_each_vector (S)
         {
-            for_each_entry (jnew, pS, pS_end)
+            GB_for_each_entry (jnew, pS, pS_end)
             {
                 // S (inew,jnew) is a pointer back into C (I(inew), J(jnew))
-                C_S_LOOKUP ;
+                GB_C_S_LOOKUP ;
                 if (!is_zombie)
                 { 
                     // ----[C - 0] replace
                     // action: ( delete ): becomes a zombie
-                    DELETE ;
+                    GB_DELETE ;
                 }
             }
         }
@@ -1466,7 +1375,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         //----------------------------------------------------------------------
 
         GB_queue_insert (C) ;
-        ASSERT_OK (GB_check(C, "C: empty mask compl, C_replace, done", D0)) ;
+        ASSERT_OK (GB_check(C, "C: empty mask compl, C_replace, done", GB0)) ;
 
         //----------------------------------------------------------------------
         // free workspace, check blocking mode, and return
@@ -1483,12 +1392,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     // scalar workspace
     //--------------------------------------------------------------------------
 
-    // const int64_t *Ah = NULL ;
-    // const int64_t *Ap = NULL ;
     const int64_t *Ai = NULL ;
     const void    *Ax = NULL ;
-    // bool A_is_hyper = false ;
-    // int64_t anvec = 0 ;
 
     size_t xsize = 1, ysize = 1, zsize = 1 ;
     if (accum != NULL)
@@ -1506,11 +1411,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
     if (!scalar_expansion)
     { 
-        // Ah = A->h ;
-        // Ap = A->p ;
         Ai = A->i ;
         Ax = A->x ;
-        // anvec = A->nvec ;
     }
 
     //--------------------------------------------------------------------------
@@ -1562,19 +1464,19 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         Mx = M->x ;
         msize = M->type->size ;
         cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
-        ASSERT_OK (GB_check (M, "M for assign", D0)) ;
+        ASSERT_OK (GB_check (M, "M for assign", GB0)) ;
         M_is_hyper = M->is_hyper ;
     }
 
     //==========================================================================
-    // submatrix assignment C(I,J)<M> = accum (C(I,J),A):  four methods
+    // submatrix assignment C(I,J)<M> = accum (C(I,J),A): meta-algorithm
     //==========================================================================
 
     if (C_Mask_scalar)
     {
 
         //----------------------------------------------------------------------
-        // METHOD 1: C(:,J)<M> = scalar or += scalar
+        // METHOD 1: C(I,J)<M> = scalar or +=scalar, !C_replace, !Mask_comp
         //----------------------------------------------------------------------
 
         // This method iterates across all entries in the mask M, and for each
@@ -1586,28 +1488,27 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
         ASSERT (scalar_expansion) ;         // A is a scalar
         ASSERT (M != NULL && !Mask_comp) ;  // mask M present, not compl.
-        ASSERT (Ikind == GB_ALL) ;          // I is ":"
         ASSERT (!C_replace) ;               // C_replace is false
 
         if (accum == NULL)
         {
 
             //------------------------------------------------------------------
-            // METHOD 1 (no accum): C(:,J)<M> = scalar
+            // METHOD 1a (no accum): C(I,J)<M> = scalar
             //------------------------------------------------------------------
 
-            for_each_vector (M)
+            GB_for_each_vector (M)
             {
                 int64_t GBI1_initj (Iter, j, pM, pM_end) ;
 
                 // get the C(:,jC) vector where jC = J [j]
-                int64_t jC_LOOKUP ;
+                int64_t GB_jC_LOOKUP ;
 
-                if (pC_end - pC_start == C->vlen)
+                if (pC_end - pC_start == cvlen)
                 {
 
                     // C(:,jC) is dense so the binary search of C is not needed
-                    for_each_entry (j, pM, pM_end)
+                    GB_for_each_entry (j, pM, pM_end)
                     {
 
                         //------------------------------------------------------
@@ -1623,16 +1524,18 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
                         if (mij)
                         { 
-                            CDENSE_M_LOOKUP ;
 
                             //--------------------------------------------------
-                            // set the element
+                            // C(iC,jC) = scalar
                             //--------------------------------------------------
+
+                            int64_t iA = Mi [pM] ;
+                            GB_CDENSE_I_LOOKUP ;
 
                             // ----[C A 1] or [X A 1]---------------------------
                             // [C A 1]: action: ( =A ): copy A into C, no accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            noaccum_C_A_1_scalar ;
+                            GB_noaccum_C_A_1_scalar ;
                         }
                     }
                 }
@@ -1640,7 +1543,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 {
 
                     // C(:,jC) is sparse; use binary search for C
-                    for_each_entry (j, pM, pM_end)
+                    GB_for_each_entry (j, pM, pM_end)
                     {
 
                         //------------------------------------------------------
@@ -1656,25 +1559,28 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
                         if (mij)
                         {
-                            int64_t iC = Mi [pM] ;
-                            iC_LOOKUP ;
 
                             //--------------------------------------------------
-                            // set the element
+                            // C(iC,jC) = scalar
                             //--------------------------------------------------
+
+                            // binary search for C(iC,jC) in C(:,jC)
+                            int64_t iA = Mi [pM] ;
+                            int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                            GB_iC_BINARY_SEARCH ;
 
                             if (found)
                             { 
                                 // ----[C A 1] or [X A 1]-----------------------
                                 // [C A 1]: action: ( =A ): A to C, no accum
                                 // [X A 1]: action: ( undelete ): zombie lives
-                                noaccum_C_A_1_scalar ;
+                                GB_noaccum_C_A_1_scalar ;
                             }
                             else
                             { 
                                 // ----[. A 1]----------------------------------
                                 // action: ( insert )
-                                D_A_1_scalar ;
+                                GB_D_A_1_scalar ;
                             }
                         }
                     }
@@ -1686,21 +1592,21 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         {
 
             //------------------------------------------------------------------
-            // METHOD 1 (accum): C(:,J)<M> += scalar
+            // METHOD 1b (accum): C(I,J)<M> += scalar
             //------------------------------------------------------------------
 
-            for_each_vector (M)
+            GB_for_each_vector (M)
             {
                 int64_t GBI1_initj (Iter, j, pM, pM_end) ;
 
                 // get the C(:,jC) vector where jC = J [j]
-                int64_t jC_LOOKUP ;
+                int64_t GB_jC_LOOKUP ;
 
-                if (pC_end - pC_start == C->vlen)
+                if (pC_end - pC_start == cvlen)
                 {
 
                     // C(:,jC) is dense so the binary search of C is not needed
-                    for_each_entry (j, pM, pM_end)
+                    GB_for_each_entry (j, pM, pM_end)
                     {
 
                         //------------------------------------------------------
@@ -1716,16 +1622,18 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
                         if (mij)
                         { 
-                            CDENSE_M_LOOKUP ;
 
                             //--------------------------------------------------
-                            // set the element
+                            // C(iC,jC) += scalar
                             //--------------------------------------------------
+
+                            int64_t iA = Mi [pM] ;
+                            GB_CDENSE_I_LOOKUP ;
 
                             // ----[C A 1] or [X A 1]---------------------------
                             // [C A 1]: action: ( =C+A ): apply accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            withaccum_C_A_1_scalar ;
+                            GB_withaccum_C_A_1_scalar ;
                         }
                     }
                 }
@@ -1733,7 +1641,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 {
 
                     // C(:,jC) is sparse; use binary search for C
-                    for_each_entry (j, pM, pM_end)
+                    GB_for_each_entry (j, pM, pM_end)
                     {
 
                         //------------------------------------------------------
@@ -1749,25 +1657,28 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
                         if (mij)
                         {
-                            int64_t iC = Mi [pM] ;
-                            iC_LOOKUP ;
 
                             //--------------------------------------------------
-                            // set the element
+                            // C(iC,jC) += scalar
                             //--------------------------------------------------
+
+                            // binary search for C(iC,jC) in C(:,jC)
+                            int64_t iA = Mi [pM] ;
+                            int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                            GB_iC_BINARY_SEARCH ;
 
                             if (found)
                             { 
                                 // ----[C A 1] or [X A 1]-----------------------
                                 // [C A 1]: action: ( =C+A ): apply accum
                                 // [X A 1]: action: ( undelete ): zombie lives
-                                withaccum_C_A_1_scalar ;
+                                GB_withaccum_C_A_1_scalar ;
                             }
                             else
                             { 
                                 // ----[. A 1]----------------------------------
                                 // action: ( insert )
-                                D_A_1_scalar ;
+                                GB_D_A_1_scalar ;
                             }
                         }
                     }
@@ -1805,39 +1716,66 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 for (int64_t j = 0 ; j < nJ ; j++)
                 {
                     // get the C(:,jC) vector where jC = J [j]
-                    int64_t jC_LOOKUP ;
-                    for (int64_t iA = 0 ; iA < nI ; iA++)
+                    int64_t GB_jC_LOOKUP ;
+
+                    if (pC_end - pC_start == cvlen)
                     {
 
                         //------------------------------------------------------
-                        // consider the entry A(iA,j)
+                        // C(:,jC) is dense so binary search of C is not needed
                         //------------------------------------------------------
 
-                        // iC = I [iA] ; or I is a colon expression
-                        int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-
-                        //------------------------------------------------------
-                        // find C(iC,jC)
-                        //------------------------------------------------------
-
-                        iC_LOOKUP ;
-
-                        //------------------------------------------------------
-                        // C(iC,jC) += scalar
-                        //------------------------------------------------------
-
-                        if (found)
+                        // for each iA in I [...]:
+                        for (int64_t iA = 0 ; iA < nI ; iA++)
                         { 
-                            // ----[C A 1] or [X A 1]---------------------------
+
+                            //--------------------------------------------------
+                            // C(iC,jC) += scalar
+                            //--------------------------------------------------
+
+                            // direct lookup of C(iC,jC)
+                            GB_CDENSE_I_LOOKUP ;
+
+                            // ----[C A 1] or [X A 1]-----------------------
                             // [C A 1]: action: ( =C+A ): apply accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            withaccum_C_A_1_scalar ;
+                            GB_withaccum_C_A_1_scalar ;
                         }
-                        else
-                        { 
-                            // ----[. A 1]--------------------------------------
-                            // action: ( insert )
-                            D_A_1_scalar ;
+
+                    }
+                    else
+                    {
+
+                        //------------------------------------------------------
+                        // C(:,jC) is sparse; use binary search for C
+                        //------------------------------------------------------
+
+                        // for each iA in I [...]:
+                        for (int64_t iA = 0 ; iA < nI ; iA++)
+                        {
+
+                            //--------------------------------------------------
+                            // C(iC,jC) += scalar
+                            //--------------------------------------------------
+
+                            // iC = I [iA] ; or I is a colon expression
+                            int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                            // binary search for C(iC,jC) in C(:,jC)
+                            GB_iC_BINARY_SEARCH ;
+
+                            if (found)
+                            { 
+                                // ----[C A 1] or [X A 1]-----------------------
+                                // [C A 1]: action: ( =C+A ): apply accum
+                                // [X A 1]: action: ( undelete ): zombie back
+                                GB_withaccum_C_A_1_scalar ;
+                            }
+                            else
+                            { 
+                                // ----[. A 1]----------------------------------
+                                // action: ( insert )
+                                GB_D_A_1_scalar ;
+                            }
                         }
                     }
                 }
@@ -1847,72 +1785,140 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             {
 
                 //--------------------------------------------------------------
-                // METHOD 2b: C(I,J)<M> += scalar, not using S
+                // METHOD 2b: C(I,J)<!M> += scalar, not using S
                 //--------------------------------------------------------------
 
-                for_each_vector2s (M /*, scalar */)
+                // C(I,J)<M> += scalar, not using S, and C_replace false
+                // already handled by the C_Mask_scalar case
+                ASSERT (Mask_comp) ;
+                ASSERT (!C_replace) ;
+
+                GB_for_each_vector2s (M /*, scalar */)
                 {
+
                     int64_t GBI1_initj (Iter, j, pM, pM_end) ;
                     // get the C(:,jC) vector where jC = J [j]
-                    int64_t jC_LOOKUP ;
-                    for (int64_t iA = 0 ; iA < nI ; iA++)
+                    int64_t GB_jC_LOOKUP ;
+
+                    if (pC_end - pC_start == cvlen)
                     {
 
                         //------------------------------------------------------
-                        // consider the entry A(iA,j)
+                        // C(:,jC) is dense so binary search of C is not needed
                         //------------------------------------------------------
 
-                        // iC = I [iA] ; or I is a colon expression
-                        int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-
-                        //------------------------------------------------------
-                        // find M(iA,j)
-                        //------------------------------------------------------
-
-                        bool mij ;
-                        bool found = (pM < pM_end) && (Mi [pM] == iA) ;
-                        if (found)
-                        { 
-                            // found it
-                            cast_M (&mij, Mx +(pM*msize), 0) ;
-                            NEXT (M) ;
-                        }
-                        else
-                        { 
-                            // M(iA,j) not present, implicitly false
-                            mij = false ;
-                        }
-                        if (Mask_comp)
-                        { 
-                            // negate the mask M if Mask_comp is true
-                            mij = !mij ;
-                        }
-
-                        //------------------------------------------------------
-                        // find C(iC,jC), but only if M(iA,j) allows it
-                        //------------------------------------------------------
-
-                        if (mij)
+                        // for each iA in I [...]:
+                        for (int64_t iA = 0 ; iA < nI ; iA++)
                         {
 
-                            iC_LOOKUP ;
-
                             //--------------------------------------------------
-                            // C(iC,jC) += scalar
+                            // find M(iA,j)
                             //--------------------------------------------------
 
+                            bool mij ;
+                            bool found = (pM < pM_end) && (Mi [pM] == iA) ;
                             if (found)
                             { 
-                                // ----[C A 1] or [X A 1]-----------------------
-                                // [C A 1]: action: ( =C+A ): apply accum
-                                // [X A 1]: action: ( undelete ): zombie lives
-                                withaccum_C_A_1_scalar ;
+                                // found it
+                                cast_M (&mij, Mx +(pM*msize), 0) ;
+                                GB_NEXT (M) ;
                             }
                             else
                             { 
-                                // ----[. A 1]----------------------------------
-                                // action: ( insert )
-                                D_A_1_scalar ;
+                                // M(iA,j) not present, implicitly false
+                                mij = false ;
+                            }
+                            if (Mask_comp)
+                            { 
+                                // negate the mask M if Mask_comp is true
+                                mij = !mij ;
+                            }
+
+                            //--------------------------------------------------
+                            // find C(iC,jC), but only if M(iA,j) allows it
+                            //--------------------------------------------------
+
+                            if (mij)
+                            { 
+
+                                //----------------------------------------------
+                                // C(iC,jC) += scalar
+                                //----------------------------------------------
+
+                                // direct lookup of C(iC,jC)
+                                GB_CDENSE_I_LOOKUP ;
+
+                                // ----[C A 1] or [X A 1]-------------------
+                                // [C A 1]: action: ( =C+A ): apply accum
+                                // [X A 1]: action: ( undelete ) zombie live
+                                GB_withaccum_C_A_1_scalar ;
+                            }
+                        }
+
+                    }
+                    else
+                    {
+
+                        //------------------------------------------------------
+                        // C(:,jC) is sparse; use binary search for C
+                        //------------------------------------------------------
+
+                        // for each iA in I [...]:
+                        for (int64_t iA = 0 ; iA < nI ; iA++)
+                        {
+
+                            //--------------------------------------------------
+                            // find M(iA,j)
+                            //--------------------------------------------------
+
+                            bool mij ;
+                            bool found = (pM < pM_end) && (Mi [pM] == iA) ;
+                            if (found)
+                            { 
+                                // found it
+                                cast_M (&mij, Mx +(pM*msize), 0) ;
+                                GB_NEXT (M) ;
+                            }
+                            else
+                            { 
+                                // M(iA,j) not present, implicitly false
+                                mij = false ;
+                            }
+                            if (Mask_comp)
+                            { 
+                                // negate the mask M if Mask_comp is true
+                                mij = !mij ;
+                            }
+
+                            //--------------------------------------------------
+                            // find C(iC,jC), but only if M(iA,j) allows it
+                            //--------------------------------------------------
+
+                            if (mij)
+                            {
+
+                                //----------------------------------------------
+                                // C(iC,jC) += scalar
+                                //----------------------------------------------
+
+                                // iC = I [iA] ; or I is a colon expression
+                                int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                                // binary search for C(iC,jC) in C(:,jC)
+                                GB_iC_BINARY_SEARCH ;
+
+                                if (found)
+                                { 
+                                    // ----[C A 1] or [X A 1]-------------------
+                                    // [C A 1]: action: ( =C+A ): apply accum
+                                    // [X A 1]: action: ( undelete ) zombie live
+                                    GB_withaccum_C_A_1_scalar ;
+                                }
+                                else
+                                { 
+                                    // ----[. A 1]------------------------------
+                                    // action: ( insert )
+                                    GB_D_A_1_scalar ;
+                                }
                             }
                         }
                     }
@@ -1930,44 +1936,83 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 2c: C(I,J) += A, not using S
                 //--------------------------------------------------------------
 
-                for_each_vector (A)
+                GB_for_each_vector (A)
                 {
+
                     int64_t GBI1_initj (Iter, j, pA, pA_end) ;
                     // get the C(:,jC) vector where jC = J [j]
-                    int64_t jC_LOOKUP ;
-                    for ( ; pA < pA_end ; pA++)
+                    int64_t GB_jC_LOOKUP ;
+
+                    if (pC_end - pC_start == cvlen)
                     {
 
                         //------------------------------------------------------
-                        // consider the entry A(iA,j)
+                        // C(:,jC) is dense so binary search of C is not needed
                         //------------------------------------------------------
 
-                        int64_t iA = Ai [pA] ;
-                        // iC = I [iA] ; or I is a colon expression
-                        int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                        for ( ; pA < pA_end ; pA++)
+                        {
 
-                        //------------------------------------------------------
-                        // find C(iC,jC)
-                        //------------------------------------------------------
+                            //--------------------------------------------------
+                            // consider the entry A(iA,j)
+                            //--------------------------------------------------
 
-                        iC_LOOKUP ;
+                            int64_t iA = Ai [pA] ;
 
-                        //------------------------------------------------------
-                        // C(iC,jC) += A(iA,j)
-                        //------------------------------------------------------
+                            //--------------------------------------------------
+                            // C(iC,jC) += A(iA,j)
+                            //--------------------------------------------------
 
-                        if (found)
-                        { 
+                            // direct lookup of C(iC,jC)
+                            GB_CDENSE_I_LOOKUP ;
+
                             // ----[C A 1] or [X A 1]---------------------------
                             // [C A 1]: action: ( =C+A ): apply accum
-                            // [X A 1]: action: ( undelete ): bring zombie back
-                            withaccum_C_A_1_matrix ;
+                            // [X A 1]: action: ( undelete ): zombie lives
+                            GB_withaccum_C_A_1_matrix ;
+
                         }
-                        else
-                        { 
-                            // ----[. A 1]--------------------------------------
-                            // action: ( insert )
-                            D_A_1_matrix ;
+
+                    }
+                    else
+                    {
+
+                        //------------------------------------------------------
+                        // C(:,jC) is sparse; use binary search for C
+                        //------------------------------------------------------
+
+                        for ( ; pA < pA_end ; pA++)
+                        {
+
+
+                            //--------------------------------------------------
+                            // consider the entry A(iA,j)
+                            //--------------------------------------------------
+
+                            int64_t iA = Ai [pA] ;
+
+                            //--------------------------------------------------
+                            // C(iC,jC) += A(iA,j)
+                            //--------------------------------------------------
+
+                            // iC = I [iA] ; or I is a colon expression
+                            int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                            // binary search for C(iC,jC) in C(:,jC)
+                            GB_iC_BINARY_SEARCH ;
+
+                            if (found)
+                            { 
+                                // ----[C A 1] or [X A 1]-----------------------
+                                // [C A 1]: action: ( =C+A ): apply accum
+                                // [X A 1]: action: ( undelete ): zombie lives
+                                GB_withaccum_C_A_1_matrix ;
+                            }
+                            else
+                            { 
+                                // ----[. A 1]----------------------------------
+                                // action: ( insert )
+                                GB_D_A_1_matrix ;
+                            }
                         }
                     }
                 }
@@ -1980,71 +2025,146 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 2d: C(I,J)<M> += A, not using S
                 //--------------------------------------------------------------
 
-                for_each_vector2 (A, M)
+                GB_for_each_vector2 (A, M)
                 {
+
                     int64_t GBI2_initj (Iter, j, pA, pA_end, pM_start, pM_end) ;
                     // get the C(:,jC) vector where jC = J [j]
-                    int64_t jC_LOOKUP ;
-                    for ( ; pA < pA_end ; pA++)
+                    int64_t GB_jC_LOOKUP ;
+
+                    if (pC_end - pC_start == cvlen)
                     {
 
                         //------------------------------------------------------
-                        // consider the entry A(iA,j)
+                        // C(:,jC) is dense so binary search of C is not needed
                         //------------------------------------------------------
 
-                        int64_t iA = Ai [pA] ;
-                        // iC = I [iA] ; or I is a colon expression
-                        int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-
-                        //------------------------------------------------------
-                        // find M(iA,j)
-                        //------------------------------------------------------
-
-                        bool mij = true ;
-                        int64_t pM     = pM_start ;
-                        int64_t pright = pM_end - 1 ;
-                        bool found ;
-                        GB_BINARY_SEARCH (iA, Mi, pM, pright, found) ;
-                        if (found)
-                        { 
-                            // found it
-                            cast_M (&mij, Mx +(pM*msize), 0) ;
-                        }
-                        else
-                        { 
-                            // M(iA,j) not present, implicitly false
-                            mij = false ;
-                        }
-                        if (Mask_comp)
-                        { 
-                            // negate the mask M if Mask_comp is true
-                            mij = !mij ;
-                        }
-
-                        //------------------------------------------------------
-                        // find C(iC,jC), but only if M(iA,j) allows it
-                        //------------------------------------------------------
-
-                        if (mij)
+                        for ( ; pA < pA_end ; pA++)
                         {
-                            iC_LOOKUP ;
 
                             //--------------------------------------------------
-                            // C(iC,jC) += A(iA,j)
+                            // consider the entry A(iA,j)
                             //--------------------------------------------------
 
+                            int64_t iA = Ai [pA] ;
+
+                            //--------------------------------------------------
+                            // find M(iA,j)
+                            //--------------------------------------------------
+
+                            bool mij = true ;
+                            int64_t pM     = pM_start ;
+                            int64_t pright = pM_end - 1 ;
+                            bool found ;
+                            GB_BINARY_SEARCH (iA, Mi, pM, pright, found) ;
                             if (found)
                             { 
-                                // ----[C A 1] or [X A 1]-----------------------
-                                // [C A 1]: action: ( =C+A ): apply accum
-                                // [X A 1]: action: ( undelete ): zombie lives
-                                withaccum_C_A_1_matrix ;
+                                // found it
+                                cast_M (&mij, Mx +(pM*msize), 0) ;
                             }
                             else
                             { 
-                                // ----[. A 1]----------------------------------
-                                // action: ( insert )
-                                D_A_1_matrix ;
+                                // M(iA,j) not present, implicitly false
+                                mij = false ;
+                            }
+                            if (Mask_comp)
+                            { 
+                                // negate the mask M if Mask_comp is true
+                                mij = !mij ;
+                            }
+
+                            //--------------------------------------------------
+                            // find C(iC,jC), but only if M(iA,j) allows it
+                            //--------------------------------------------------
+
+                            if (mij)
+                            {
+
+                                //----------------------------------------------
+                                // C(iC,jC) += A(iA,j)
+                                //----------------------------------------------
+
+                                // direct lookup of C(iC,jC)
+                                GB_CDENSE_I_LOOKUP ;
+
+                                // ----[C A 1] or [X A 1]-------------------
+                                // [C A 1]: action: ( =C+A ): apply accum
+                                // [X A 1]: action: ( undelete ) zombie live
+                                GB_withaccum_C_A_1_matrix ;
+                            }
+                        }
+
+                    }
+                    else
+                    {
+
+                        //------------------------------------------------------
+                        // C(:,jC) is sparse; use binary search for C
+                        //------------------------------------------------------
+
+                        for ( ; pA < pA_end ; pA++)
+                        {
+
+                            //--------------------------------------------------
+                            // consider the entry A(iA,j)
+                            //--------------------------------------------------
+
+                            int64_t iA = Ai [pA] ;
+
+                            //--------------------------------------------------
+                            // find M(iA,j)
+                            //--------------------------------------------------
+
+                            bool mij = true ;
+                            int64_t pM     = pM_start ;
+                            int64_t pright = pM_end - 1 ;
+                            bool found ;
+                            GB_BINARY_SEARCH (iA, Mi, pM, pright, found) ;
+                            if (found)
+                            { 
+                                // found it
+                                cast_M (&mij, Mx +(pM*msize), 0) ;
+                            }
+                            else
+                            { 
+                                // M(iA,j) not present, implicitly false
+                                mij = false ;
+                            }
+                            if (Mask_comp)
+                            { 
+                                // negate the mask M if Mask_comp is true
+                                mij = !mij ;
+                            }
+
+                            //--------------------------------------------------
+                            // find C(iC,jC), but only if M(iA,j) allows it
+                            //--------------------------------------------------
+
+                            if (mij)
+                            {
+
+                                //----------------------------------------------
+                                // C(iC,jC) += A(iA,j)
+                                //----------------------------------------------
+
+                                // iC = I [iA] ; or I is a colon expression
+                                int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
+                                // binary search for C(iC,jC) in C(:,jC)
+                                GB_iC_BINARY_SEARCH ;
+
+                                if (found)
+                                { 
+                                    // ----[C A 1] or [X A 1]-------------------
+                                    // [C A 1]: action: ( =C+A ): apply accum
+                                    // [X A 1]: action: ( undelete ) zombie live
+                                    GB_withaccum_C_A_1_matrix ;
+                                }
+                                else
+                                { 
+                                    // ----[. A 1]------------------------------
+                                    // action: ( insert )
+                                    GB_D_A_1_matrix ;
+                                }
                             }
                         }
                     }
@@ -2083,7 +2203,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 3a (no accum): C(I,J) = scalar, using S
                 //--------------------------------------------------------------
 
-                for_each_vector2s (S /*, scalar */)
+                GB_for_each_vector2s (S /*, scalar */)
                 {
 
                     //----------------------------------------------------------
@@ -2095,6 +2215,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // jC = J [j] ; or J is a colon expression
                     int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
 
+                    // for each iA in I [...]:
                     for (int64_t iA = 0 ; iA < nI ; iA++)
                     {
                         bool found = (pS < pS_end) && (Si [pS] == iA) ;
@@ -2106,7 +2227,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // [. A 1]: action: ( insert )
                             // iC = I [iA] ; or I is a colon expression
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            D_A_1_scalar ;
+                            GB_D_A_1_scalar ;
                         }
                         else
                         { 
@@ -2114,9 +2235,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // both S (i,j) and A (i,j) present
                             // [C A 1]: action: ( =A ): scalar to C, no accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            C_S_LOOKUP ;
-                            noaccum_C_A_1_scalar ;
-                            NEXT (S) ;
+                            GB_C_S_LOOKUP ;
+                            GB_noaccum_C_A_1_scalar ;
+                            GB_NEXT (S) ;
                         }
                     }
                 }
@@ -2129,7 +2250,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 3a (with accum): C(I,J) += scalar, using S
                 //--------------------------------------------------------------
 
-                for_each_vector2s (S /*, scalar */)
+                GB_for_each_vector2s (S /*, scalar */)
                 {
 
                     //----------------------------------------------------------
@@ -2140,6 +2261,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // jC = J [j] ; or J is a colon expression
                     int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
 
+                    // for each iA in I [...]:
                     for (int64_t iA = 0 ; iA < nI ; iA++)
                     {
                         bool found = (pS < pS_end) && (Si [pS] == iA) ;
@@ -2151,7 +2273,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // [. A 1]: action: ( insert )
                             // iC = I [iA] ; or I is a colon expression
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            D_A_1_scalar ;
+                            GB_D_A_1_scalar ;
                         }
                         else
                         { 
@@ -2159,9 +2281,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // both S (i,j) and A (i,j) present
                             // [C A 1]: action: ( =C+A ): apply accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            C_S_LOOKUP ;
-                            withaccum_C_A_1_scalar ;
-                            NEXT (S) ;
+                            GB_C_S_LOOKUP ;
+                            GB_withaccum_C_A_1_scalar ;
+                            GB_NEXT (S) ;
                         }
                     }
                 }
@@ -2182,7 +2304,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 3b (no accum): C(I,J) = A, using S
                 //--------------------------------------------------------------
 
-                for_each_vector2 (S, A)
+                GB_for_each_vector2 (S, A)
                 {
 
                     //----------------------------------------------------------
@@ -2205,9 +2327,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // S (i,j) is present but A (i,j) is not
                             // [C . 1]: action: ( delete ): becomes a zombie
                             // [X . 1]: action: ( X ): still a zombie
-                            C_S_LOOKUP ;
-                            noaccum_C_D_1_matrix ;
-                            NEXT (S) ;
+                            GB_C_S_LOOKUP ;
+                            GB_noaccum_C_D_1_matrix ;
+                            GB_NEXT (S) ;
 
                         }
                         else if (iA < iS)
@@ -2217,8 +2339,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // [. A 1]: action: ( insert )
                             // iC = I [iA] ; or I is a colon expression
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            D_A_1_matrix ;
-                            NEXT (A) ;
+                            GB_D_A_1_matrix ;
+                            GB_NEXT (A) ;
                         }
                         else
                         { 
@@ -2226,10 +2348,10 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // both S (i,j) and A (i,j) present
                             // [C A 1]: action: ( =A ): copy A into C, no accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            C_S_LOOKUP ;
-                            noaccum_C_A_1_matrix ;
-                            NEXT (S) ;
-                            NEXT (A) ;
+                            GB_C_S_LOOKUP ;
+                            GB_noaccum_C_A_1_matrix ;
+                            GB_NEXT (S) ;
+                            GB_NEXT (A) ;
                         }
                     }
 
@@ -2240,9 +2362,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         // S (i,j) is present but A (i,j) is not
                         // [C . 1]: action: ( delete ): becomes a zombie
                         // [X . 1]: action: ( X ): still a zombie
-                        C_S_LOOKUP ;
-                        noaccum_C_D_1_matrix ;
-                        NEXT (S) ;
+                        GB_C_S_LOOKUP ;
+                        GB_noaccum_C_D_1_matrix ;
+                        GB_NEXT (S) ;
                     }
 
                     // while list A (:,j) has entries.  List S (:,j) exhausted
@@ -2254,8 +2376,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         int64_t iA = Ai [pA] ;
                         // iC = I [iA] ; or I is a colon expression
                         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                        D_A_1_matrix ;
-                        NEXT (A) ;
+                        GB_D_A_1_matrix ;
+                        GB_NEXT (A) ;
                     }
                 }
 
@@ -2267,7 +2389,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 3b (with accum): C(I,J) += A, using S
                 //--------------------------------------------------------------
 
-                for_each_vector2 (S, A)
+                GB_for_each_vector2 (S, A)
                 {
 
                     //----------------------------------------------------------
@@ -2290,9 +2412,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // S (i,j) is present but A (i,j) is not
                             // [C . 1]: action: ( C ): no change, with accum
                             // [X . 1]: action: ( X ): still a zombie
-                            // C_S_LOOKUP ;
-                            // withaccum_C_D_1_matrix ;
-                            NEXT (S) ;
+                            GB_NEXT (S) ;
 
                         }
                         else if (iA < iS)
@@ -2302,8 +2422,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // [. A 1]: action: ( insert )
                             // iC = I [iA] ; or I is a colon expression
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            D_A_1_matrix ;
-                            NEXT (A) ;
+                            GB_D_A_1_matrix ;
+                            GB_NEXT (A) ;
                         }
                         else
                         { 
@@ -2311,10 +2431,10 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             // both S (i,j) and A (i,j) present
                             // [C A 1]: action: ( =C+A ): apply accum
                             // [X A 1]: action: ( undelete ): bring zombie back
-                            C_S_LOOKUP ;
-                            withaccum_C_A_1_matrix ;
-                            NEXT (S) ;
-                            NEXT (A) ;
+                            GB_C_S_LOOKUP ;
+                            GB_withaccum_C_A_1_matrix ;
+                            GB_NEXT (S) ;
+                            GB_NEXT (A) ;
                         }
                     }
 
@@ -2326,9 +2446,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         // S (i,j) is present but A (i,j) is not
                         // [C . 1]: action: ( C ): no change, with accum
                         // [X . 1]: action: ( X ): still a zombie
-                        // C_S_LOOKUP ;
-                        // withaccum_C_D_1_matrix ;
-                        // NEXT (S) ;
+                        // GB_NEXT (S) ;
                     // }
 
                     // while list A (:,j) has entries.  List S (:,j) exhausted
@@ -2340,8 +2458,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         int64_t iA = Ai [pA] ;
                         // iC = I [iA] ; or I is a colon expression
                         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                        D_A_1_matrix ;
-                        NEXT (A) ;
+                        GB_D_A_1_matrix ;
+                        GB_NEXT (A) ;
                     }
                 }
             }
@@ -2377,7 +2495,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 4a (no accum): C(I,J)<M> = scalar, using S
                 //--------------------------------------------------------------
 
-                for_each_vector3s (S, M /* scalar */)
+                GB_for_each_vector3s (S, M /* scalar */)
                 {
 
                     //----------------------------------------------------------
@@ -2399,14 +2517,15 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // A(:,j) an expanded scalar, an implicit dense vector.
                     // The head of each list is at index pS, pA, and pM, and an
                     // entry is 'discarded' by incrementing its respective
-                    // index via NEXT(.).  Once a list is consumed, a query for
-                    // its next row index will result in a dummy value nI
+                    // index via GB_NEXT(.).  Once a list is consumed, a query
+                    // for its next row index will result in a dummy value nI
                     // larger than all valid row indices.
 
                     //----------------------------------------------------------
                     // while either list S(:,j) or A(:,j) have entries
                     //----------------------------------------------------------
 
+                    // for each iA in I [...]:
                     for (int64_t iA = 0 ; iA < nI ; iA++)
                     {
 
@@ -2440,7 +2559,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         { 
                             // mij = (bool) M [pM]
                             cast_M (&mij, Mx +(pM*msize), 0) ;
-                            NEXT (M) ;
+                            GB_NEXT (M) ;
                         }
                         else
                         { 
@@ -2464,13 +2583,13 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             ASSERT (i == iA) ;
                             {
                                 // both S (i,j) and A (i,j) present
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C A 1] or [X A 1]-------------------
                                     // [C A 1]: action: ( =A ): copy A, no accum
                                     // [X A 1]: action: ( undelete ):zombie live
-                                    noaccum_C_A_1_scalar ;
+                                    GB_noaccum_C_A_1_scalar ;
                                 }
                                 else
                                 { 
@@ -2478,9 +2597,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X A 0]: action: ( X ): still a zombie
                                     // [C A 0]: C_repl: action: ( delete ):zombi
                                     // [C A 0]: no C_repl: action: ( C ): none
-                                    C_A_0 ;
+                                    GB_C_A_0 ;
                                 }
-                                NEXT (S) ;
+                                GB_NEXT (S) ;
                             }
                         }
                         else
@@ -2495,7 +2614,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // iC = I [iA] ; or I is a colon expression
                                     int64_t iC = GB_ijlist (I, iA, Ikind,
                                                                    Icolon) ;
-                                    D_A_1_scalar ;
+                                    GB_D_A_1_scalar ;
                                 }
                                 else
                                 { 
@@ -2515,7 +2634,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 4a (with accum): C(I,J)<M> += scalar, using S
                 //--------------------------------------------------------------
 
-                for_each_vector3s (S, M /* scalar */)
+                GB_for_each_vector3s (S, M /* scalar */)
                 {
 
                     //----------------------------------------------------------
@@ -2537,14 +2656,15 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // A(:,j) an expanded scalar, an implicit dense vector.
                     // The head of each list is at index pS, pA, and pM, and an
                     // entry is 'discarded' by incrementing its respective
-                    // index via NEXT(.).  Once a list is consumed, a query for
-                    // its next row index will result in a dummy value nI
+                    // index via GB_NEXT(.).  Once a list is consumed, a query
+                    // for its next row index will result in a dummy value nI
                     // larger than all valid row indices.
 
                     //----------------------------------------------------------
                     // while either list S(:,j) or A(:,j) have entries
                     //----------------------------------------------------------
 
+                    // for each iA in I [...]:
                     for (int64_t iA = 0 ; iA < nI ; iA++)
                     {
 
@@ -2578,7 +2698,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         { 
                             // mij = (bool) M [pM]
                             cast_M (&mij, Mx +(pM*msize), 0) ;
-                            NEXT (M) ;
+                            GB_NEXT (M) ;
                         }
                         else
                         { 
@@ -2602,13 +2722,13 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             ASSERT (i == iA) ;
                             {
                                 // both S (i,j) and A (i,j) present
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C A 1] or [X A 1]-------------------
                                     // [C A 1]: action: ( =C+A ): apply accum
                                     // [X A 1]: action: ( undelete ): zombie liv
-                                    withaccum_C_A_1_scalar ;
+                                    GB_withaccum_C_A_1_scalar ;
                                 }
                                 else
                                 { 
@@ -2616,9 +2736,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X A 0]: action: ( X ): still a zombie
                                     // [C A 0]: C_repl: action: ( delete ):zombi
                                     // [C A 0]: no C_repl: action: ( C ): none
-                                    C_A_0 ;
+                                    GB_C_A_0 ;
                                 }
-                                NEXT (S) ;
+                                GB_NEXT (S) ;
                             }
                         }
                         else
@@ -2633,7 +2753,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // iC = I [iA] ; or I is a colon expression
                                     int64_t iC = GB_ijlist (I, iA, Ikind,
                                                                    Icolon) ;
-                                    D_A_1_scalar ;
+                                    GB_D_A_1_scalar ;
                                 }
                                 else
                                 { 
@@ -2675,7 +2795,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 4b (no accum): C(I,J)<M> = A, using S
                 //--------------------------------------------------------------
 
-                for_each_vector3 (S, M, A)
+                GB_for_each_vector3 (S, M, A)
                 {
 
                     //----------------------------------------------------------
@@ -2697,8 +2817,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // A(:,j) in [pA .. pA_end-1]
                     // The head of each list is at index pS, pA, and pM, and an
                     // entry is 'discarded' by incrementing its respective
-                    // index via NEXT(.).  Once a list is consumed, a query for
-                    // its next row index will result in a dummy value nI
+                    // index via GB_NEXT(.).  Once a list is consumed, a query
+                    // for its next row index will result in a dummy value nI
                     // larger than all valid row indices.
 
                     //----------------------------------------------------------
@@ -2723,7 +2843,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         //------------------------------------------------------
 
                         // i = min ([iS iA iM])
-                        int64_t i = IMIN (iS, IMIN (iA, iM)) ;
+                        int64_t i = GB_IMIN (iS, GB_IMIN (iA, iM)) ;
                         ASSERT (i < nI) ;
 
                         //------------------------------------------------------
@@ -2741,7 +2861,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         { 
                             // mij = (bool) M [pM]
                             cast_M (&mij, Mx +(pM*msize), 0) ;
-                            NEXT (M) ;
+                            GB_NEXT (M) ;
                         }
                         else
                         { 
@@ -2765,13 +2885,13 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             if (i == iA)
                             {
                                 // both S (i,j) and A (i,j) present
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C A 1] or [X A 1]-------------------
                                     // [C A 1]: action: ( =A ): A to C no accum
                                     // [X A 1]: action: ( undelete ): zombie liv
-                                    noaccum_C_A_1_matrix ;
+                                    GB_noaccum_C_A_1_matrix ;
                                 }
                                 else
                                 { 
@@ -2779,21 +2899,21 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X A 0]: action: ( X ): still a zombie
                                     // [C A 0]: C_repl: action: ( delete ): zomb
                                     // [C A 0]: no C_repl: action: ( C ): none
-                                    C_A_0 ;
+                                    GB_C_A_0 ;
                                 }
-                                NEXT (S) ;
-                                NEXT (A) ;
+                                GB_NEXT (S) ;
+                                GB_NEXT (A) ;
                             }
                             else
                             {
                                 // S (i,j) is present but A (i,j) is not
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C . 1] or [X . 1]-------------------
                                     // [C . 1]: action: ( delete ): zombie
                                     // [X . 1]: action: ( X ): still zombie
-                                    noaccum_C_D_1_matrix ;
+                                    GB_noaccum_C_D_1_matrix ;
                                 }
                                 else
                                 { 
@@ -2801,9 +2921,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X . 0]: action: ( X ): still a zombie
                                     // [C . 0]: if C_repl: action: ( delete ):
                                     // [C . 0]: no C_repl: action: ( C ): none
-                                    C_D_0 ;
+                                    GB_C_D_0 ;
                                 }
-                                NEXT (S) ;
+                                GB_NEXT (S) ;
                             }
                         }
                         else
@@ -2818,14 +2938,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // iC = I [iA] ; or I is a colon expression
                                     int64_t iC = GB_ijlist (I, iA, Ikind,
                                                                    Icolon) ;
-                                    D_A_1_matrix ;
+                                    GB_D_A_1_matrix ;
                                 }
                                 else
                                 { 
                                     // ----[. A 0]------------------------------
                                     // action: ( . ): no action
                                 }
-                                NEXT (A) ;
+                                GB_NEXT (A) ;
                             }
                             else
                             { 
@@ -2847,7 +2967,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // METHOD 4b (with accum): C(I,J)<M> += A, using S
                 //--------------------------------------------------------------
 
-                for_each_vector3 (S, M, A)
+                GB_for_each_vector3 (S, M, A)
                 {
 
                     //----------------------------------------------------------
@@ -2869,8 +2989,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                     // A(:,j) in [pA .. pA_end-1]
                     // The head of each list is at index pS, pA, and pM, and an
                     // entry is 'discarded' by incrementing its respective
-                    // index via NEXT(.).  Once a list is consumed, a query for
-                    // its next row index will result in a dummy value nI
+                    // index via GB_NEXT(.).  Once a list is consumed, a query
+                    // for its next row index will result in a dummy value nI
                     // larger than all valid row indices.
 
                     //----------------------------------------------------------
@@ -2895,7 +3015,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         //------------------------------------------------------
 
                         // i = min ([iS iA iM])
-                        int64_t i = IMIN (iS, IMIN (iA, iM)) ;
+                        int64_t i = GB_IMIN (iS, GB_IMIN (iA, iM)) ;
                         ASSERT (i < nI) ;
 
                         //------------------------------------------------------
@@ -2913,7 +3033,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                         { 
                             // mij = (bool) M [pM]
                             cast_M (&mij, Mx +(pM*msize), 0) ;
-                            NEXT (M) ;
+                            GB_NEXT (M) ;
                         }
                         else
                         { 
@@ -2937,14 +3057,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                             if (i == iA)
                             {
                                 // both S (i,j) and A (i,j) present
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C A 1] or [X A 1]-------------------
                                     // [C A 1]: action: ( =A ): A to C no accum
                                     // [C A 1]: action: ( =C+A ): apply accum
                                     // [X A 1]: action: ( undelete ): zombie liv
-                                    withaccum_C_A_1_matrix ;
+                                    GB_withaccum_C_A_1_matrix ;
                                 }
                                 else
                                 { 
@@ -2952,15 +3072,15 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X A 0]: action: ( X ): still a zombie
                                     // [C A 0]: C_repl: action: ( delete ): zomb
                                     // [C A 0]: no C_repl: action: ( C ): none
-                                    C_A_0 ;
+                                    GB_C_A_0 ;
                                 }
-                                NEXT (S) ;
-                                NEXT (A) ;
+                                GB_NEXT (S) ;
+                                GB_NEXT (A) ;
                             }
                             else
                             {
                                 // S (i,j) is present but A (i,j) is not
-                                C_S_LOOKUP ;
+                                GB_C_S_LOOKUP ;
                                 if (mij)
                                 { 
                                     // ----[C . 1] or [X . 1]-------------------
@@ -2974,9 +3094,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // [X . 0]: action: ( X ): still a zombie
                                     // [C . 0]: if C_repl: action: ( delete ):
                                     // [C . 0]: no C_repl: action: ( C ): none
-                                    C_D_0 ;
+                                    GB_C_D_0 ;
                                 }
-                                NEXT (S) ;
+                                GB_NEXT (S) ;
                             }
                         }
                         else
@@ -2991,14 +3111,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                                     // iC = I [iA] ; or I is a colon expression
                                     int64_t iC = GB_ijlist (I, iA, Ikind,
                                                                    Icolon) ;
-                                    D_A_1_matrix ;
+                                    GB_D_A_1_matrix ;
                                 }
                                 else
                                 { 
                                     // ----[. A 0]------------------------------
                                     // action: ( . ): no action
                                 }
-                                NEXT (A) ;
+                                GB_NEXT (A) ;
                             }
                             else
                             { 
@@ -3033,7 +3153,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // The queue insert does nothing if C is already in the queue.
         GB_queue_insert (C) ;
     }
-    ASSERT_OK (GB_check (C, "C(I,J) result", D0)) ;
+    ASSERT_OK (GB_check (C, "C(I,J) result", GB0)) ;
 
     //--------------------------------------------------------------------------
     // free workspace, check blocking mode, and return
@@ -3043,36 +3163,3 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     return (GB_block (C)) ;
 }
 
-
-#undef C_S_LOOKUP
-#undef jC_LOOKUP
-#undef iC_LOOKUP
-#undef NEXT
-#undef COPY_scalar_to_C
-#undef COPY_aij_to_C
-#undef COPY_aij_to_ywork
-#undef ACCUMULATE
-#undef DELETE
-#undef UNDELETE
-#undef INSERT
-
-#undef X_A_1_matrix
-#undef X_A_1_scalar
-
-// #undef C_A_1_matrix
-#undef withaccum_C_A_1_matrix
-#undef noaccum_C_A_1_matrix
-
-// #undef C_A_1_scalar
-#undef withaccum_C_A_1_scalar
-#undef noaccum_C_A_1_scalar
-
-#undef D_A_1_scalar
-#undef D_A_1_matrix
-
-// #undef C_D_1_matrix
-#undef withaccum_C_D_1_matrix
-#undef noaccum_C_D_1_matrix
-
-#undef C_A_0
-#undef C_D_0

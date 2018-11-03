@@ -78,7 +78,7 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     //--------------------------------------------------------------------------
 
     // desc may be null, but if not NULL it must be initialized
-    RETURN_IF_FAULTY (desc) ;
+    GB_RETURN_IF_FAULTY (desc) ;
 
     //--------------------------------------------------------------------------
     // get the contents of the descriptor
@@ -110,7 +110,7 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         !(AxB_desc  == GxB_DEFAULT || AxB_desc  == GxB_AxB_GUSTAVSON ||
           AxB_desc  == GxB_AxB_DOT || AxB_desc  == GxB_AxB_HEAP))
     { 
-        return (ERROR (GrB_INVALID_OBJECT, (LOG, "Descriptor invalid"))) ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG, "Descriptor invalid"))) ;
     }
 
     if (C_replace != NULL)
@@ -134,6 +134,6 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         *AxB_method = AxB_desc ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

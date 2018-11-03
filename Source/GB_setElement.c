@@ -18,8 +18,8 @@
 // also assembled if the mode is blocking.
 
 // GrB_setElement is the same as GrB_*assign with an implied SECOND accum
-// operator whose ztype, xtype, and ytype are the same as C, with I=i, J=1,
-// a 1-by-1 dense matrix A (NNZ (A) == 1), no Mask, Mask not complemented,
+// operator whose ztype, xtype, and ytype are the same as C, with I=i, J=1, a
+// 1-by-1 dense matrix A (where nnz (A) == 1), no Mask, Mask not complemented,
 // C_replace effectively false (its value is ignored), and A transpose
 // effectively false (since transposing a scalar has no effect).
 
@@ -42,17 +42,19 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     //--------------------------------------------------------------------------
 
     ASSERT (C != NULL) ;
-    RETURN_IF_NULL (scalar) ;
+    GB_RETURN_IF_NULL (scalar) ;
 
-    if (row >= NROWS (C))
+    if (row >= GB_NROWS (C))
     { 
-        return (ERROR (GrB_INVALID_INDEX, (LOG,
-            "Row index "GBu" out of range; must be < "GBd, row, NROWS (C)))) ;
+        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG,
+            "Row index "GBu" out of range; must be < "GBd,
+            row, GB_NROWS (C)))) ;
     }
-    if (col >= NCOLS (C))
+    if (col >= GB_NCOLS (C))
     { 
-        return (ERROR (GrB_INVALID_INDEX, (LOG,
-            "Column index "GBu" out of range; must be < "GBd, col, NCOLS (C))));
+        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG,
+            "Column index "GBu" out of range; must be < "GBd,
+            col, GB_NCOLS (C)))) ;
     }
 
     ASSERT (scalar_code <= GB_UDT_code) ;
@@ -63,17 +65,17 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     // scalar_code and C must be compatible
     if (!GB_code_compatible (scalar_code, ccode))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "input scalar of type [%s]\n"
             "cannot be typecast to entry of type [%s]",
             GB_code_string (scalar_code), ctype->name))) ;
     }
 
     // pending tuples are expected
-    ASSERT (PENDING_OK (C)) ;
+    ASSERT (GB_PENDING_OK (C)) ;
 
     // zombies are expected
-    ASSERT (ZOMBIES_OK (C)) ;
+    ASSERT (GB_ZOMBIES_OK (C)) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format
@@ -133,7 +135,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
         // found C (i,j), assign its value
         size_t csize = ctype->size ;
-        if (scalar_code == GB_UDT_code || scalar_code == ccode)
+        if (scalar_code >= GB_UCT_code || scalar_code == ccode)
         { 
             // copy the values without typecasting
             memcpy (C->x +(pleft*csize), scalar, csize) ;
@@ -157,8 +159,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         }
 
         // the check is fine but just costly even when debugging
-        // ASSERT_OK (GB_check (C, "did C for setElement (found)", D0)) ;
-        return (REPORT_SUCCESS) ;
+        // ASSERT_OK (GB_check (C, "did C for setElement (found)", GB0)) ;
+        return (GB_REPORT_SUCCESS) ;
     }
     else
     {
@@ -211,7 +213,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             // must be assembled before this new one can be added.
 
             // delete any lingering zombies and assemble the pending tuples
-            WAIT (C) ;
+            GB_WAIT (C) ;
             ASSERT (C->n_pending == 0) ;
 
             // repeat the search since the C(i,j) entry may have been in
@@ -223,8 +225,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         }
 
         // the new tuple is now compatible with prior tuples, if any
-        ASSERT (PENDING_OK (C)) ;
-        ASSERT (ZOMBIES_OK (C)) ;
+        ASSERT (GB_PENDING_OK (C)) ;
+        ASSERT (GB_ZOMBIES_OK (C)) ;
 
         // C (i,j) must be added to the list of pending tuples.
         // If this is the first pending tuple, then the type of pending tuples
@@ -245,7 +247,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         ASSERT (C->type_pending == stype) ;
 
         // this assert is fine, just costly even when debugging
-        // ASSERT_OK (GB_check (C, "did C for setElement (not found)", D0)) ;
+        // ASSERT_OK (GB_check (C, "did C for setElement (not found)", GB0)) ;
         return (GB_block (C)) ;
     }
 }

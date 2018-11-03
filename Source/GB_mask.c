@@ -113,14 +113,14 @@
 // If an entry C(i,j) or Z(i,j) is found that must be copied into R(i,j), the
 // following macro is used.   It moves the the value (Rx[rnz]=Xx[pX]), and the
 // index (Ri[rnz++]=i) where X is C or Z.
-#define COPY(X)                                                     \
+#define GB_COPY(X)                                                  \
 {                                                                   \
     memcpy (Rx +(rnz*csize), X ## x +((p ## X)*csize), csize) ;     \
     Ri [rnz++] = i ;                                                \
 }
 
 // An entry C(i,j), Z(i,j), or M(i,j) has been processed; move to the next one.
-#define NEXT(X) (p ## X)++ ;
+#define GB_NEXT(X) (p ## X)++ ;
 
 //------------------------------------------------------------------------------
 
@@ -142,23 +142,23 @@ GrB_Info GB_mask                // C<M> = Z
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK (C_result, M)) ;
+    ASSERT (GB_ALIAS_OK (C_result, M)) ;
 
     // C_result has no pending tuples and no zombies
     // M is optional but if present it has no pending tuples and no zombies
-    ASSERT_OK (GB_check (C_result, "C_result for GB_mask", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_mask", D0)) ;
-    ASSERT (!PENDING (C_result)) ;
-    ASSERT (!ZOMBIES (C_result)) ;
-    ASSERT (!PENDING (M)) ;
-    ASSERT (!ZOMBIES (M)) ;
+    ASSERT_OK (GB_check (C_result, "C_result for GB_mask", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_mask", GB0)) ;
+    ASSERT (!GB_PENDING (C_result)) ;
+    ASSERT (!GB_ZOMBIES (C_result)) ;
+    ASSERT (!GB_PENDING (M)) ;
+    ASSERT (!GB_ZOMBIES (M)) ;
     if (Zhandle != NULL)
     { 
         // If Z is not NULL, it has the same type as C_result.
         // It has no pending tuples and no zombies
-        ASSERT_OK_OR_NULL (GB_check (*Zhandle, "Z for GB_mask", D0)) ;
-        ASSERT (!PENDING (*Zhandle)) ;
-        ASSERT (!ZOMBIES (*Zhandle)) ;
+        ASSERT_OK_OR_NULL (GB_check (*Zhandle, "Z for GB_mask", GB0)) ;
+        ASSERT (!GB_PENDING (*Zhandle)) ;
+        ASSERT (!GB_ZOMBIES (*Zhandle)) ;
         ASSERT ((*Zhandle)->type == C_result->type) ;
         // *Zhandle and C_result are never aliased. C_result and M might be.
         ASSERT ((*Zhandle) != C_result) ;
@@ -168,7 +168,7 @@ GrB_Info GB_mask                // C<M> = Z
     }
 
     // M must be compatible with C_result
-    ASSERT_OK (GB_Mask_compatible (M, C_result, 0, D0)) ;
+    ASSERT_OK (GB_Mask_compatible (M, C_result, 0, GB0)) ;
 
     GrB_Info info = GrB_SUCCESS ;
 
@@ -210,7 +210,7 @@ GrB_Info GB_mask                // C<M> = Z
             // Z is ignored, and can even be NULL.  The method that calls
             // GB_mask can short circuit its computation, ignore accum, and
             // apply the mask immediately, and then return to its caller.
-            // This done by the RETURN_IF_QUICK_MASK macro.
+            // This done by the GB_RETURN_IF_QUICK_MASK macro.
 
             // free Z if it exists (this is OK if Zhandle is NULL)
             GB_MATRIX_FREE (Zhandle) ;
@@ -223,7 +223,7 @@ GrB_Info GB_mask                // C<M> = Z
             else
             { 
                 // nothing happens
-                return (REPORT_SUCCESS) ;
+                return (GB_REPORT_SUCCESS) ;
             }
         }
 
@@ -247,7 +247,7 @@ GrB_Info GB_mask                // C<M> = Z
 
         if (C_replace)
         {
-            if (ALIASED (C_result, M))
+            if (GB_ALIASED (C_result, M))
             { 
                 // C_result and M are aliased.  This is OK, unless C_replace is
                 // true.  In this case, M must be left unchanged but C_result
@@ -288,10 +288,10 @@ GrB_Info GB_mask                // C<M> = Z
         // these conditions must be enforced in the caller
         ASSERT (Zhandle != NULL) ;
         GrB_Matrix Z = *Zhandle ;
-        ASSERT_OK (GB_check (C, "C input to 3-way merge", D0)) ;
-        ASSERT_OK (GB_check (Z, "Z input to 3-way merge", D0)) ;
-        ASSERT_OK (GB_check (M, "M input to 3-way merge", D0)) ;
-        ASSERT (M->type->code != GB_UDT_code) ;
+        ASSERT_OK (GB_check (C, "C input to 3-way merge", GB0)) ;
+        ASSERT_OK (GB_check (Z, "Z input to 3-way merge", GB0)) ;
+        ASSERT_OK (GB_check (M, "M input to 3-way merge", GB0)) ;
+        ASSERT (M->type->code <= GB_FP64_code) ;
         ASSERT (M->vlen == C->vlen && M->vdim == C->vdim) ;
 
         // [ R->p is malloc'd
@@ -300,9 +300,9 @@ GrB_Info GB_mask                // C<M> = Z
         // or C->vdim, whichever is smaller.
         GrB_Matrix R = NULL ;       // allocate a new header for R
         GB_CREATE (&R, C->type, vlen, vdim, GB_Ap_malloc, C_result_is_csc,
-            SAME_HYPER_AS (C->is_hyper && Z->is_hyper), C->hyper_ratio,
-            IMIN (vdim, C->nvec_nonempty + Z->nvec_nonempty),
-            NNZ (C) + NNZ (Z), true) ;
+            GB_SAME_HYPER_AS (C->is_hyper && Z->is_hyper), C->hyper_ratio,
+            GB_IMIN (vdim, C->nvec_nonempty + Z->nvec_nonempty),
+            GB_NNZ (C) + GB_NNZ (Z), true) ;
 
         if (info != GrB_SUCCESS)
         { 
@@ -329,7 +329,7 @@ GrB_Info GB_mask                // C<M> = Z
         const int64_t *Ci = C->i, *Zi = Z->i, *Mi = M->i ;
         const void    *Cx = C->x, *Zx = Z->x, *Mx = M->x ;
 
-        for_each_vector3 (C, Z, M)
+        GB_for_each_vector3 (C, Z, M)
         {
 
             //------------------------------------------------------------------
@@ -385,7 +385,7 @@ GrB_Info GB_mask                // C<M> = Z
                     //----------------------------------------------------------
 
                     // i = min ([iC iZ])
-                    int64_t i = IMIN (iC, iZ) ;
+                    int64_t i = GB_IMIN (iC, iZ) ;
                     ASSERT (i < vlen) ;
 
                     //----------------------------------------------------------
@@ -416,23 +416,23 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) and Z(i,j) both present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
                             else
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
-                            NEXT (Z) ;
+                            GB_NEXT (C) ;
+                            GB_NEXT (Z) ;
                         }
                         else
                         {
                             // C(i,j) present, Z(i,j) not present
                             if (!mij)
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
+                            GB_NEXT (C) ;
                         }
                     }
                     else
@@ -442,9 +442,9 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) not present, Z(i,j) present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
-                            NEXT (Z) ;
+                            GB_NEXT (Z) ;
                         }
                     }
                 }
@@ -491,7 +491,7 @@ GrB_Info GB_mask                // C<M> = Z
                     //----------------------------------------------------------
 
                     // i = min ([iC iZ])
-                    int64_t i = IMIN (iC, iZ) ;
+                    int64_t i = GB_IMIN (iC, iZ) ;
                     ASSERT (i < vlen) ;
 
                     //----------------------------------------------------------
@@ -528,23 +528,23 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) and Z(i,j) both present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
                             else
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
-                            NEXT (Z) ;
+                            GB_NEXT (C) ;
+                            GB_NEXT (Z) ;
                         }
                         else
                         {
                             // C(i,j) present, Z(i,j) not present
                             if (!mij)
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
+                            GB_NEXT (C) ;
                         }
                     }
                     else
@@ -554,9 +554,9 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) not present, Z(i,j) present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
-                            NEXT (Z) ;
+                            GB_NEXT (Z) ;
                         }
                     }
                 }
@@ -603,7 +603,7 @@ GrB_Info GB_mask                // C<M> = Z
                     //----------------------------------------------------------
 
                     // i = min ([iC iZ iM])
-                    int64_t i = IMIN (iC, IMIN (iZ, iM)) ;
+                    int64_t i = GB_IMIN (iC, GB_IMIN (iZ, iM)) ;
                     ASSERT (i < vlen) ;
 
                     //----------------------------------------------------------
@@ -621,7 +621,7 @@ GrB_Info GB_mask                // C<M> = Z
                     { 
                         // mij = (bool) M [pM]
                         cast_Mask_to_bool (&mij, Mx +(pM*msize), 0) ;
-                        NEXT (M) ;
+                        GB_NEXT (M) ;
                     }
                     else
                     { 
@@ -648,23 +648,23 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) and Z(i,j) both present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
                             else
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
-                            NEXT (Z) ;
+                            GB_NEXT (C) ;
+                            GB_NEXT (Z) ;
                         }
                         else
                         {
                             // C(i,j) present, Z(i,j) not present
                             if (!mij)
                             { 
-                                COPY (C) ;
+                                GB_COPY (C) ;
                             }
-                            NEXT (C) ;
+                            GB_NEXT (C) ;
                         }
                     }
                     else
@@ -674,9 +674,9 @@ GrB_Info GB_mask                // C<M> = Z
                             // C(i,j) not present, Z(i,j) present
                             if (mij)
                             { 
-                                COPY (Z) ;
+                                GB_COPY (Z) ;
                             }
-                            NEXT (Z) ;
+                            GB_NEXT (Z) ;
                         }
                         else
                         { 
@@ -732,7 +732,4 @@ GrB_Info GB_mask                // C<M> = Z
         return (GB_transplant_conform (C_result, R->type, &R)) ;
     }
 }
-
-#undef COPY
-#undef NEXT
 

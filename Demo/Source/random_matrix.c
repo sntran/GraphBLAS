@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/Source/random_matrix.c: create a random matrix
+// GraphBLAS/Demo/Source/Source/random_matrix.c: create a random matrix
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -180,4 +180,3 @@ GrB_Info random_matrix      // create a random double-precision matrix
     return (GrB_SUCCESS) ;
 }
 
-#undef FREE_ALL

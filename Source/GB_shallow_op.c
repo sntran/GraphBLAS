@@ -40,11 +40,11 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for shallow_op", D0)) ;
-    ASSERT_OK (GB_check (op, "op for shallow_op", D0)) ;
+    ASSERT_OK (GB_check (A, "A for shallow_op", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for shallow_op", GB0)) ;
     ASSERT (GB_Type_compatible (op->xtype, A->type)) ;
     ASSERT ((A->nzmax == 0) == (A->i == NULL && A->x == NULL)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
 
     (*Chandle) = NULL ;
 
@@ -57,7 +57,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_NEW (&C, op->ztype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
-        SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0) ;
+        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -68,7 +68,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // make a shallow copy of the vector pointers
     //--------------------------------------------------------------------------
 
-    ASSERT (C->magic == MAGIC2) ;   // [ be careful; C is not yet initialized
+    ASSERT (C->magic == GB_MAGIC2) ;   // [ be careful; C not yet initialized
     C->p_shallow = true ;           // C->p not freed when freeing C
     C->h_shallow = true ;           // C->h not freed when freeing C
     C->p = A->p ;                   // C->p is of size A->plen + 1
@@ -76,7 +76,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     C->plen = A->plen ;             // C and A have the same hyperlist sizes
     C->nvec = A->nvec ;
     C->nvec_nonempty = A->nvec_nonempty ;
-    C->magic = MAGIC ;              // C is now initialized ]
+    C->magic = GB_MAGIC ;           // C is now initialized ]
 
     //--------------------------------------------------------------------------
     // check for empty matrix
@@ -90,9 +90,9 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->x = NULL ;
         C->i_shallow = false ;
         C->x_shallow = false ;
-        ASSERT_OK (GB_check (C, "C = quick copy of empty A", D0)) ;
+        ASSERT_OK (GB_check (C, "C = quick copy of empty A", GB0)) ;
         (*Chandle) = C ;
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -106,8 +106,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // apply the operator to the numerical values
     //--------------------------------------------------------------------------
 
-    int64_t anz = NNZ (A) ;
-    ASSERT (A->nzmax >= IMAX (anz,1)) ;
+    int64_t anz = GB_NNZ (A) ;
+    ASSERT (A->nzmax >= GB_IMAX (anz,1)) ;
 
     if (op->opcode == GB_IDENTITY_opcode && A->type == op->xtype)
     { 
@@ -116,13 +116,13 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->nzmax = A->nzmax ;
         C->x = A->x ;
         C->x_shallow = true ;       // C->x will not be freed when freeing C
-        ASSERT_OK (GB_check (C, "C = pure shallow (A)", D0)) ;
+        ASSERT_OK (GB_check (C, "C = pure shallow (A)", GB0)) ;
         (*Chandle) = C ;
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
     // allocate new space for the numerical values of C
-    C->nzmax = IMAX (anz,1) ;
+    C->nzmax = GB_IMAX (anz,1) ;
     GB_MALLOC_MEMORY (C->x, C->nzmax, C->type->size) ;
     C->x_shallow = false ;          // free C->x when freeing C
     if (C->x == NULL)
@@ -130,7 +130,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         // out of memory
         double memory = GBYTES (C->nzmax, C->type->size) ;
         GB_MATRIX_FREE (&C) ;
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -144,8 +144,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // return the result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C = shallow (op (A))", D0)) ;
+    ASSERT_OK (GB_check (C, "C = shallow (op (A))", GB0)) ;
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

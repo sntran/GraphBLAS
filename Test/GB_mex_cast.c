@@ -29,7 +29,7 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (do_cover) ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 2 || nargin < 1 || nargin > 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

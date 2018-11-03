@@ -17,34 +17,47 @@ A = sparse (i,j,x,n,n) ;
 B = sparse (i,j,y,n,n) ;
 clear x y i j
 
-fprintf ('start MATLAB\n') ;
-tic
-C1 = A*B ;
-tm = toc ;
-fprintf ('MATLAB %g\n', tm) ;
 
-    % 1001: Gustavson
-    % 1002: heap
-    % 1003: dot
+for do_real = 0:1
 
-% GraphBLAS is slower than MATLAB because the complex type is user-defined.
-% This uses the default method, which selects Gustavson's method:
+    if (do_real)
+        fprintf ('real:\n') ;
+        A = real (A) ;
+        B = real (B) ;
+    else
+        fprintf ('complex:\n') ;
+    end
 
-C2 = GB_mex_AxB (A, B) ;
-tg = gbresults ;
-err = norm (C1-C2,1)
-fprintf ('GraphBLAS %g slowdown %g\n', tg, tg/tm) ;
+    fprintf ('start MATLAB\n') ;
+    tic
+    C1 = A*B ;
+    tm = toc ;
+    fprintf ('MATLAB %g\n', tm) ;
 
-% these are expected to be slower still; they do not use the default method
-% (Gustavson) which is selected by the auto-strategy.
+        % 1001: Gustavson
+        % 1002: heap
+        % 1003: dot
 
-C2 = GB_mex_AxB (A, B, 0, 0, 1002) ;
-tg = gbresults ;
-err = norm (C1-C2,1)
-fprintf ('GraphBLAS %g slowdown %g (heap)\n', tg, tg/tm) ;
+    % GraphBLAS is slower than MATLAB because the complex type is user-defined.
+    % This uses the default method, which selects Gustavson's method:
+
+    C2 = GB_mex_AxB (A, B) ;
+    tg = gbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g slowdown %g\n', tg, tg/tm) ;
+
+    % these are expected to be slower still; they do not use the default method
+    % (Gustavson) which is selected by the auto-strategy.
+
+    C2 = GB_mex_AxB (A, B, 0, 0, 1002) ;
+    tg = gbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g slowdown %g (heap)\n', tg, tg/tm) ;
 
 
-C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
-tg = gbresults ;
-err = norm (C1-C2,1)
-fprintf ('GraphBLAS %g slowdown %g (dot)\n', tg, tg/tm) ;
+    C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
+    tg = gbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g slowdown %g (dot)\n', tg, tg/tm) ;
+
+end

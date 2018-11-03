@@ -41,20 +41,19 @@ GrB_Info GrB_Semiring_new           // create a semiring
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Semiring_new (&semiring, add, multiply)") ;
-    RETURN_IF_NULL (semiring) ;
+    GB_WHERE ("GrB_Semiring_new (&semiring, add, multiply)") ;
+    GB_RETURN_IF_NULL (semiring) ;
     (*semiring) = NULL ;
-    RETURN_IF_NULL_OR_FAULTY (add) ;
-    RETURN_IF_NULL_OR_FAULTY (multiply) ;
-
-    ASSERT_OK (GB_check (add, "semiring->add", D0)) ;
-    ASSERT_OK (GB_check (multiply, "semiring->multiply", D0)) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (add) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (multiply) ;
+    ASSERT_OK (GB_check (add, "semiring->add", GB0)) ;
+    ASSERT_OK (GB_check (multiply, "semiring->multiply", GB0)) ;
 
     // z = multiply(x,y); type of z must match monoid z = add(z,z)
     if (multiply->ztype != add->op->ztype)
     { 
         (*semiring) = NULL ;
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "Semiring multiply output domain must match monoid domain"))) ;
     }
 
@@ -66,17 +65,17 @@ GrB_Info GrB_Semiring_new           // create a semiring
     GB_CALLOC_MEMORY (*semiring, 1, sizeof (struct GB_Semiring_opaque)) ;
     if (*semiring == NULL)
     { 
-        return (NO_MEMORY) ;
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the semiring
     GrB_Semiring s = *semiring ;
-    s->magic = MAGIC ;
+    s->magic = GB_MAGIC ;
     s->add = add ;
     s->multiply = multiply ;
-    s->user_defined = true ;
+    s->object_kind = GB_USER_RUNTIME ;
 
-    ASSERT_OK (GB_check (s, "new semiring", D0)) ;
-    return (REPORT_SUCCESS) ;
+    ASSERT_OK (GB_check (s, "new semiring", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

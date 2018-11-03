@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Since A->p and A->h are unchanged, the matrix is still valid (unless it was
-// invalid on input).  NNZ(A) would report zero, and so would GrB_Matrix_nvals.
+// invalid on input).  nnz(A) would report zero, and so would GrB_Matrix_nvals.
 
 #include "GB.h"
 
@@ -32,8 +32,8 @@ void GB_ix_free                 // free A->i and A->x of a matrix
     //--------------------------------------------------------------------------
 
     // zombies and pending tuples are about to be deleted
-    ASSERT (PENDING_OK (A)) ;
-    ASSERT (ZOMBIES_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;
 
     // free A->i unless it is shallow
     if (!A->i_shallow) GB_FREE_MEMORY (A->i, A->nzmax, sizeof (int64_t)) ;

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_alloc: estimate NNZ(C) and allocate C for C=A*B or C=A'*B
+// GB_AxB_alloc: estimate nnz(C) and allocate C for C=A*B or C=A'*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
+GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
 (
     GrB_Matrix *Chandle,        // output matrix
     const GrB_Type ctype,       // type of C
@@ -19,7 +19,7 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess   // rough estimate of NNZ(C)
+    const int64_t rough_guess   // rough estimate of nnz(C)
 )
 {
 
@@ -29,9 +29,9 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
 
     ASSERT (Chandle != NULL) ;
     ASSERT (*Chandle == NULL) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for alloc C=A*B", D0)) ;
-    ASSERT_OK (GB_check (A, "A for alloc C=A*B", D0)) ;
-    ASSERT_OK (GB_check (B, "B for alloc C=A*B", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for alloc C=A*B", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for alloc C=A*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for alloc C=A*B", GB0)) ;
 
     GrB_Info info ;
 
@@ -44,7 +44,7 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
         (A->is_hyper || B->is_hyper || (M != NULL && M->is_hyper)) ;
 
     //--------------------------------------------------------------------------
-    // estimate NNZ(C)
+    // estimate nnz(C)
     //--------------------------------------------------------------------------
 
     int64_t cnz_guess ;
@@ -61,13 +61,13 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
         if (GB_Index_multiply (&abnzmax, cvlen, cvdim))
         {
             // only do this if cvlen * cvdim does not overflow
-            cnz_guess = IMIN (cnz_guess, abnzmax) ;
+            cnz_guess = GB_IMIN (cnz_guess, abnzmax) ;
         }
     }
     else
     { 
         // the pattern of C is a subset of the mask
-        cnz_guess = NNZ (M) ;
+        cnz_guess = GB_NNZ (M) ;
     }
 
     // add one to ensure cnz_guess > 0, and (cnz < C->nzmax) will always hold
@@ -83,7 +83,7 @@ GrB_Info GB_AxB_alloc           // estimate NNZ(C) and allocate C for C=A*B
     // initialized.
 
     GB_CREATE (Chandle, ctype, cvlen, cvdim, GB_Ap_malloc, true,
-        SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, B->nvec_nonempty,
+        GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, B->nvec_nonempty,
         cnz_guess, numeric) ;
 
     return (info) ;

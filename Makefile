@@ -18,6 +18,10 @@ default:
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) )
 
+# just run cmake; do not compile
+cmake:
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
+
 # the same as "make library"
 static: library
 
@@ -41,6 +45,7 @@ purge: distclean
 # remove all files not in the distribution
 distclean:
 	rm -rf build/* Demo/*_demo.out Demo/complex_demo_out.m Tcov/log.txt
+	rm -rf Config/*.tmp Source/control.m4
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )

@@ -20,7 +20,6 @@
     GB_mx_put_global (true) ;           \
 }
 
-
 void mexFunction
 (
     int nargout,
@@ -34,7 +33,7 @@ void mexFunction
     GrB_Matrix A = NULL, C = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

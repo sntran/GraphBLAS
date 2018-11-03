@@ -22,7 +22,7 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (false) ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 4 || nargin != 0)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -55,12 +55,12 @@ void mexFunction
 
     if (malloc_debug)
     {
-        if (pr) printf ("MALLOC DEBUG: enabled: malloc testing\n") ;
+        if (pr) printf ("malloc debug: enabled: malloc testing\n") ;
         pargout [2] = mxCreateDoubleScalar (1) ;
     }
     else
     {
-        if (pr) printf ("MALLOC DEBUG: normal: no malloc testing\n") ;
+        if (pr) printf ("malloc debug: normal: no malloc testing\n") ;
         pargout [2] = mxCreateDoubleScalar (0) ;
     }
 

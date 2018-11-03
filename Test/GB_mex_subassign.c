@@ -95,13 +95,13 @@ GrB_Info assign ( )
     ASSERT_OK_OR_NULL (GB_check (accum, "accum for mex assign", pr)) ;
     ASSERT_OK (GB_check (A, "A for mex assign", pr)) ;
 
-    if (NROWS (A) == 1 && NCOLS (A) == 1 && NNZ (A) == 1)
+    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
     {
         // scalar expansion to matrix or vector
         void *Ax = A->x ;
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
-            && GB_op_is_second (accum, C->type) && A->type->code != GB_UDT_code
+            && GB_op_is_second (accum, C->type) && A->type->code <= GB_FP64_code
             && desc == NULL)
         {
             if (ph) printf ("setElement\n") ;
@@ -125,6 +125,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -133,7 +134,7 @@ GrB_Info assign ( )
             #undef ASSIGN
 
         }
-        if (VECTOR_OK (C) && VECTOR_OK (Mask))
+        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (Mask))
         {
 
             // test GxB_Vector_subassign_scalar functions
@@ -158,6 +159,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask,
@@ -195,6 +197,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign (C, Mask, accum, Ax, I, ni, J, nj, desc));
@@ -209,16 +212,16 @@ GrB_Info assign ( )
 
         }
     }
-    else if (VECTOR_OK (C) && VECTOR_OK (A) &&
-        (Mask == NULL || VECTOR_OK (Mask)) && !at)
+    else if (GB_VECTOR_OK (C) && GB_VECTOR_OK (A) &&
+        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
     {
         // test GxB_Vector_subassign
         if (ph) printf ("vector assign\n") ;
         OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask, accum,
             (GrB_Vector) A, I, ni, desc)) ;
     }
-    else if (VECTOR_OK (A) && nj == 1 &&
-        (Mask == NULL || VECTOR_OK (Mask)) && !at)
+    else if (GB_VECTOR_OK (A) && nj == 1 &&
+        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
     {
         // test GxB_Col_subassign
         if (ph) printf ("col assign\n") ;
@@ -234,10 +237,10 @@ GrB_Info assign ( )
         if (Mask != NULL)
         {
             OK (GB_transpose_bucket (&mask, GrB_BOOL, true, Mask, NULL)) ;
-            ASSERT (VECTOR_OK (mask)) ;
+            ASSERT (GB_VECTOR_OK (mask)) ;
         }
         OK (GB_transpose_bucket (&u, A->type, true, A, NULL)) ;
-        ASSERT (VECTOR_OK (u)) ;
+        ASSERT (GB_VECTOR_OK (u)) ;
         OK (GxB_subassign (C, (GrB_Vector) mask, accum, (GrB_Vector) u,
             I [0], J, nj, desc)) ;
         GB_MATRIX_FREE (&mask) ;
@@ -403,7 +406,7 @@ void mexFunction
     op = NULL ;
     reduce = NULL ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (!((nargout == 1 && (nargin == 2 || nargin == 6 || nargin == 7)) ||
           ((nargout == 2 || nargout == 3) && nargin == 8)))
     {
@@ -612,7 +615,7 @@ void mexFunction
     // return C to MATLAB as a struct
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "Final C before wait", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     GrB_wait ( ) ;
     TOC ;
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;

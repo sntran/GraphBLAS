@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/read_matrix.c: read a matrix from stdin
+// GraphBLAS/Demo/Source/read_matrix.c: read a matrix from stdin
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -377,7 +377,8 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     FREE_ALL ;
+    if (pr) printf ("\nMatrix from file:\n") ;
+    GxB_print (*A_output, pr ? GxB_SHORT : GxB_SILENT) ;
     return (GrB_SUCCESS) ;
 }
 
-#undef FREE_ALL

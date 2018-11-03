@@ -27,18 +27,18 @@ GrB_Info GxB_Vector_subassign       // w(Rows)<mask> = accum (w(Rows),u)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Vector_subassign (w, mask, accum, u, Rows, nRows, desc)") ;
+    GB_WHERE ("GxB_Vector_subassign (w, mask, accum, u, Rows, nRows, desc)") ;
 
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
-    ASSERT (VECTOR_OK (u)) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // w(Rows)<mask> = accum (w(Rows), u) and variations

@@ -26,27 +26,27 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (w, mask, A)) ;
+    ASSERT (GB_ALIAS_OK2 (w, mask, A)) ;
 
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-    RETURN_IF_FAULTY (desc) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_FAULTY (desc) ;
 
-    ASSERT_OK (GB_check (w, "w input for reduce_BinaryOp", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (mask, "mask for reduce_BinaryOp", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_BinaryOp", D0)) ;
-    ASSERT_OK (GB_check (reduce, "reduce for reduce_BinaryOp", D0)) ;
-    ASSERT_OK (GB_check (A, "A input for reduce_BinaryOp", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (desc, "desc for reduce_BinaryOp", D0)) ;
+    ASSERT_OK (GB_check (w, "w input for reduce_BinaryOp", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (mask, "mask for reduce_BinaryOp", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_BinaryOp", GB0)) ;
+    ASSERT_OK (GB_check (reduce, "reduce for reduce_BinaryOp", GB0)) ;
+    ASSERT_OK (GB_check (A, "A input for reduce_BinaryOp", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (desc, "desc for reduce_BinaryOp", GB0)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     // w and mask are n-by-1 GrB_Vector objects, typecasted to GrB_Matrix
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (IMPLIES (mask != NULL, VECTOR_OK (mask))) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (GB_IMPLIES (mask != NULL, GB_VECTOR_OK (mask))) ;
 
     // check domains and dimensions for w<mask> = accum (w,T)
     GrB_Type ttype = reduce->ztype ;
@@ -61,7 +61,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     { 
         // all 3 types of z = reduce (x,y) must be the same.  reduce must also
         // be associative but there is no way to check this in general.
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "All domains of reduction operator must be identical;\n"
             "operator is: [%s] = %s ([%s],[%s])", reduce->ztype->name,
             reduce->name, reduce->xtype->name, reduce->ytype->name))) ;
@@ -70,7 +70,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     // T = reduce (T,A) must be compatible
     if (!GB_Type_compatible (A->type, reduce->ztype))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "incompatible type for reduction operator z=%s(x,y):\n"
             "input matrix A of type [%s]\n"
             "cannot be typecast to reduction operator of type [%s]",
@@ -78,37 +78,37 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     }
 
     // check the dimensions
-    int64_t wlen = NROWS (w) ;
+    int64_t wlen = GB_NROWS (w) ;
     if (A_transpose)
     {
-        if (wlen != NCOLS (A))
+        if (wlen != GB_NCOLS (A))
         { 
-            return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                 "w=reduce(A'):  length of w is "GBd";\n"
                 "it must match the number of columns of A, which is "GBd".",
-                wlen, NCOLS (A)))) ;
+                wlen, GB_NCOLS (A)))) ;
         }
     }
     else
     {
-        if (wlen != NROWS(A))
+        if (wlen != GB_NROWS(A))
         { 
-            return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                 "w=reduce(A):  length of w is "GBd";\n"
                 "it must match the number of rows of A, which is "GBd".",
-                wlen, NROWS (A)))) ;
+                wlen, GB_NROWS (A)))) ;
         }
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (w, C_replace, mask, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (w, C_replace, mask, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (w) ;
-    WAIT (mask) ;
-    WAIT (A) ;
+    GB_WAIT (w) ;
+    GB_WAIT (mask) ;
+    GB_WAIT (A) ;
 
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format of A
@@ -154,7 +154,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     int    acode = A->type->code ;
     const int64_t *restrict Ai = A->i ;
     const void    *restrict Ax = A->x ;
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
 
     size_t zsize = reduce->ztype->size ;
     int    zcode = reduce->ztype->code ;
@@ -197,7 +197,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
         { 
             return (info) ;
         }
-        ASSERT (VECTOR_OK (T)) ;
+        ASSERT (GB_VECTOR_OK (T)) ;
 
         T->p [0] = 0 ;
         T->p [1] = tnz ;
@@ -214,11 +214,11 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
         tnz = 0 ;
 
         // define the worker for the switch factory
-        #define WORKER(type)                                                \
+        #define GB_WORKER(type)                                             \
         {                                                                   \
             const type *ax = (type *) Ax ;                                  \
             type *tx = (type *) Tx ;                                        \
-            for_each_vector (A)                                             \
+            GB_for_each_vector (A)                                          \
             {                                                               \
                 /* w = reduce (A (:,j)) */                                  \
                 type w ;                                                    \
@@ -231,7 +231,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                 for (p++ ; p < pend ; p++)                                  \
                 {                                                           \
                     /* w "+=" ax [p] ; */                                   \
-                    ADD (w, ax [p]) ;                                       \
+                    GB_DUP (w, ax [p]) ;                                    \
                 }                                                           \
                 Ti [tnz] = j ;                                              \
                 tx [tnz] = w ;                                              \
@@ -261,7 +261,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
 
         #endif
 
-        #undef WORKER
+        #undef GB_WORKER
 
         //----------------------------------------------------------------------
         // generic worker: with typecasting
@@ -269,7 +269,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
 
         if (!done)
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
                 // zwork = reduce (A (:,j))
                 int64_t GBI1_initj (Iter, j, p, pend) ;
@@ -390,7 +390,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             bool done = false ;
 
             // define the worker for the switch factory
-            #define WORKER(type)                                            \
+            #define GB_WORKER(type)                                         \
             {                                                               \
                 const type *ax = (type *) Ax ;                              \
                 type *ww = (type *) work ;                                  \
@@ -408,7 +408,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                     else                                                    \
                     {                                                       \
                         /* ww [i] "+=" ax [p] */                            \
-                        ADD (ww [i], ax [p]) ;                              \
+                        GB_DUP (ww [i], ax [p]) ;                           \
                     }                                                       \
                 }                                                           \
                 done = true ;                                               \
@@ -435,7 +435,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
 
             #endif
 
-            #undef WORKER
+            #undef GB_WORKER
 
             //------------------------------------------------------------------
             // generic worker
@@ -483,7 +483,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             { 
                 return (info) ;
             }
-            ASSERT (VECTOR_OK (T)) ;
+            ASSERT (GB_VECTOR_OK (T)) ;
 
             T->p [0] = 0 ;
             T->p [1] = tnz ;
@@ -510,7 +510,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             }
         }
     }
-    ASSERT_OK (GB_check (T, "T output for T = reduce (A)", D0)) ;
+    ASSERT_OK (GB_check (T, "T output for T = reduce (A)", GB0)) ;
 
     //--------------------------------------------------------------------------
     // w<mask> = accum (w,T): accumulate the results into w via the mask

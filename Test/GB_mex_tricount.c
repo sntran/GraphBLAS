@@ -40,7 +40,7 @@ void mexFunction
     GrB_Matrix A = NULL, E = NULL, L = NULL, U = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 2 || nargin != 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

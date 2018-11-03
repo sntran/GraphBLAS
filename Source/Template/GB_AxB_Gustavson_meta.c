@@ -8,10 +8,13 @@
 //------------------------------------------------------------------------------
 
 {
-    bool A_is_hyper = IS_HYPER (A) ;
-    if (A_is_hyper || IS_HYPER (B) || IS_HYPER (C) || IS_HYPER (M))
+    const GB_atype *restrict Ax = A->x ;
+    const GB_btype *restrict Bx = B->x ;
+
+    bool A_is_hyper = GB_IS_HYPER (A) ;
+    if (A_is_hyper || GB_IS_HYPER (B) || GB_IS_HYPER (C) || GB_IS_HYPER (M))
     {
-        #define HYPER
+        #define GB_HYPER_CASE
         if (M != NULL)
         { 
             // C<M> = A*B where M is pattern of C
@@ -22,7 +25,7 @@
             // C = A*B with pattern of C as defined on input
             #include "GB_AxB_Gustavson_nomask.c"
         }
-        #undef HYPER
+        #undef GB_HYPER_CASE
     }
     else
     {

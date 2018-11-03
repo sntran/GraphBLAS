@@ -20,16 +20,16 @@ GrB_Info GxB_BinaryOp_ztype         // return the type of z
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_BinaryOp_ztype (&ztype, binaryop)") ;
-    RETURN_IF_NULL (ztype) ;
-    RETURN_IF_NULL_OR_FAULTY (binaryop) ;
-    ASSERT_OK (GB_check (binaryop, "binaryop for ztype", D0)) ;
+    GB_WHERE ("GxB_BinaryOp_ztype (&ztype, binaryop)") ;
+    GB_RETURN_IF_NULL (ztype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (binaryop) ;
+    ASSERT_OK (GB_check (binaryop, "binaryop for ztype", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the ztype
     //--------------------------------------------------------------------------
 
     (*ztype) = binaryop->ztype ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

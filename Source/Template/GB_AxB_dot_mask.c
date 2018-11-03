@@ -5,8 +5,6 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-// This file is #include'd into Template/GB_AxB_dot_meta.c
-
 {
 
     //--------------------------------------------------------------------------
@@ -42,7 +40,7 @@
     // C<M>=A'*B via dot products
     //--------------------------------------------------------------------------
 
-    for_each_vector2 (B, M)
+    GB_for_each_vector2 (B, M)
     {
 
         //----------------------------------------------------------------------

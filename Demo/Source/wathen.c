@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/wathen.c: a finite-element matrix on a regular mesh
+// GraphBLAS/Demo/Source/wathen.c: a finite-element matrix on a regular mesh
 //------------------------------------------------------------------------------
 
 #include "demos.h"
@@ -390,9 +390,4 @@ GrB_Info wathen             // construct a random Wathen matrix
     FREE_ALL ;
     return (GrB_SUCCESS) ;
 }
-
-#undef FREE_ALL
-#undef d
-#undef RHO
-#undef em
 

@@ -28,7 +28,7 @@ GrB_Info GB_Flag_walloc             // allocate Flag space
         if (GB_thread_local.Flag == NULL)
         { 
             // out of memory
-            return (OUT_OF_MEMORY (GBYTES (newsize, sizeof (int8_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (newsize, sizeof (int8_t)))) ;
         }
         GB_thread_local.Flag_size = newsize ;
     }
@@ -38,6 +38,6 @@ GrB_Info GB_Flag_walloc             // allocate Flag space
     ASSERT_FLAG_IS_CLEAR ;          // assert that Flag [...] == 0
 
     // success
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

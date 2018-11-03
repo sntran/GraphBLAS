@@ -65,11 +65,11 @@ GrB_Info assign ( )
     GrB_Info info ;
 
     // printf ("\n--- assign:\n") ;
-    ASSERT_OK (GB_check (C, "C", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (Mask, "Mask", D0)) ;
-    ASSERT_OK (GB_check (A, "A", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (desc, "desc", D0)) ;
+    ASSERT_OK (GB_check (C, "C", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (Mask, "Mask", GB0)) ;
+    ASSERT_OK (GB_check (A, "A", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (desc, "desc", GB0)) ;
 
     /*
     if (I == NULL)
@@ -98,13 +98,13 @@ GrB_Info assign ( )
     }
     */
 
-    if (NROWS (A) == 1 && NCOLS (A) == 1 && NNZ (A) == 1)
+    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
     {
         // scalar expansion to matrix or vector
         void *Ax = A->x ;
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
-            && GB_op_is_second (accum, C->type) && A->type->code != GB_UDT_code
+            && GB_op_is_second (accum, C->type) && A->type->code <= GB_FP64_code
             && desc == NULL)
         {
             // printf ("setElement\n") ;
@@ -128,6 +128,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -135,7 +136,7 @@ GrB_Info assign ( )
             }
             #undef ASSIGN
 
-            ASSERT_OK (GB_check (C, "C after setElement", D0)) ;
+            ASSERT_OK (GB_check (C, "C after setElement", GB0)) ;
 
         }
         if (C->vdim == 1)
@@ -163,6 +164,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign ((GrB_Vector) C, (GrB_Vector) Mask,
@@ -200,6 +202,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign (C, Mask, accum, Ax, I, ni, J, nj, desc)) ;
@@ -230,7 +233,7 @@ GrB_Info assign ( )
         OK (GrB_assign (C, Mask, accum, A, I, ni, J, nj, desc)) ;
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }
@@ -270,7 +273,7 @@ GrB_Info many_assign
 
         mxArray *p ;
 
-        // if (k == CATCH) GB_check (C, "C start", D3) ;
+        // if (k == CATCH) GB_check (C, "C start", GB3) ;
 
         // [ turn off malloc debugging
         bool save = GB_Global.malloc_debug ;
@@ -288,7 +291,7 @@ GrB_Info many_assign
                 mexErrMsgTxt ("Mask failed") ;
             }
         }
-        // if (k == CATCH) GB_check (Mask, "Mask", D3) ;
+        // if (k == CATCH) GB_check (Mask, "Mask", GB3) ;
 
         // get A (shallow copy)
         p = mxGetFieldByNumber (pargin [1], k, fA) ;
@@ -298,7 +301,7 @@ GrB_Info many_assign
             FREE_ALL ;
             mexErrMsgTxt ("A failed") ;
         }
-        // if (k == CATCH) GB_check (A, "A", D3) ;
+        // if (k == CATCH) GB_check (A, "A", GB3) ;
 
         // get accum; default: NOP, default class is class(C)
         accum = NULL ;
@@ -313,7 +316,7 @@ GrB_Info many_assign
                 mexErrMsgTxt ("accum failed") ;
             }
         }
-        // if (k == CATCH) GB_check (accum, "accum", D3) ;
+        // if (k == CATCH) GB_check (accum, "accum", GB3) ;
 
         // get I
         p = mxGetFieldByNumber (pargin [1], k, fI) ;
@@ -380,7 +383,7 @@ GrB_Info many_assign
 
         // GB_thread_local.line = 0 ;
 
-        // if (k == CATCH) GB_check (C, "C done", D3) ;
+        // if (k == CATCH) GB_check (C, "C done", GB3) ;
 
         GB_MATRIX_FREE (&A) ;
         GB_MATRIX_FREE (&Mask) ;
@@ -392,7 +395,7 @@ GrB_Info many_assign
         }
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }
@@ -420,7 +423,7 @@ void mexFunction
     Mask = NULL ;
     desc = NULL ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // printf ("\n========================= GB_mex_assign:\n") ;
 

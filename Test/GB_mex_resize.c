@@ -30,7 +30,7 @@ void mexFunction
     GrB_Matrix C = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -55,7 +55,7 @@ void mexFunction
     int64_t GET_SCALAR (2, int64_t, vdim_new, C->vdim) ;
 
     // resize the matrix
-    if (VECTOR_OK (C) && vdim_new == 1)
+    if (GB_VECTOR_OK (C) && vdim_new == 1)
     {
         // resize C as a vector
         METHOD (GxB_resize ((GrB_Vector) C, vlen_new)) ;

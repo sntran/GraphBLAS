@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// NNZ(A) has, or will, change.  The # of nonzeros may decrease significantly,
+// nnz(A) has, or will, change.  The # of nonzeros may decrease significantly,
 // in which case the extra space is trimmed.  If the existing space is not
 // sufficient, the matrix is doubled in size to accomodate the new entries.
 
@@ -16,7 +16,7 @@
 GrB_Info GB_ix_resize           // resize a matrix
 (
     GrB_Matrix A,
-    const int64_t anz_new       // required new NNZ(A)
+    const int64_t anz_new       // required new nnz(A)
 )
 {
 
@@ -24,11 +24,11 @@ GrB_Info GB_ix_resize           // resize a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A, "A to resize", D0)) ;
+    ASSERT_OK (GB_check (A, "A to resize", GB0)) ;
 
     GrB_Info info ;
     int64_t anzmax_orig = A->nzmax ;
-    ASSERT (NNZ (A) <= anzmax_orig) ;
+    ASSERT (GB_NNZ (A) <= anzmax_orig) ;
 
     //--------------------------------------------------------------------------
     // resize the matrix
@@ -45,7 +45,7 @@ GrB_Info GB_ix_resize           // resize a matrix
         // 50% for future growth, if possible.  Do not increase the size beyond
         // the existing space, however.
 
-        int64_t anzmax_new = IMAX (anzmax_orig, anz_new + (anz_new/2)) ;
+        int64_t anzmax_new = GB_IMAX (anzmax_orig, anz_new + (anz_new/2)) ;
 
         // since the space is shrinking, this is guaranteed not to fail
         ASSERT (anzmax_new <= anzmax_orig) ;
@@ -53,7 +53,7 @@ GrB_Info GB_ix_resize           // resize a matrix
 
         info = GB_ix_realloc (A, anzmax_new, true) ;
         ASSERT (info == GrB_SUCCESS) ;
-        ASSERT_OK (GB_check (A, "A trimmed in size", D0)) ;
+        ASSERT_OK (GB_check (A, "A trimmed in size", GB0)) ;
 
     }
     else if (anz_new > anzmax_orig)
@@ -63,7 +63,7 @@ GrB_Info GB_ix_resize           // resize a matrix
         // grow the space
         //----------------------------------------------------------------------
 
-        // original A->nzmax is not enough; give the matrix space for NNZ(A)
+        // original A->nzmax is not enough; give the matrix space for nnz(A)
         // plus 50% for future growth
 
         int64_t anzmax_new = anz_new + (anz_new/2) ;
@@ -79,7 +79,7 @@ GrB_Info GB_ix_resize           // resize a matrix
             GB_phix_free (A) ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (A, "A increased in size", D0)) ;
+        ASSERT_OK (GB_check (A, "A increased in size", GB0)) ;
 
     }
     else
@@ -89,10 +89,10 @@ GrB_Info GB_ix_resize           // resize a matrix
         // leave as-is
         //----------------------------------------------------------------------
 
-        // NNZ(A) has changed but the old space is enough to use as-is;
+        // nnz(A) has changed but the old space is enough to use as-is;
         // do nothing
         ASSERT (anz_new <= anzmax_orig) ;
-        ASSERT_OK (GB_check (A, "A left as-is", D0)) ;
+        ASSERT_OK (GB_check (A, "A left as-is", GB0)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -100,6 +100,6 @@ GrB_Info GB_ix_resize           // resize a matrix
     //--------------------------------------------------------------------------
 
     ASSERT (anz_new <= A->nzmax) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

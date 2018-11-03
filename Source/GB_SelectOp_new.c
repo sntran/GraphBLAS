@@ -29,11 +29,11 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_SelectOp_new (selectop, function, xtype)") ;
-    RETURN_IF_NULL (selectop) ;
+    GB_WHERE ("GxB_SelectOp_new (selectop, function, xtype)") ;
+    GB_RETURN_IF_NULL (selectop) ;
     (*selectop) = NULL ;
-    RETURN_IF_NULL (function) ;
-    RETURN_IF_FAULTY (xtype) ;   // xtype may be NULL
+    GB_RETURN_IF_NULL (function) ;
+    GB_RETURN_IF_FAULTY (xtype) ;   // xtype may be NULL
 
     //--------------------------------------------------------------------------
     // create the select op
@@ -43,17 +43,17 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque)) ;
     if (*selectop == NULL)
     { 
-        return (NO_MEMORY) ;
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the select operator
     GxB_SelectOp op = *selectop ;
-    op->magic = MAGIC ;
+    op->magic = GB_MAGIC ;
     op->xtype = xtype ;
     op->function = function ;
     strncpy (op->name, name, GB_LEN-1) ;
-    op->opcode = GB_USER_SELECT_opcode ;    // generic opcode for all user ops
-    ASSERT_OK (GB_check (op, "new user-defined select op", D0)) ;
-    return (REPORT_SUCCESS) ;
+    op->opcode = GB_USER_SELECT_R_opcode ;
+    ASSERT_OK (GB_check (op, "new user-defined select op", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

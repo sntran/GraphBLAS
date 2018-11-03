@@ -29,7 +29,7 @@ void mexFunction
     GrB_Matrix A = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin == 0 || nargin > 8)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

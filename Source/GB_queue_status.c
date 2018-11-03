@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_queue_check:  check the status of the queue for a particular matrix
+// GB_queue_status:  check the status of the queue for a particular matrix
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-void GB_queue_check
+void GB_queue_status
 (
     GrB_Matrix A,           // matrix to check
     GrB_Matrix *head,       // head of the queue

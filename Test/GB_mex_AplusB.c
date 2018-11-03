@@ -40,7 +40,7 @@ void mexFunction
     GrB_Matrix C = NULL ;
     GrB_BinaryOp op = NULL ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin != 3)

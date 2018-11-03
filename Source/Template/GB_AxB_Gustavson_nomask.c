@@ -18,7 +18,7 @@
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
     ASSERT (C->vdim == B->vdim) ;
     ASSERT (C->vlen == A->vlen) ;
     ASSERT (A->vdim == B->vlen) ;
@@ -31,7 +31,7 @@
     const int64_t *restrict Ai = A->i ;
     const int64_t *restrict Bi = B->i ;
 
-    #ifdef HYPER
+    #ifdef GB_HYPER_CASE
     const int64_t *restrict Ah = A->h ;
     int64_t anvec = A->nvec ;
     #endif
@@ -44,14 +44,14 @@
     ASSERT (C->nvec <= B->nvec) ;
 
     // C->p and C->h have already been computed in the symbolic phase
-    ASSERT (C->magic = MAGIC) ;
+    ASSERT (C->magic = GB_MAGIC) ;
 
     //--------------------------------------------------------------------------
     // C=A*B using the Gustavson's saxpy-based method; precomputed pattern of C
     //--------------------------------------------------------------------------
 
-    #ifdef HYPER
-    for_each_vector2 (B, C)
+    #ifdef GB_HYPER_CASE
+    GB_for_each_vector2 (B, C)
     #else
     const int64_t *restrict Bp = B->p ;
     const int64_t *restrict Cp = C->p ;
@@ -64,7 +64,7 @@
         // get C(:,j) and skip if empty
         //----------------------------------------------------------------------
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         int64_t GBI2_initj (Iter, j, pB_start, pB_end, pC_start, pC_end) ;
         #else
         int64_t pB_start = Bp [j] ;
@@ -84,10 +84,10 @@
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
             // w [Ci [pC]] = identity ;
-            COPY_SCALAR_TO_ARRAY (w, Ci [pC], IDENTITY, zsize) ;
+            GB_COPY_SCALAR_TO_ARRAY (w, Ci [pC], GB_IDENTITY, zsize) ;
         }
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         // trim Ah on right
         int64_t pleft = 0 ;
         int64_t pright = anvec-1 ;
@@ -114,7 +114,7 @@
 
             // find A(:,k), reusing pleft since Bi [...] is sorted
             int64_t pA_start, pA_end ;
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k,
                 &pA_start, &pA_end) ;
             #else
@@ -125,7 +125,7 @@
             if (pA_start == pA_end) continue ;
 
             // get the value of B(k,j)
-            COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
+            GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
 
             //------------------------------------------------------------------
             // w += A(:,k) * B(k,j)
@@ -135,7 +135,7 @@
             { 
                 // w [i] += A(i,k) * B(k,j)
                 int64_t i = Ai [pA] ;
-                MULTADD_NOMASK ;
+                GB_MULTADD_NOMASK ;
             }
         }
 
@@ -146,7 +146,7 @@
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
             // Cx [pC] = w [Ci [pC]] ;
-            COPY_ARRAY_TO_ARRAY (Cx, pC, w, Ci [pC], zsize) ;
+            GB_COPY_ARRAY_TO_ARRAY (Cx, pC, w, Ci [pC], zsize) ;
         }
     }
 

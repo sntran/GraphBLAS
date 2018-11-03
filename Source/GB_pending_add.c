@@ -75,13 +75,13 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     //--------------------------------------------------------------------------
 
     // pending tuples are OK; that is the whole point of this function
-    ASSERT (PENDING_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ;
 
     // likesize, the matrix A may have zombies
-    ASSERT (ZOMBIES_OK (A)) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;
 
     ASSERT (A->n_pending <= A->max_n_pending) ;
-    ASSERT (IMPLIES (A->max_n_pending == 0,
+    ASSERT (GB_IMPLIES (A->max_n_pending == 0,
         A->i_pending == NULL && A->j_pending == NULL && A->s_pending == NULL)) ;
     ASSERT (i >= 0 && i < A->vlen && j >= 0 && j < A->vdim) ;
 
@@ -110,7 +110,7 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
 
     if (A->n_pending == A->max_n_pending)
     {
-        int64_t newsize = IMAX (2 * A->max_n_pending, 256) ;
+        int64_t newsize = GB_IMAX (2 * A->max_n_pending, 256) ;
         bool ok1 = true ;
         bool ok2 = true ;
         bool ok3 = true ;
@@ -139,9 +139,9 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
             // out of memory; clear all of A and remove from the queue
             GB_phix_free (A) ;
             ASSERT (!(A->enqueued)) ;
-            ASSERT (!PENDING (A)) ;
-            ASSERT (!ZOMBIES (A)) ;
-            return (OUT_OF_MEMORY (memory)) ;
+            ASSERT (!GB_PENDING (A)) ;
+            ASSERT (!GB_ZOMBIES (A)) ;
+            return (GB_OUT_OF_MEMORY (memory)) ;
         }
 
         A->max_n_pending = newsize ;
@@ -187,7 +187,7 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     // insert A in the queue if it isn't already queued
     //--------------------------------------------------------------------------
 
-    ASSERT (PENDING (A)) ;
+    ASSERT (GB_PENDING (A)) ;
     if (!(A->enqueued))
     { 
         GB_queue_insert (A) ;

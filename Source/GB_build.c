@@ -101,8 +101,8 @@ GrB_Info GB_build               // build matrix
     int64_t vlen = C->vlen ;
     int64_t vdim = C->vdim ;
     bool C_is_csc = C->is_csc ;
-    int64_t nrows = NROWS (C) ;
-    int64_t ncols = NCOLS (C) ;
+    int64_t nrows = GB_NROWS (C) ;
+    int64_t ncols = GB_NCOLS (C) ;
 
     //--------------------------------------------------------------------------
     // free all content of C
@@ -110,9 +110,9 @@ GrB_Info GB_build               // build matrix
 
     // the type, dimensions, and hyper ratio are still preserved in C
     GB_phix_free (C) ;
-    ASSERT (EMPTY (C)) ;
-    ASSERT (!ZOMBIES (C)) ;
-    ASSERT (C->magic == MAGIC2) ;
+    ASSERT (GB_EMPTY (C)) ;
+    ASSERT (!GB_ZOMBIES (C)) ;
+    ASSERT (C->magic == GB_MAGIC2) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format
@@ -171,7 +171,7 @@ GrB_Info GB_build               // build matrix
         // out of memory
         GB_FREE_MEMORY (iwork, len, sizeof (int64_t)) ;
         GB_FREE_MEMORY (jwork, len, sizeof (int64_t)) ;
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -217,7 +217,7 @@ GrB_Info GB_build               // build matrix
                 GB_FREE_MEMORY (jwork, len, sizeof (int64_t)) ;
                 int64_t row = C_is_csc ? i : j ;
                 int64_t col = C_is_csc ? j : i ;
-                return (ERROR (GrB_INDEX_OUT_OF_BOUNDS, (LOG,
+                return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
                     "index ("GBu","GBu") out of bounds,"
                     " must be < ("GBd", "GBd")", row, col, nrows, ncols))) ;
             }
@@ -267,7 +267,7 @@ GrB_Info GB_build               // build matrix
                     // invalid index
                     GB_FREE_MEMORY (iwork, len, sizeof (int64_t)) ;
                     GB_FREE_MEMORY (jwork, len, sizeof (int64_t)) ;
-                    return (ERROR (GrB_INDEX_OUT_OF_BOUNDS, (LOG,
+                    return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
                         "index ("GBu") out of bounds, must be < ("GBd")",
                         i, vlen))) ;
                 }

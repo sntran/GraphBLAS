@@ -21,8 +21,8 @@
 // is possible (and safe) for this matrix to operate on a matrix not in
 // the queue.
 
-// If A is hypersparse, the time taken is at most O(NNZ(A) + t log t), where t
-// is the number of pending tuples in A, and NNZ(A) includes both zombies and
+// If A is hypersparse, the time taken is at most O(nnz(A) + t log t), where t
+// is the number of pending tuples in A, and nnz(A) includes both zombies and
 // live entries.  There is no O(m) or O(n) time component, if A is m-by-n.
 // If the number of non-empty vectors of A grows too large, then A can be
 // converted to non-hypersparse.
@@ -48,7 +48,7 @@ GrB_Info GB_wait                // finish all pending computations
     // GB_check expects the matrix to be in the queue.  As a result, GB_check
     // can report an inconsistency, and thus this assert must be made
     // with a negative pr.
-    ASSERT_OK (GB_check (A, "A to wait", FLIP (D0))) ;
+    ASSERT_OK (GB_check (A, "A to wait", GB_FLIP (GB0))) ;
 
     //--------------------------------------------------------------------------
     // delete zombies
@@ -56,12 +56,12 @@ GrB_Info GB_wait                // finish all pending computations
 
     // A zombie is an entry A(i,j) in the matrix that as been marked for
     // deletion, but hasn't been deleted yet.  It is marked by "negating"
-    // replacing its index i with FLIP(i).  Zombies are simple to delete via an
-    // in-place algorithm.  No memory is allocated so this step always
+    // replacing its index i with GB_FLIP(i).  Zombies are simple to delete via
+    // an in-place algorithm.  No memory is allocated so this step always
     // succeeds.  Pending tuples are ignored, so A can have pending tuples.
 
     GrB_Info info = GrB_SUCCESS ;
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
     int64_t anz_orig = anz ;
     int64_t anzmax_orig = A->nzmax ;
     ASSERT (anz_orig <= anzmax_orig) ;
@@ -72,21 +72,20 @@ GrB_Info GB_wait                // finish all pending computations
     { 
 
         // There are zombies that will now be deleted.
-        ASSERT (ZOMBIES_OK (A)) ;
-        ASSERT (ZOMBIES (A)) ;
+        ASSERT (GB_ZOMBIES_OK (A)) ;
+        ASSERT (GB_ZOMBIES (A)) ;
 
         // This step tolerates pending tuples
         // since pending tuples and zombies do not intersect
-        ASSERT (PENDING_OK (A)) ;
+        ASSERT (GB_PENDING_OK (A)) ;
 
         //----------------------------------------------------------------------
         // zombies exist in the matrix: delete them all
         //----------------------------------------------------------------------
 
         // compare with the pruning phase of GB_resize
-        #define PRUNE if (IS_ZOMBIE (i)) continue ;
+        #define GB_PRUNE if (GB_IS_ZOMBIE (i)) continue ;
         #include "GB_prune_inplace.c"
-        #undef PRUNE
 
         //----------------------------------------------------------------------
         // all zombies have been deleted
@@ -100,25 +99,25 @@ GrB_Info GB_wait                // finish all pending computations
 
         // no more zombies; pending tuples may still exist
         A->nzombies = 0 ;
-        ASSERT (PENDING_OK (A)) ;
+        ASSERT (GB_PENDING_OK (A)) ;
 
         // A->nvec_nonempty has been updated
         ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A)) ;
     }
 
-    ASSERT (anz == NNZ (A)) ;
+    ASSERT (anz == GB_NNZ (A)) ;
 
     //--------------------------------------------------------------------------
     // check for pending tuples
     //--------------------------------------------------------------------------
 
     // all the zombies are gone
-    ASSERT (!ZOMBIES (A)) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
 
-    if (!PENDING (A))
+    if (!GB_PENDING (A))
     { 
         // nothing more to do; remove the matrix from the queue
-        ASSERT (!PENDING (A)) ;
+        ASSERT (!GB_PENDING (A)) ;
         GB_queue_remove (A) ;
         ASSERT (!(A->enqueued)) ;
 
@@ -135,7 +134,7 @@ GrB_Info GB_wait                // finish all pending computations
     }
 
     // There are pending tuples that will now be assembled.
-    ASSERT (PENDING (A)) ;
+    ASSERT (GB_PENDING (A)) ;
 
     //--------------------------------------------------------------------------
     // construct a new hypersparse matrix T with just the pending tuples
@@ -179,14 +178,14 @@ GrB_Info GB_wait                // finish all pending computations
     // remove the matrix from the queue
     //--------------------------------------------------------------------------
 
-    ASSERT (!PENDING (A)) ;
-    ASSERT (!ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (A)) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
     GB_queue_remove (A) ;
 
     // No pending operations on A, and A is not in the queue, so GB_check can
     // now see the conditions it expects.
     ASSERT (!(A->enqueued)) ;
-    ASSERT_OK (GB_check (A, "A after moving pending tuples to T", D0)) ;
+    ASSERT_OK (GB_check (A, "A after moving pending tuples to T", GB0)) ;
 
     //--------------------------------------------------------------------------
     // check the status of the builder
@@ -202,10 +201,10 @@ GrB_Info GB_wait                // finish all pending computations
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (T, "T = matrix of pending tuples", D0)) ;
-    ASSERT (!PENDING (T)) ;
-    ASSERT (!ZOMBIES (T)) ;
-    ASSERT (NNZ (T) > 0) ;
+    ASSERT_OK (GB_check (T, "T = matrix of pending tuples", GB0)) ;
+    ASSERT (!GB_PENDING (T)) ;
+    ASSERT (!GB_ZOMBIES (T)) ;
+    ASSERT (GB_NNZ (T) > 0) ;
     ASSERT (T->is_hyper) ;
     ASSERT (T->nvec == T->nvec_nonempty) ;
 
@@ -227,7 +226,7 @@ GrB_Info GB_wait                // finish all pending computations
     // make A->nzmax larger to accomodate future tuples, but only
     // allocate new space if the old A->nzmax is insufficient.
 
-    int64_t anz_new = anz + NNZ (T) ;  // must have at least this space
+    int64_t anz_new = anz + GB_NNZ (T) ;  // must have at least this space
 
     info = GB_ix_resize (A, anz_new) ;
     if (info != GrB_SUCCESS)
@@ -297,7 +296,7 @@ GrB_Info GB_wait                // finish all pending computations
         // reallocate A->p and A->h, if needed
         if (anvec_new > A->plen)
         {
-            if (GB_to_nonhyper_check (A, anvec_new, A->vdim))
+            if (GB_to_nonhyper_test (A, anvec_new, A->vdim))
             { 
                 // convert to non-hypersparse if anvec_new will become too large
                 info = GB_to_nonhyper (A) ;
@@ -307,13 +306,13 @@ GrB_Info GB_wait                // finish all pending computations
                 // increase the size of A->p and A->h.  The size must be at
                 // least anvec_new, but add some slack for future growth.
                 int64_t aplen_new = 2 * (anvec_new + 1) ;
-                aplen_new = IMIN (aplen_new, A->vdim) ;
+                aplen_new = GB_IMIN (aplen_new, A->vdim) ;
                 info = GB_hyper_realloc (A, aplen_new) ;
             }
             if (info != GrB_SUCCESS)
             { 
                 // out of memory; all content of A has been freed
-                ASSERT (A->magic == MAGIC2) ;
+                ASSERT (A->magic == GB_MAGIC2) ;
                 GB_MATRIX_FREE (&T) ;
                 return (info) ;
             }
@@ -322,8 +321,8 @@ GrB_Info GB_wait                // finish all pending computations
         }
     }
 
-    ASSERT_OK (GB_check (A, "A after increasing A->h", D0)) ;
-    ASSERT_OK (GB_check (T, "T to fold in", D0)) ;
+    ASSERT_OK (GB_check (A, "A after increasing A->h", GB0)) ;
+    ASSERT_OK (GB_check (T, "T to fold in", GB0)) ;
 
     //--------------------------------------------------------------------------
     // A = A + T ; in place by folding in the tuples in reverse order
@@ -338,7 +337,7 @@ GrB_Info GB_wait                // finish all pending computations
     // T is always hypersparse, even if A and T are typecasted GrB_Vector
     // objects.  A can be non-hypersparse or hypersparse.  If A is hypersparse
     // then this step does not take O(A->vdim) time.  It takes at most
-    // O(NNZ(Z)+NNZ(A)) time, regardless of the vector dimension of A and T,
+    // O(nnz(Z)+nnz(A)) time, regardless of the vector dimension of A and T,
     // A->vdim and T->vdim.
 
     bool A_is_hyper = A->is_hyper ;
@@ -464,7 +463,7 @@ GrB_Info GB_wait                // finish all pending computations
 
         // get the next free slot on the hyperlist stack
         ASSERT (ak < ak_dest) ;
-        ASSERT (IMPLIES (!A_is_hyper, ak_dest == ak+1)) ;
+        ASSERT (GB_IMPLIES (!A_is_hyper, ak_dest == ak+1)) ;
         --ak_dest ;
         ASSERT (ak <= ak_dest) ;
         ASSERT (ak_dest >= 0) ;
@@ -475,7 +474,7 @@ GrB_Info GB_wait                // finish all pending computations
             Ah [ak_dest] = j ;
         }
 
-        ASSERT (IMPLIES (!A_is_hyper, ak_dest == ak && j == ak)) ;
+        ASSERT (GB_IMPLIES (!A_is_hyper, ak_dest == ak && j == ak)) ;
         Ap [ak_dest+1] = pdest ;
 
         //----------------------------------------------------------------------
@@ -598,7 +597,7 @@ GrB_Info GB_wait                // finish all pending computations
     //--------------------------------------------------------------------------
 
     GB_MATRIX_FREE (&T) ;
-    ASSERT_OK (GB_check (A, "A after assembling pending tuples", D0)) ;
+    ASSERT_OK (GB_check (A, "A after assembling pending tuples", GB0)) ;
 
     // conform A to its desired hypersparsity
     return (GB_to_hyper_conform (A)) ;

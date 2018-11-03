@@ -154,8 +154,11 @@ for k = 1:nmat
             if (dothis (m))
                 try
                     if (gb)
-                        % use GraphBLAS
-                        [nt t] = GB_mex_tricount (kk-1, A, E, L, U) ;
+                        % use GraphBLAS (note that L and U are swapped since
+                        % L in row form is the same as U in column form.
+                        % The mexFunction interface to GraphBLAS passes in
+                        % the matrices in column form to tricount.
+                        [nt t] = GB_mex_tricount (kk-1, A, E, U, L) ;
                     else
                         % use MATLAB, unless the matrix fails
                         [nt t] = tricount (method, A, E) ;

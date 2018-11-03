@@ -18,7 +18,8 @@
 
 // FUTURE: an outer-product method for C=A*B'
 
-#define OK(method)                  \
+#undef GB_OK
+#define GB_OK(method)               \
     info = method ;                 \
     if (info != GrB_SUCCESS)        \
     {                               \
@@ -52,13 +53,13 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M_in, "M for meta A*B", D0)) ;
-    ASSERT_OK (GB_check (A_in, "A_in for meta A*B", D0)) ;
-    ASSERT_OK (GB_check (B_in, "B_in for meta A*B", D0)) ;
-    ASSERT (!PENDING (M_in)) ; ASSERT (!ZOMBIES (M_in)) ;
-    ASSERT (!PENDING (A_in)) ; ASSERT (!ZOMBIES (A_in)) ;
-    ASSERT (!PENDING (B_in)) ; ASSERT (!ZOMBIES (B_in)) ;
-    ASSERT_OK (GB_Semiring_check (semiring, "semiring for numeric A*B", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M_in, "M for meta A*B", GB0)) ;
+    ASSERT_OK (GB_check (A_in, "A_in for meta A*B", GB0)) ;
+    ASSERT_OK (GB_check (B_in, "B_in for meta A*B", GB0)) ;
+    ASSERT (!GB_PENDING (M_in)) ; ASSERT (!GB_ZOMBIES (M_in)) ;
+    ASSERT (!GB_PENDING (A_in)) ; ASSERT (!GB_ZOMBIES (A_in)) ;
+    ASSERT (!GB_PENDING (B_in)) ; ASSERT (!GB_ZOMBIES (B_in)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for numeric A*B", GB0)) ;
     ASSERT (mask_applied != NULL) ;
 
     (*Chandle) = NULL ;
@@ -157,7 +158,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     if (swap_rule)
     { 
         // Replace C'=A*B with C=B'*A', and so on.  Swap A and B and transose
-        // them, transpose M, flip the operator, and transpose M and C.
+        // them, transpose M, negate flipxy, and transpose M and C.
         A = B_in ; atrans = !B_transpose ;
         B = A_in ; btrans = !A_transpose ;
         flipxy = !flipxy ;
@@ -176,8 +177,8 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // C_transpose.
     ASSERT (!C_transpose) ;
 
-    ASSERT_OK (GB_check (A, "final A for A*B", D0)) ;
-    ASSERT_OK (GB_check (B, "final B for A*B", D0)) ;
+    ASSERT_OK (GB_check (A, "final A for A*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "final B for A*B", GB0)) ;
 
     //--------------------------------------------------------------------------
     // explicitly transpose the mask
@@ -189,7 +190,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     { 
         // MT = M_in' also typecasting to boolean.  It is not freed here
         // unless an error occurs, but is returned to the caller.
-        OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M_in, NULL)) ;
+        GB_OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M_in, NULL)) ;
         M = MT ;
     }
     else
@@ -198,7 +199,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         M = M_in ;
     }
 
-    ASSERT_OK_OR_NULL (GB_check (M, "final M for A*B", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "final M for A*B", GB0)) ;
 
     //--------------------------------------------------------------------------
     // typecast A and B when transposing them, if needed
@@ -233,7 +234,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         if (btrans)
         {
             // B = B'
-            OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
+            GB_OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
             B = BT ;
         }
 
@@ -275,9 +276,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                 // and/or B.
                 GrB_Index bnzmax, anzmax ;
                 bool A_is_dense = GB_Index_multiply (&anzmax, A->vlen, A->vdim)
-                                  && (anzmax == NNZ (A)) ;
+                                  && (anzmax == GB_NNZ (A)) ;
                 bool B_is_dense = GB_Index_multiply (&bnzmax, B->vlen, B->vdim)
-                                  && (bnzmax == NNZ (B)) ;
+                                  && (bnzmax == GB_NNZ (B)) ;
                 use_adotb = A_is_dense || B_is_dense ;
             }
         }
@@ -291,13 +292,13 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         { 
             // C<M> = A'*B via dot product method
             GB_thread_local.AxB_method = GxB_AxB_DOT ;
-            OK (GB_AxB_dot (Chandle, M, A, B, semiring, flipxy)) ;
+            GB_OK (GB_AxB_dot (Chandle, M, A, B, semiring, flipxy)) ;
         }
         else
         { 
             // C<M> = A'*B via saxpy: gather/scatter or heap method
-            OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
-            OK (GB_AxB_saxpy (Chandle, M, AT, B, semiring, flipxy,
+            GB_OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
+            GB_OK (GB_AxB_saxpy (Chandle, M, AT, B, semiring, flipxy,
                 AxB_method)) ;
         }
 
@@ -313,15 +314,15 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         { 
             // C<M> = A*B' via dot product
             GB_thread_local.AxB_method = GxB_AxB_DOT ;
-            OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
-            OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
-            OK (GB_AxB_dot (Chandle, M, AT, BT, semiring, flipxy)) ;
+            GB_OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
+            GB_OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
+            GB_OK (GB_AxB_dot (Chandle, M, AT, BT, semiring, flipxy)) ;
         }
         else
         { 
             // C<M> = A*B' via saxpy: gather/scatter or heap method
-            OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
-            OK (GB_AxB_saxpy (Chandle, M, A, BT, semiring, flipxy,
+            GB_OK (GB_transpose (&BT, btype_required, true, B, NULL)) ;
+            GB_OK (GB_AxB_saxpy (Chandle, M, A, BT, semiring, flipxy,
                 AxB_method)) ;
         }
 
@@ -337,13 +338,13 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         { 
             // C<M> = A*B via dot product
             GB_thread_local.AxB_method = GxB_AxB_DOT ;
-            OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
-            OK (GB_AxB_dot (Chandle, M, AT, B, semiring, flipxy)) ;
+            GB_OK (GB_transpose (&AT, atype_required, true, A, NULL)) ;
+            GB_OK (GB_AxB_dot (Chandle, M, AT, B, semiring, flipxy)) ;
         }
         else
         { 
             // C<M> = A*B via saxpy: gather/scatter or heap method
-            OK (GB_AxB_saxpy (Chandle, M, A, B, semiring, flipxy,
+            GB_OK (GB_AxB_saxpy (Chandle, M, A, B, semiring, flipxy,
                 AxB_method)) ;
         }
     }
@@ -352,7 +353,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // handle C_transpose and assign the CSR/CSC format
     //--------------------------------------------------------------------------
 
-    // If C_transpose is true, then C' has been computed.  In this case, flip
+    // If C_transpose is true, then C' has been computed.  In this case, negate
     // the desired C_is_csc so that GB_accum_mask transposes the result before
     // applying the accum operator and/or writing the result back to the user's
     // C.  If swap_rule == C_transpose, then C_transpose is always false here,
@@ -369,8 +370,8 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     GB_MATRIX_FREE (&AT) ;
     GB_MATRIX_FREE (&BT) ;
-    ASSERT_OK (GB_check (C, "C output for all C=A*B", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (MT, "MT if computed", D0)) ;
+    ASSERT_OK (GB_check (C, "C output for all C=A*B", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (MT, "MT if computed", GB0)) ;
 
     (*mask_applied) = (M != NULL) ;
     if (MT_handle != NULL)
@@ -384,6 +385,6 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         GB_MATRIX_FREE (&MT) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

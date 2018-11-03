@@ -20,16 +20,16 @@ GrB_Info GxB_Monoid_operator        // return the monoid operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Monoid_operator (&op, monoid)") ;
-    RETURN_IF_NULL (op) ;
-    RETURN_IF_NULL_OR_FAULTY (monoid) ;
-    ASSERT_OK (GB_check (monoid, "monoid for op", D0)) ;
+    GB_WHERE ("GxB_Monoid_operator (&op, monoid)") ;
+    GB_RETURN_IF_NULL (op) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
+    ASSERT_OK (GB_check (monoid, "monoid for op", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the ztype
     //--------------------------------------------------------------------------
 
     (*op) = monoid->op ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

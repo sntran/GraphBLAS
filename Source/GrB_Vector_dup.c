@@ -22,10 +22,10 @@ GrB_Info GrB_Vector_dup     // make an exact copy of a vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Vector_dup (&w, u)") ;
-    RETURN_IF_NULL (w) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
-    ASSERT (VECTOR_OK (u)) ;
+    GB_WHERE ("GrB_Vector_dup (&w, u)") ;
+    GB_RETURN_IF_NULL (w) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     //--------------------------------------------------------------------------
     // duplicate the vector

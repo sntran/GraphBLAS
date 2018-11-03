@@ -21,7 +21,7 @@ void mexFunction
 {
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargin != 2 || nargout != 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

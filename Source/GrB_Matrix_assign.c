@@ -27,15 +27,15 @@ GrB_Info GrB_Matrix_assign          // C<Mask>(Rows,Cols) += A or A'
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_assign"
+    GB_WHERE ("GrB_Matrix_assign"
         " (C, Mask, accum, A, Rows, nRows, Cols, nCols, desc)") ;
 
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (Mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     //--------------------------------------------------------------------------
     // C<Mask>(Rows,Cols) = accum (C(Rows,Cols), A) and variations

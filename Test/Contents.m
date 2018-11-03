@@ -149,6 +149,10 @@
 %   test87   - performance test of GrB_mxm
 %   test88   - test hypersparse matrices with heap-based method
 %   test89   - performance test of complex A*B
+%   test90   - test AxB with pre-compiled semirings: plus_rdiv and plus_rdiv2
+%   test91   - test subref performance on dense vectors
+%   test92   - test GB_subref_symbolic
+%   test93   - test dpagerank and ipagerank
 %   test97   - test GB_assign, scalar expansion and zombies
 %   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask
@@ -176,6 +180,7 @@
 %   runtest    - run a single GraphBLAS test
 %   stat       - report status of statement coverage and malloc debugging
 %   GB_define  - create C source code for GraphBLAS.h
+%   GB_define2 - construct part of the GB.h file, to allow user-defined objects
 %   gbresults  - return time taken by last GraphBLAS function, and AxB method
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
 %   startup    - setup the path for tests in GraphBLAS/Test

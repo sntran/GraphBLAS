@@ -35,17 +35,17 @@ GrB_Info GB_mxm                     // C<M> = A*B
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK3 (C, M, A, B)) ;
+    ASSERT (GB_ALIAS_OK3 (C, M, A, B)) ;
 
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_mxm", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_mxm", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_mxm", D0)) ;
-    ASSERT_OK (GB_check (semiring, "semiring for GB_mxm", D0)) ;
-    ASSERT_OK (GB_check (A, "A for GB_mxm", D0)) ;
-    ASSERT_OK (GB_check (B, "B for GB_mxm", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_mxm", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_mxm", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_mxm", GB0)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for GB_mxm", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for GB_mxm", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for GB_mxm", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type T_type = semiring->add->op->ztype ;
@@ -55,7 +55,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
         return (info) ;
     }
 
-    // T=A*B via semiring, so A and B must be compatible with semiring->mult
+    // T=A*B via semiring: A and B must be compatible with semiring->multiply
     if (flipxy)
     { 
         // z=fmult(b,a), for entries a from A, and b from B
@@ -74,30 +74,30 @@ GrB_Info GB_mxm                     // C<M> = A*B
     }
 
     // check the dimensions
-    int64_t anrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t ancols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
-    int64_t bnrows = (B_transpose) ? NCOLS (B) : NROWS (B) ;
-    int64_t bncols = (B_transpose) ? NROWS (B) : NCOLS (B) ;
-    if (ancols != bnrows || NROWS (C) != anrows || NCOLS (C) != bncols)
+    int64_t anrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t ancols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    int64_t bnrows = (B_transpose) ? GB_NCOLS (B) : GB_NROWS (B) ;
+    int64_t bncols = (B_transpose) ? GB_NROWS (B) : GB_NCOLS (B) ;
+    if (ancols != bnrows || GB_NROWS (C) != anrows || GB_NCOLS (C) != bncols)
     {
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "output is "GBd"-by-"GBd"\n"
             "first input is "GBd"-by-"GBd"%s\n"
             "second input is "GBd"-by-"GBd"%s",
-            NROWS (C), NCOLS (C),
+            GB_NROWS (C), GB_NCOLS (C),
             anrows, ancols, A_transpose ? " (transposed)" : "",
             bnrows, bncols, B_transpose ? " (transposed)" : ""))) ;
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
-    WAIT (B) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
+    GB_WAIT (B) ;
 
     //--------------------------------------------------------------------------
     // T = A*B, A'*B, A*B', or A'*B', also using the mask to cut time and memory
@@ -118,10 +118,10 @@ GrB_Info GB_mxm                     // C<M> = A*B
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (T, "T=A*B from GB_AxB_meta", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (MT, "MT from GB_AxB_meta", D0)) ;
-    ASSERT (!ZOMBIES (T)) ;
-    ASSERT (!PENDING (T)) ;
+    ASSERT_OK (GB_check (T, "T=A*B from GB_AxB_meta", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (MT, "MT from GB_AxB_meta", GB0)) ;
+    ASSERT (!GB_ZOMBIES (T)) ;
+    ASSERT (!GB_PENDING (T)) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask
@@ -129,7 +129,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
 
     if ((accum == NULL) && (C->is_csc == T->is_csc)
         && (M == NULL || (M != NULL && mask_applied))
-        && (C_replace || NNZ (C) == 0))
+        && (C_replace || GB_NNZ (C) == 0))
     { 
         // C = 0 ; C = (ctype) T ; with the same CSR/CSC format.
         // The mask M (if any) has already been applied in GB_AxB_meta.

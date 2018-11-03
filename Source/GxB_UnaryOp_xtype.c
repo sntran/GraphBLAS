@@ -20,16 +20,16 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_UnaryOp_xtype (&xtype, unaryop)") ;
-    RETURN_IF_NULL (xtype) ;
-    RETURN_IF_NULL_OR_FAULTY (unaryop) ;
-    ASSERT_OK (GB_check (unaryop, "unaryop for xtype", D0)) ;
+    GB_WHERE ("GxB_UnaryOp_xtype (&xtype, unaryop)") ;
+    GB_RETURN_IF_NULL (xtype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (unaryop) ;
+    ASSERT_OK (GB_check (unaryop, "unaryop for xtype", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the xtype
     //--------------------------------------------------------------------------
 
     (*xtype) = unaryop->xtype ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

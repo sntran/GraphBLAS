@@ -25,10 +25,10 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_kron (C, Mask, accum, op, A, B, desc)") ;
+    GB_WHERE ("GxB_kron (C, Mask, accum, op, A, B, desc)") ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ;
 
     //--------------------------------------------------------------------------
     // C = kron(A,B)

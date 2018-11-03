@@ -25,8 +25,8 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 
     ASSERT (C != NULL) ;
     ASSERT (Thandle != NULL) ;
-    ASSERT_OK (GB_check (*Thandle, "T to transplant into C", D0)) ;
-    ASSERT_OK (GB_check (ctype, "ctype for transplant into C", D0)) ;
+    ASSERT_OK (GB_check (*Thandle, "T to transplant into C", GB0)) ;
+    ASSERT_OK (GB_check (ctype, "ctype for transplant into C", GB0)) ;
 
     //--------------------------------------------------------------------------
     // transplant and typecast T into C, and free T
@@ -43,7 +43,7 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (C, "C transplanted", D0)) ;
+    ASSERT_OK (GB_check (C, "C transplanted", GB0)) ;
 
     //--------------------------------------------------------------------------
     // conform C to its desired hypersparsity

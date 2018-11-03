@@ -30,15 +30,15 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     ASSERT (Cx != NULL) ;
     ASSERT (Ax != NULL) ;
     ASSERT (anz >= 0) ;
-    ASSERT_OK (GB_check (atype, "atype for GB_apply_op", D0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_apply_op", D0)) ;
+    ASSERT_OK (GB_check (atype, "atype for GB_apply_op", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for GB_apply_op", GB0)) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
 
     // For built-in types only, thus xtype == ztype, but atype can differ
-    #define WORKER(ztype,atype)                                 \
+    #define GB_WORKER(ztype,atype)                              \
     {                                                           \
         ztype *cx = (ztype *) Cx ;                              \
         atype *ax = (atype *) Ax ;                              \
@@ -46,9 +46,9 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
         {                                                       \
             /* x = (ztype) ax [p], type casting */              \
             ztype x ;                                           \
-            CAST (x, ax [p]) ;                                  \
+            GB_CAST (x, ax [p]) ;                               \
             /* apply the unary operator */                      \
-            cx [p] = OP (x) ;                                   \
+            cx [p] = GB_OP (x) ;                                \
         }                                                       \
         return ;                                                \
     }
@@ -70,17 +70,17 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
         ASSERT (code1 <= GB_UDT_code) ;
         ASSERT (code2 <= GB_UDT_code) ;
 
-        // BOP(x) is for boolean x, IOP(x) for integer (int* and uint*),
-        // and FOP(x) is for floating-point
+        // GB_BOP(x) is for boolean x, GB_IOP(x) for integer (int* and uint*),
+        // and GB_FOP(x) is for floating-point
 
         switch (op->opcode)
         {
 
             case GB_ONE_opcode :       // z = 1
 
-                #define BOP(x) true
-                #define IOP(x) 1
-                #define FOP(x) 1
+                #define GB_BOP(x) true
+                #define GB_IOP(x) 1
+                #define GB_FOP(x) 1
                 #include "GB_2type_template.c"
 
             case GB_IDENTITY_opcode :  // z = x
@@ -88,47 +88,45 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 // Do not create workers when the two codes are the same,
                 // C is a pure shallow copy of A, and the function has already
                 // returned the result C.
-                #define NSAME
-                #define BOP(x) x
-                #define IOP(x) x
-                #define FOP(x) x
+                #define GB_NOT_SAME
+                #define GB_BOP(x) x
+                #define GB_IOP(x) x
+                #define GB_FOP(x) x
                 #include "GB_2type_template.c"
 
             case GB_AINV_opcode :      // z = -x
 
-                #define BOP(x)  x
-                #define IOP(x) -x
-                #define FOP(x) -x
+                #define GB_BOP(x)  x
+                #define GB_IOP(x) -x
+                #define GB_FOP(x) -x
                 #include "GB_2type_template.c"
 
             case GB_ABS_opcode :       // z = abs(x)
 
-                #define BOP(x)  x
-                #define IOP(x)  IABS(x)
-                #define FOP(x)  FABS(x)
+                #define GB_BOP(x)  x
+                #define GB_IOP(x)  GB_IABS(x)
+                #define GB_FOP(x)  GB_FABS(x)
                 #include "GB_2type_template.c"
 
             case GB_MINV_opcode :      // z = 1/x
 
                 // see Source/GB.h discussion on boolean and integer division
-                #define BOP(x) true
-                #define IOP(x) IMINV(x)
-                #define FOP(x) 1./x
+                #define GB_BOP(x) true
+                #define GB_IOP(x) GB_IMINV(x)
+                #define GB_FOP(x) 1./x
                 #include "GB_2type_template.c"
 
             case GB_LNOT_opcode :      // z = ! (x != 0)
 
-                #define BOP(x) !x
-                #define IOP(x) (!(x != 0))
-                #define FOP(x) (!(x != 0))
+                #define GB_BOP(x) !x
+                #define GB_IOP(x) (!(x != 0))
+                #define GB_FOP(x) (!(x != 0))
                 #include "GB_2type_template.c"
 
             default: ;
         }
 
     #endif
-
-    #undef WORKER
 
     // If the switch factory has no worker for the opcode or type, then it
     // falls through to the generic worker below.

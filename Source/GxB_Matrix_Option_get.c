@@ -21,9 +21,9 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Matrix_Option_get (A, field, &value)") ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-    ASSERT_OK (GB_check (A, "A to get option", D0)) ;
+    GB_WHERE ("GxB_Matrix_Option_get (A, field, &value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT_OK (GB_check (A, "A to get option", GB0)) ;
 
     //--------------------------------------------------------------------------
     // get the option
@@ -46,7 +46,7 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
             hyper_ratio = va_arg (ap, double *) ;
             va_end (ap) ;
 
-            RETURN_IF_NULL (hyper_ratio) ;
+            GB_RETURN_IF_NULL (hyper_ratio) ;
             (*hyper_ratio) = hyper ;
             break ;
 
@@ -56,17 +56,17 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
             format = va_arg (ap, GxB_Format_Value *) ;
             va_end (ap) ;
 
-            RETURN_IF_NULL (format) ;
+            GB_RETURN_IF_NULL (format) ;
             (*format) = (is_csc) ? GxB_BY_COL : GxB_BY_ROW ;
             break ;
 
         default : 
 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
                     field, GxB_HYPER, GxB_FORMAT))) ;
 
     }
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }

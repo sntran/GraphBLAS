@@ -35,7 +35,7 @@ void mexFunction
     bool ignore ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 2 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

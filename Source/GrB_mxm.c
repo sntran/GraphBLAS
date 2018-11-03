@@ -32,16 +32,15 @@ GrB_Info GrB_mxm                    // C<Mask> = accum (C, A*B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_mxm (C, Mask, accum, semiring, A, B, desc)") ;
-
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (Mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-    RETURN_IF_NULL_OR_FAULTY (B) ;
+    GB_WHERE ("GrB_mxm (C, Mask, accum, semiring, A, B, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (B) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, B_transpose,
-        AxB_method) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose,
+        B_transpose, AxB_method) ;
 
     //--------------------------------------------------------------------------
     // C<Mask> = accum (C,A*B) and variations, using the mxm kernel

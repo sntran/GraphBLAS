@@ -7,16 +7,16 @@
 
 //------------------------------------------------------------------------------
 
-// A wrapper for MALLOC.  Space is not initialized.
+// A wrapper for malloc.  Space is not initialized.
 
 // Parameters are the same as the POSIX malloc, except that asking to allocate
 // a block of zero size causes a block of size 1 to be allocated instead.  This
 // allows the return pointer p to be checked for the out-of-memory condition,
 // even when allocating an object of size zero.
 
-// By default, MALLOC is defined in GB.h as malloc.  For a MATLAB mexFunction,
-// it is mxMalloc.  It can also be defined at compile time with
-// -DMALLOC=mymallocfunc.
+// By default, GB_MALLOC is defined in GB.h as malloc.  For a MATLAB
+// mexFunction, it is mxMalloc.  It can also be defined at compile time with
+// -DGB_MALLOC=mymallocfunc.
 
 #include "GB.h"
 
@@ -32,10 +32,10 @@ void *GB_malloc_memory      // pointer to allocated block of memory
     int nmalloc ;
 
     // make sure at least one item is allocated
-    nitems = IMAX (1, nitems) ;
+    nitems = GB_IMAX (1, nitems) ;
 
     // make sure at least one byte is allocated
-    size_of_item = IMAX (1, size_of_item) ;
+    size_of_item = GB_IMAX (1, size_of_item) ;
 
     bool ok = GB_size_t_multiply (&size, nitems, size_of_item) ;
     if (!ok || nitems > GB_INDEX_MAX || size_of_item > GB_INDEX_MAX)
@@ -61,14 +61,14 @@ void *GB_malloc_memory      // pointer to allocated block of memory
 
         if (pretend_to_fail)
         {
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
             printf ("pretend to fail\n") ;
 #endif
             p = NULL ;
         }
         else
         {
-            p = (void *) MALLOC (size) ;
+            p = (void *) GB_MALLOC (size) ;
         }
 
         if (p != NULL)
@@ -78,10 +78,11 @@ void *GB_malloc_memory      // pointer to allocated block of memory
             {
                 nmalloc = ++GB_Global.nmalloc ;
                 GB_Global.inuse += nitems * size_of_item ;
-                GB_Global.maxused = IMAX (GB_Global.maxused, GB_Global.inuse) ;
+                GB_Global.maxused =
+                    GB_IMAX (GB_Global.maxused, GB_Global.inuse) ;
             }
 
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
             printf ("malloc:  %14p %3d %1d n "GBd" size "GBd"\n",
                 p, nmalloc, GB_Global.malloc_debug,
                 (int64_t) nitems, (int64_t) size_of_item) ;

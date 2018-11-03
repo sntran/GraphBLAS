@@ -1,4 +1,6 @@
 
+
+
 //------------------------------------------------------------------------------
 // GB_AxB:  hard-coded C=A*B and C<M>=A*B
 //------------------------------------------------------------------------------
@@ -6,8 +8,8 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-// If this filename has a double underscore in its name ("__") then it has
-// been automatically constructed from Generator/GB*AxB.[ch], via the axb*.m
+// If this filename has a double underscore in its name ("__") then it has been
+// automatically constructed from Generator/GB_AxB.c, via the Source/axb*.m
 // scripts, and should not be editted.  Edit the original source file instead.
 
 //------------------------------------------------------------------------------
@@ -22,46 +24,60 @@
 // A*B function (Gustavon):  GB_AgusB__lxor_gt_uint16
 // A'*B function (dot):      GB_AdotB__lxor_gt_uint16
 // A*B function (heap):      GB_AheapB__lxor_gt_uint16
-// Z type :  bool (the type of C)
-// XY type:  uint16_t (the type of A and B)
-// Identity: false (where cij = (cij != false) does not change cij)
-// Multiply: t = (aik >  bkj)
-// Add:      cij = (cij != t)
+// Z type:   bool (the type of C)
+// X type:   uint16_t (the type of x for z=mult(x,y))
+// Y type:   uint16_t (the type of y for z=mult(x,y))
+// handle flipxy: 0 (0 if mult(x,y) is commutative, 1 otherwise)
+// Identity: false (where cij = (cij != identity) does not change cij)
+// Multiply: z = x > y
+// Add:      cij = (cij != z)
+
+#define GB_XTYPE \
+    uint16_t
+#define GB_YTYPE \
+    uint16_t
+#define GB_HANDLE_FLIPXY \
+    0
+
+#define GB_MULTOP(z,x,y) \
+    z = x > y
 
 //------------------------------------------------------------------------------
 // C<M>=A*B and C=A*B: gather/scatter saxpy-based method (Gustavson)
 //------------------------------------------------------------------------------
 
-#define IDENTITY \
+#define GB_IDENTITY \
     false
 
 // x [i] = y
-#define COPY_SCALAR_TO_ARRAY(x,i,y,s)                   \
+#define GB_COPY_SCALAR_TO_ARRAY(x,i,y,s)                \
     x [i] = y ;
 
 // x = y [i]
-#define COPY_ARRAY_TO_SCALAR(x,y,i,s)                   \
-    uint16_t x = y [i] ;
+#define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)                \
+    GB_btype x = y [i] ;
 
 // x [i] = y [i]
-#define COPY_ARRAY_TO_ARRAY(x,i,y,j,s)                  \
+#define GB_COPY_ARRAY_TO_ARRAY(x,i,y,j,s)               \
     x [i] = y [j] ;
 
-// multiply-add operation (no mask)
-#define MULTADD_NOMASK                                  \
+// mult-add operation (no mask)
+#define GB_MULTADD_NOMASK                               \
 {                                                       \
     /* w [i] += A(i,k) * B(k,j) */                      \
-    uint16_t aik = Ax [pA] ;                              \
-    bool t = aik >  bkj ;                          \
-    w [i] = (w [i] != t) ;                                     \
+    GB_atype aik = Ax [pA] ;                            \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aik, bkj) ;                         \
+    w [i] = (w [i] != t) ;                                  \
 }
 
-// multiply-add operation (with mask)
-#define MULTADD_WITH_MASK                               \
+// mult-add operation (with mask)
+#define GB_MULTADD_WITH_MASK                            \
 {                                                       \
     /* w [i] += A(i,k) * B(k,j) */                      \
-    uint16_t aik = Ax [pA] ;                              \
-    bool t = aik >  bkj ;                          \
+    GB_atype aik = Ax [pA] ;                            \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aik, bkj) ;                         \
     if (flag > 0)                                       \
     {                                                   \
         /* first time C(i,j) seen */                    \
@@ -71,7 +87,7 @@
     else                                                \
     {                                                   \
         /* C(i,j) seen before, update it */             \
-        w [i] = (w [i] != t) ;                                 \
+        w [i] = (w [i] != t) ;                              \
     }                                                   \
 }
 
@@ -81,18 +97,15 @@ GrB_Info GB_AgusB__lxor_gt_uint16
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip                   // if true, A and B have been swapped
+    bool flipxy                   // if true, A and B have been swapped
 )
 { 
 
     bool *restrict w = GB_thread_local.Work ;  // size C->vlen * zsize
     bool *restrict Cx = C->x ;
-    const uint16_t *restrict Ax = A->x ;
-    const uint16_t *restrict Bx = B->x ;
-
     GrB_Info info = GrB_SUCCESS ;
 
-    #include "GB_AxB_Gustavson_meta.c"
+    #include "GB_AxB_Gustavson_flipxy.c"
 
     return (info) ;
 }
@@ -102,43 +115,44 @@ GrB_Info GB_AgusB__lxor_gt_uint16
 //------------------------------------------------------------------------------
 
 // get A(k,i)
-#define DOT_GETA(pA)                                    \
-    uint16_t aki = Ax [pA] ;
+#define GB_DOT_GETA(pA)                                 \
+    GB_atype aki = Ax [pA] ;
 
 // get B(k,j)
-#define DOT_GETB(pB)                                    \
-    uint16_t bkj = Bx [pB] ;
+#define GB_DOT_GETB(pB)                                 \
+    GB_btype bkj = Bx [pB] ;
 
-// multiply aki*bkj, reversing them if flip is true
-#define DOT_MULT(bkj)                                   \
-    bool t = aki >  bkj ;
+// t = aki*bkj
+#define GB_DOT_MULT(bkj)                                \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aki, bkj) ;
 
 // cij += t
-#define DOT_ADD                                         \
+#define GB_DOT_ADD                                      \
     cij = (cij != t) ;
 
 // cij = t
-#define DOT_COPY                                        \
+#define GB_DOT_COPY                                     \
     cij = t ;
 
 // cij is not a pointer but a scalar; nothing to do
-#define DOT_REACQUIRE ;
+#define GB_DOT_REACQUIRE ;
 
 // clear cij
-#define DOT_CLEAR                                       \
+#define GB_DOT_CLEAR                                    \
     cij = false ;
 
 // save the value of C(i,j)
-#define DOT_SAVE                                        \
+#define GB_DOT_SAVE                                     \
     Cx [cnz] = cij ;
 
-#define DOT_WORK_TYPE \
-    uint16_t
+#define GB_DOT_WORK_TYPE \
+    GB_btype
 
-#define DOT_WORK(k) Work [k]
+#define GB_DOT_WORK(k) Work [k]
 
 // Work [k] = Bx [pB]
-#define DOT_SCATTER \
+#define GB_DOT_SCATTER \
     Work [k] = Bx [pB] ;
 
 GrB_Info GB_AdotB__lxor_gt_uint16
@@ -147,20 +161,17 @@ GrB_Info GB_AdotB__lxor_gt_uint16
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip                   // if true, A and B have been swapped
+    bool flipxy                   // if true, A and B have been swapped
 )
 { 
 
     GrB_Matrix C = (*Chandle) ;
     bool *restrict Cx = C->x ;
-    const uint16_t *restrict Ax = A->x ;
-    const uint16_t *restrict Bx = B->x ;
     bool cij ;
-    size_t bkj_size = sizeof (uint16_t) ;
-
     GrB_Info info = GrB_SUCCESS ;
+    size_t bkj_size = B->type->size ;       // no typecasting here
 
-    #include "GB_AxB_dot_meta.c"
+    #include "GB_AxB_dot_flipxy.c"
 
     return (info) ;
 }
@@ -169,34 +180,35 @@ GrB_Info GB_AdotB__lxor_gt_uint16
 // C<M>=A*B and C=A*B: heap saxpy-based method
 //------------------------------------------------------------------------------
 
-#define CIJ_GETB(pB)                                   \
-    uint16_t bkj = Bx [pB] ;
+#define GB_CIJ_GETB(pB)                                \
+    GB_btype bkj = Bx [pB] ;
 
 // C(i,j) = A(i,k) * bkj
-#define CIJ_MULT(pA)                                   \
+#define GB_CIJ_MULT(pA)                                \
 {                                                      \
-    uint16_t aik = Ax [pA] ;                             \
-    cij = aik >  bkj ;                             \
+    GB_atype aik = Ax [pA] ;                           \
+    GB_MULTIPLY (cij, aik, bkj) ;                      \
 }
 
 // C(i,j) += A(i,k) * B(k,j)
-#define CIJ_MULTADD(pA,pB)                             \
+#define GB_CIJ_MULTADD(pA,pB)                          \
 {                                                      \
-    uint16_t aik = Ax [pA] ;                             \
-    uint16_t bkj = Bx [pB] ;                             \
-    bool t = aik >  bkj ;                         \
-    cij = (cij != t) ;                                      \
+    GB_atype aik = Ax [pA] ;                           \
+    GB_btype bkj = Bx [pB] ;                           \
+    bool t ;                                       \
+    GB_MULTIPLY (t, aik, bkj) ;                        \
+    cij = (cij != t) ;                                   \
 }
 
 // cij is not a pointer but a scalar; nothing to do
-#define CIJ_REACQUIRE ;
+#define GB_CIJ_REACQUIRE ;
 
-// cij = false
-#define CIJ_CLEAR                                      \
+// cij = identity
+#define GB_CIJ_CLEAR                                   \
     cij = false ;
 
 // save the value of C(i,j)
-#define CIJ_SAVE                                       \
+#define GB_CIJ_SAVE                                    \
     Cx [cnz] = cij ;
 
 GrB_Info GB_AheapB__lxor_gt_uint16
@@ -205,27 +217,57 @@ GrB_Info GB_AheapB__lxor_gt_uint16
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip,                  // if true, A and B have been swapped
+    bool flipxy,                  // if true, A and B have been swapped
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
-    Element *restrict Heap,
+    GB_Element *restrict Heap,
     const int64_t bjnz_max
 )
 { 
 
     GrB_Matrix C = (*Chandle) ;
     bool *restrict Cx = C->x ;
-    const uint16_t *restrict Ax = A->x ;
-    const uint16_t *restrict Bx = B->x ;
     bool cij ;
     int64_t cvlen = C->vlen ;
-
     GrB_Info info = GrB_SUCCESS ;
 
-    #include "GB_AxB_heap_meta.c"
+    #include "GB_AxB_heap_flipxy.c"
 
     return (info) ;
 }
+
+//------------------------------------------------------------------------------
+// clear macro definitions
+//------------------------------------------------------------------------------
+
+#undef GB_XTYPE
+#undef GB_YTYPE
+#undef GB_HANDLE_FLIPXY
+#undef GB_MULTOP
+#undef GB_IDENTITY
+#undef GB_COPY_SCALAR_TO_ARRAY
+#undef GB_COPY_ARRAY_TO_SCALAR
+#undef GB_COPY_ARRAY_TO_ARRAY
+#undef GB_MULTADD_NOMASK
+#undef GB_MULTADD_WITH_MASK
+#undef GB_DOT_GETA
+#undef GB_DOT_GETB
+#undef GB_DOT_MULT
+#undef GB_DOT_ADD
+#undef GB_DOT_COPY
+#undef GB_DOT_REACQUIRE
+#undef GB_DOT_CLEAR
+#undef GB_DOT_SAVE
+#undef GB_DOT_WORK_TYPE
+#undef GB_DOT_WORK
+#undef GB_DOT_SCATTER
+#undef GB_CIJ_GETB
+#undef GB_CIJ_MULT
+#undef GB_CIJ_MULTADD
+#undef GB_CIJ_REACQUIRE
+#undef GB_CIJ_CLEAR
+#undef GB_CIJ_SAVE
+#undef GB_MULTIPLY
 
 #endif
 

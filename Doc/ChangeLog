@@ -1,3 +1,13 @@
+Version 2.2.0 (BETA1), Nov 2, 2018
+
+    * added GxB_*_define: to create user-defined objects at compile-time.
+        All internal macros renamed to add the GB_ prefix, to help avoid
+        name conflict with possible user-defined objects and macros.
+    * changed default format to GxB_BY_ROW
+    * performance improvements to GrB*assign* and GrB*extract
+    * added PageRank demos
+    * added GxB_*print: to display all GraphBLAS objects
+
 Version 2.1.0, Oct 14, 2018
 
     * identical to V2.1.0 BETA2: except for a minor update to the user guide,

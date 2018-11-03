@@ -24,17 +24,17 @@ GrB_Info GrB_Vector_apply           // w<mask> = accum (w, op(u))
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Vector_apply (w, mask, accum, op, u, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
+    GB_WHERE ("GrB_Vector_apply (w, mask, accum, op, u, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
-    ASSERT (VECTOR_OK (u)) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // apply the operator; do not transpose

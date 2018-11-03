@@ -38,7 +38,7 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     if (nzmax > GB_INDEX_MAX)
     { 
         // problem too large
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -50,7 +50,7 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     GB_ix_free (A) ;
 
     // allocate the new A->x and A->i content
-    A->nzmax = IMAX (nzmax, 1) ;
+    A->nzmax = GB_IMAX (nzmax, 1) ;
     GB_MALLOC_MEMORY (A->i, A->nzmax, sizeof (int64_t)) ;
     if (numeric)
     { 
@@ -61,9 +61,9 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     { 
         // out of memory
         GB_ix_free (A) ;
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

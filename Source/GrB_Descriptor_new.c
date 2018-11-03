@@ -21,8 +21,8 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Descriptor_new (&descriptor)") ;
-    RETURN_IF_NULL (descriptor) ;
+    GB_WHERE ("GrB_Descriptor_new (&descriptor)") ;
+    GB_RETURN_IF_NULL (descriptor) ;
     (*descriptor) = NULL ;
 
     //--------------------------------------------------------------------------
@@ -33,17 +33,17 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     GB_CALLOC_MEMORY (*descriptor, 1, sizeof (struct GB_Descriptor_opaque)) ;
     if (*descriptor == NULL)
     { 
-        return (NO_MEMORY) ;
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the descriptor
     GrB_Descriptor desc = *descriptor ;
-    desc->magic = MAGIC ;
+    desc->magic = GB_MAGIC ;
     desc->out  = GxB_DEFAULT ;     // descriptor for output
     desc->mask = GxB_DEFAULT ;     // descriptor for the mask input
     desc->in0  = GxB_DEFAULT ;     // descriptor for the first input
     desc->in1  = GxB_DEFAULT ;     // descriptor for the second input
     desc->axb  = GxB_DEFAULT ;     // descriptor for C=A*B
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

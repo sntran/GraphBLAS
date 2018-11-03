@@ -21,7 +21,8 @@ bool GB_code_compatible         // check if two types can be typecast
 )
 {
 
-    if (acode == GB_UDT_code || bcode == GB_UDT_code)
+    if (acode == GB_UDT_code || bcode == GB_UDT_code ||
+        acode == GB_UCT_code || bcode == GB_UCT_code)
     { 
         // both a and b must be user-defined.  They should be the same
         // user-defined type, but the caller does not have the actual type,

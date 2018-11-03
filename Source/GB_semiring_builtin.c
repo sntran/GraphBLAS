@@ -33,7 +33,7 @@ bool GB_semiring_builtin            // true if semiring is builtin
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK (A, B)) ;
+    ASSERT (GB_ALIAS_OK (A, B)) ;
 
     GrB_BinaryOp add  = semiring->add->op ;     // add operator
     GrB_BinaryOp mult = semiring->multiply ;    // multiply operator
@@ -56,8 +56,8 @@ bool GB_semiring_builtin            // true if semiring is builtin
     // punt to the generic C=A*B:
     if ((A->type != (flipxy ? mult->ytype : mult->xtype)) ||
         (B->type != (flipxy ? mult->xtype : mult->ytype)) ||
-        (A->type != B->type) || (A->type->code == GB_UDT_code)
-       || (*add_opcode == GB_USER_opcode) || (*mult_opcode == GB_USER_opcode))
+        (A->type != B->type) || (A->type->code >= GB_UCT_code) ||
+        (*add_opcode >= GB_USER_C_opcode) || (*mult_opcode >= GB_USER_C_opcode))
     { 
         return (false) ;
     }
@@ -107,7 +107,7 @@ bool GB_semiring_builtin            // true if semiring is builtin
     ASSERT ((*zcode) == GB_BOOL_code || (*zcode) == (*xycode)) ;
 
     //--------------------------------------------------------------------------
-    // handle the flip
+    // handle the flipxy
     //--------------------------------------------------------------------------
 
     // If flipxy is true, the matrices A and B have been flipped (A passed as B

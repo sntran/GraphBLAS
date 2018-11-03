@@ -34,7 +34,7 @@ void mexFunction
     GrB_Vector iset ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

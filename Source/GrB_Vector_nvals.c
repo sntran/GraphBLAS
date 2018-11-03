@@ -20,9 +20,9 @@ GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Vector_nvals (&nvals, v)") ;
-    RETURN_IF_NULL_OR_FAULTY (v) ;
-    ASSERT (VECTOR_OK (v)) ;
+    GB_WHERE ("GrB_Vector_nvals (&nvals, v)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;
+    ASSERT (GB_VECTOR_OK (v)) ;
 
     // do not check if nvals is NULL; pending updates must be applied first, in
     // GB_nvals, per Table 2.4 in the spec

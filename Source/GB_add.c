@@ -66,11 +66,11 @@ GrB_Info GB_add             // C = A+B
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for C=A+B", D0)) ;
-    ASSERT_OK (GB_check (B, "B for C=A+B", D0)) ;
-    ASSERT_OK (GB_check (op, "op for C=A+B", D0)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (A, "A for C=A+B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for C=A+B", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for C=A+B", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
     ASSERT (A->vdim == A->vdim && B->vlen == A->vlen) ;
 
     ASSERT (GB_Type_compatible (ctype,   op->ztype)) ;
@@ -95,8 +95,8 @@ GrB_Info GB_add             // C = A+B
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, ctype, A->vlen, A->vdim, GB_Ap_malloc, C_is_csc,
-        SAME_HYPER_AS (C_is_hyper), A->hyper_ratio,
-        A->nvec_nonempty + B->nvec_nonempty, NNZ (A) + NNZ (B), true) ;
+        GB_SAME_HYPER_AS (C_is_hyper), A->hyper_ratio,
+        A->nvec_nonempty + B->nvec_nonempty, GB_NNZ (A) + GB_NNZ (B), true) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -136,7 +136,7 @@ GrB_Info GB_add             // C = A+B
         size_t s = ctype->size ;
 
         // for each vector of A and B
-        for_each_vector2 (A, B)
+        GB_for_each_vector2 (A, B)
         {
 
             //------------------------------------------------------------------
@@ -254,7 +254,7 @@ GrB_Info GB_add             // C = A+B
         cast_Z_to_C = GB_cast_factory (ctype->code,     op->ztype->code) ;
 
         // for each vector of A and B
-        for_each_vector2 (A, B)
+        GB_for_each_vector2 (A, B)
         {
 
             //------------------------------------------------------------------
@@ -352,10 +352,10 @@ GrB_Info GB_add             // C = A+B
     //--------------------------------------------------------------------------
 
     GB_jwrapup (C, jlast, cnz) ;
-    info = GB_ix_realloc (C, NNZ (C), true) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
     ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "C output for C=A+B", D0)) ;
+    ASSERT_OK (GB_check (C, "C output for C=A+B", GB0)) ;
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

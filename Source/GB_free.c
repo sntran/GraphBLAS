@@ -20,12 +20,12 @@ void GB_free                    // free a matrix
     if (matrix != NULL)
     {
         GrB_Matrix A = *matrix ;
-        if (A != NULL && (A->magic == MAGIC || A->magic == MAGIC2))
+        if (A != NULL && (A->magic == GB_MAGIC || A->magic == GB_MAGIC2))
         { 
             // free all content of A
             GB_phix_free (A) ;
             // free the header of A itself
-            A->magic = FREED ;      // to help detect dangling pointers
+            A->magic = GB_FREED ;      // to help detect dangling pointers
             GB_FREE_MEMORY (*matrix, 1, sizeof (struct GB_Matrix_opaque)) ;
         }
         (*matrix) = NULL ;

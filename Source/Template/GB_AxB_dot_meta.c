@@ -17,11 +17,14 @@
 
 {
 
+    const GB_atype *restrict Ax = A->x ;
+    const GB_btype *restrict Bx = B->x ;
+
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
     ASSERT (C->vdim == B->vdim) ;
     ASSERT (C->vlen == A->vdim) ;
     ASSERT (A->vlen == B->vlen) ;
@@ -48,9 +51,9 @@
     // allow B to be scattered into workspace of size bvlen if bvlen is not too
     // large
 
-    bool B_can_scatter = (bvlen < NNZ (A) + NNZ (B)) ;
+    bool B_can_scatter = (bvlen < GB_NNZ (A) + GB_NNZ (B)) ;
     int8_t *restrict Flag = NULL ;
-    DOT_WORK_TYPE *restrict Work = NULL ;
+    GB_DOT_WORK_TYPE *restrict Work = NULL ;
 
     //--------------------------------------------------------------------------
     // start the construction of C

@@ -29,13 +29,13 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M, "M for heap A*B", D0)) ;
-    ASSERT_OK (GB_check (A, "A for heap A*B", D0)) ;
-    ASSERT_OK (GB_check (B, "B for heap A*B", D0)) ;
-    ASSERT (!PENDING (M)) ; ASSERT (!ZOMBIES (M)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
-    ASSERT_OK (GB_Semiring_check (semiring, "semiring for heap A*B", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for heap A*B", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for heap A*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for heap A*B", GB0)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for heap A*B", GB0)) ;
     ASSERT (A->vdim == B->vlen) ;
 
     if (flipxy)
@@ -64,10 +64,10 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     // (the +1 is for the mask M)
     // int64_t List [0..bjnz_max-1] ;
     // GB_pointer_pair pA_pair [0..bjnz_max1] ;
-    // Element Heap [1..bjnz_max] ;
+    // GB_Element Heap [1..bjnz_max] ;
 
     info = GB_Work_walloc (bjnz_max,
-        sizeof (int64_t) + sizeof (GB_pointer_pair) + sizeof (Element)) ;
+        sizeof (int64_t) + sizeof (GB_pointer_pair) + sizeof (GB_Element)) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -79,11 +79,11 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     w += bjnz_max * sizeof (int64_t) ;
     GB_pointer_pair *pA_pair = (GB_pointer_pair *) w ;
     w += bjnz_max * sizeof (GB_pointer_pair) ;
-    Element *Heap = (Element *) w ;
+    GB_Element *Heap = (GB_Element *) w ;
     Heap-- ; // Heap [0] is not used, only Heap [1..bjnz_max]
 
     //--------------------------------------------------------------------------
-    // esimate NNZ(C) and allocate C
+    // esimate nnz(C) and allocate C
     //--------------------------------------------------------------------------
 
     int64_t cvlen = A->vlen ;
@@ -91,7 +91,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     GrB_Type ctype = semiring->add->op->ztype ;
 
     info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
-        15 + NNZ (A) + NNZ (B)) ;
+        15 + GB_NNZ (A) + GB_NNZ (B)) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -116,7 +116,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
 
     #define GB_AheapB(add,mult,xyname) GB_AheapB_ ## add ## mult ## xyname
 
-    #define AxB(add,mult,xyname)                                    \
+    #define GB_AxB_WORKER(add,mult,xyname)                          \
     {                                                               \
         info = GB_AheapB (add,mult,xyname) (Chandle, M, A, B,       \
             flipxy, List, pA_pair, Heap, bjnz_max) ;                \
@@ -144,6 +144,42 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     }
 
 #endif
+
+    //--------------------------------------------------------------------------
+    // user semirings created at compile time
+    //--------------------------------------------------------------------------
+
+    if (semiring->object_kind == GB_USER_COMPILED)
+    {
+
+        // determine the required type of A and B for the user semiring
+        GrB_Type atype_required, btype_required ;
+
+        if (flipxy)
+        { 
+            // A is passed as y, and B as x, in z = mult(x,y)
+            atype_required = semiring->multiply->ytype ;
+            btype_required = semiring->multiply->xtype ;
+        }
+        else
+        { 
+            // A is passed as x, and B as y, in z = mult(x,y)
+            atype_required = semiring->multiply->xtype ;
+            btype_required = semiring->multiply->ytype ;
+        }
+
+        if (A->type == atype_required && B->type == btype_required)
+        {
+            info = GB_AxB_user (GxB_AxB_HEAP, semiring, Chandle, M, A, B,
+                flipxy, List, pA_pair, Heap, bjnz_max) ;
+            done = true ;
+            if (info != GrB_SUCCESS)
+            { 
+                // out of memory or invalid semiring
+                return (info) ;
+            }
+        }
+    }
 
     //--------------------------------------------------------------------------
     // C = A*B, with a heap, and typecasting
@@ -203,84 +239,61 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         //----------------------------------------------------------------------
 
         // bkj = B(k,j), located in Bx [pB]
-        #define CIJ_GETB(pB)                                            \
+        #define GB_CIJ_GETB(pB)                                         \
         {                                                               \
             cast_B (bkj, Bx +((pB)*bsize), bsize) ;                     \
         }
 
+        #define GB_MULTOP(z,x,y) fmult (z, x, y) ;
+
         // C(i,j) = A(i,k) * bkj
-        #define CIJ_MULT(pA)                                            \
+        #define GB_CIJ_MULT(pA)                                         \
         {                                                               \
             /* aik = A(i,k), located in Ax [pA] */                      \
             cast_A (aik, Ax +((pA)*asize), asize) ;                     \
             /* cij = aik*bkj, reversing them if flipxy is true */       \
-            if (flipxy)                                                 \
-            {                                                           \
-                /* cij = bkj * aik */                                   \
-                fmult (cij, bkj, aik) ;                                 \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                /* cij = aik * bkj */                                   \
-                fmult (cij, aik, bkj) ;                                 \
-            }                                                           \
+            GB_MULTIPLY (cij, aik, bkj) ;                               \
         }
 
         // C(i,j) += A(i,k) * B(k,j)
-        #define CIJ_MULTADD(pA,pB)                                      \
+        #define GB_CIJ_MULTADD(pA,pB)                                   \
         {                                                               \
             /* aik = A(i,k), located in Ax [pA] */                      \
             cast_A (aik, Ax +((pA)*asize), asize) ;                     \
             /* bkj = B(k,j), located in Bx [pB] */                      \
-            CIJ_GETB (pB) ;                                             \
+            GB_CIJ_GETB (pB) ;                                          \
             /* zwork = aik*bkj, reversing them if flipxy is true */     \
-            if (flipxy)                                                 \
-            {                                                           \
-                /* zwork = bkj * aik */                                 \
-                fmult (zwork, bkj, aik) ;                               \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                /* zwork = aik * bkj */                                 \
-                fmult (zwork, aik, bkj) ;                               \
-            }                                                           \
+            GB_MULTIPLY (zwork, aik, bkj) ;                             \
             /* cij = cij + zwork */                                     \
             fadd (cij, cij, zwork) ; /* (z x alias) */                  \
         }
 
         // C->x has moved so the pointer to cij needs to be recomputed
-        #define CIJ_REACQUIRE                                           \
+        #define GB_CIJ_REACQUIRE                                        \
         {                                                               \
             cij = Cx + cnz * csize ;                                    \
         }
 
         // cij = identity
-        #define CIJ_CLEAR  memcpy (cij, identity, csize) ;
+        #define GB_CIJ_CLEAR  memcpy (cij, identity, csize) ;
 
         // save the value of C(i,j) by advancing the cij pointer to next value
-        #define CIJ_SAVE   cij += csize ;
+        #define GB_CIJ_SAVE   cij += csize ;
 
-        #include "GB_AxB_heap_meta.c"
+        #define GB_HANDLE_FLIPXY true
+        #define GB_XTYPE void
+        #define GB_YTYPE void
+        #include "GB_AxB_heap_flipxy.c"
     }
 
     //--------------------------------------------------------------------------
     // trim the size of C: this cannot fail
     //--------------------------------------------------------------------------
 
-    info = GB_ix_realloc (C, NNZ (C), true) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
     ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "heap: C = A*B output", D0)) ;
+    ASSERT_OK (GB_check (C, "heap: C = A*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
-
-#undef AxB
-#undef GB_AheapB
-
-#undef CIJ_GETB
-#undef CIJ_MULT
-#undef CIJ_MULTADD
-#undef CIJ_REACQUIRE
-#undef CIJ_CLEAR
-#undef CIJ_SAVE
 

@@ -19,7 +19,8 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     GrB_init (GrB_NONBLOCKING) ;
+    GxB_set (GxB_FORMAT, GxB_BY_COL) ;
 }
 

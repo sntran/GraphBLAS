@@ -43,11 +43,13 @@ void wildtype_print (const wildtype *x, const char *name)
 
 // This examines each entry of A, which is costly if A is very large.  A better
 // method would extract all the tuples via GrB_Matrix_extractTuples, and then
-// to print those.  This function is just to illustrate the
-// GrB_Matrix_extractElement_UDT method.
+// to print those, or to use the GxB_*print methods.  This function is just to
+// illustrate the GrB_Matrix_extractElement_UDT method.
 
 void wildtype_print_matrix (GrB_Matrix A, char *name)
 {
+    printf ("\nPrinting the matrix with GxB_Matrix_fprint:\n") ;
+    GxB_Matrix_fprint (A, name, GxB_COMPLETE, stdout) ;
     GrB_Type type ;
     GxB_Matrix_type (&type, A) ;
     if (type != WildType)
@@ -83,6 +85,9 @@ void wildtype_print_matrix (GrB_Matrix A, char *name)
 
 void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
 {
+    wildtype_print (x, "x for add:") ;
+    wildtype_print (y, "y for add:") ;
+
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
@@ -91,7 +96,9 @@ void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
         }
     }
     sprintf (z->whatstuff, "this was added") ;
-    printf ("[%s] = [%s] + [%s]\n", z->whatstuff, x->whatstuff, y->whatstuff) ;
+    printf ("\ndo the add:\n    [%s] = [%s] + [%s]\n",
+        z->whatstuff, x->whatstuff, y->whatstuff) ;
+    wildtype_print (z, "z = x+y:") ;
 }
 
 //------------------------------------------------------------------------------
@@ -100,6 +107,9 @@ void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
 
 void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y)
 {
+    wildtype_print (x, "x for multiply:") ;
+    wildtype_print (y, "y for multiply:") ;
+
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
@@ -112,7 +122,9 @@ void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y)
         }
     }
     sprintf (z->whatstuff, "this was multiplied") ;
-    printf ("[%s] = [%s] * [%s]\n", z->whatstuff, x->whatstuff, y->whatstuff) ;
+    printf ("\ndo the multiply:\n   [%s] = [%s] * [%s]\n",
+        z->whatstuff, x->whatstuff, y->whatstuff) ;
+    wildtype_print (z, "z = x*y:") ;
 }
 
 //------------------------------------------------------------------------------
@@ -133,6 +145,7 @@ int main (void)
     size_t s ;
     GxB_Type_size (&s, WildType) ;
     printf ("WildType size: %d\n", (int) s) ;
+    GxB_print (WildType, GxB_COMPLETE) ;
 
     // create a 10-by-10 WildType matrix, each entry is a 'scalar' WildType
     GrB_Matrix A ;
@@ -150,7 +163,18 @@ int main (void)
     wildtype_print (&scalar1, "scalar1") ;
 
     // A(2,7) = scalar1
+    sprintf (scalar1.whatstuff, "this is A(2,7)") ;
     GrB_Matrix_setElement_UDT (A, &scalar1, 2, 7) ;
+
+    // A(3,7) = scalar1 modified
+    scalar1.stuff [2][3] = 909 ;
+    sprintf (scalar1.whatstuff, "this is A(3,7)") ;
+    GrB_Matrix_setElement_UDT (A, &scalar1, 3, 7) ;
+
+    // A(2,4) = scalar1 modified again
+    scalar1.stuff [3][3] = 42 ;
+    sprintf (scalar1.whatstuff, "this is A(2,4)") ;
+    GrB_Matrix_setElement_UDT (A, &scalar1, 2, 4) ;
 
     // C = A'
     GrB_Matrix C ;
@@ -184,7 +208,20 @@ int main (void)
         }
     }
     wildtype_print (&scalar2, "scalar2") ;
+
+    // B(7,2) = scalar2
+    sprintf (scalar2.whatstuff, "this is B(7,2)") ;
     GrB_Matrix_setElement_UDT (B, &scalar2, 7, 2) ;
+
+    // B(7,5) = scalar2 modified
+    scalar2.stuff [0][0] = -1 ;
+    sprintf (scalar2.whatstuff, "here is B(7,5)") ;
+    GrB_Matrix_setElement_UDT (B, &scalar2, 7, 5) ;
+
+    // B(4,2) = scalar2 changed 
+    scalar2.stuff [0][3] = 77 ;
+    sprintf (scalar2.whatstuff, "finally, B(4,2)") ;
+    GrB_Matrix_setElement_UDT (B, &scalar2, 4, 2) ;
 
     // create the WildAdder monoid 
     GrB_Monoid WildAdder ;
@@ -200,9 +237,10 @@ int main (void)
     wildtype_print (&scalar_identity, "scalar_identity for the monoid") ;
     GrB_Monoid_new_UDT (&WildAdder, WildAdd, &scalar_identity) ;
 
-    // create the InTheWild semiring
+    // create and print the InTheWild semiring
     GrB_Semiring InTheWild ;
     GrB_Semiring_new (&InTheWild, WildAdder, WildMult) ;
+    GxB_print (InTheWild, GxB_COMPLETE) ;
 
     printf ("\nmultiplication C=A*B InTheWild semiring:\n") ;
 
@@ -217,17 +255,19 @@ int main (void)
 
     wildtype_print_matrix (C, "output C") ;
 
-    // set C to row-oriented format
-    GxB_set (C, GxB_FORMAT, GxB_BY_ROW) ;
-    printf ("\nC is now stored by row, but it looks just the same to the\n"
+    // set C to column-oriented format
+    GxB_set (C, GxB_FORMAT, GxB_BY_COL) ;
+    printf ("\nC is now stored by column, but it looks just the same to the\n"
             "GraphBLAS user application.  The difference is opaque, in the\n"
             "internal data structure.\n") ;
     wildtype_print_matrix (C, "output C") ;
 
-    // do something invalid
+    // create a non-wild matrix D and try to print it
     GrB_Matrix D ;
     GrB_Matrix_new (&D, GrB_FP32, 10, 10) ;
     wildtype_print_matrix (D, "D") ;
+
+    // do something invalid
     info = GrB_eWiseAdd (C, NULL, NULL, WildAdd, A, D, NULL) ;
     if (info != GrB_SUCCESS)
     {

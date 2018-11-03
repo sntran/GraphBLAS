@@ -23,7 +23,8 @@ GrB_Info GB_Work_walloc             // allocate Work space
         Work_nitems_required, Work_itemsize))
     { 
         // size_t overflow
-        return (OUT_OF_MEMORY (GBYTES (Work_nitems_required, Work_itemsize))) ;
+        double memory = GBYTES (Work_nitems_required, Work_itemsize) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     if (Work_required > GB_thread_local.Work_size)
@@ -37,11 +38,11 @@ GrB_Info GB_Work_walloc             // allocate Work space
         if (GB_thread_local.Work == NULL)
         { 
             // out of memory
-            return (OUT_OF_MEMORY (GBYTES (newsize, sizeof (char)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (newsize, sizeof (char)))) ;
         }
         GB_thread_local.Work_size = newsize ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

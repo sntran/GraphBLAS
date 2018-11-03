@@ -27,14 +27,14 @@ GrB_Info GrB_Matrix_extract     // C<Mask> = accum (C, A(I,J))
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_extract (C, Mask, accum, A, I, ni, J, nj, desc)") ;
+    GB_WHERE ("GrB_Matrix_extract (C, Mask, accum, A, I, ni, J, nj, desc)") ;
 
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (Mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     //--------------------------------------------------------------------------
     // do the work in GB_extract

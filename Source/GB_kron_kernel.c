@@ -29,11 +29,11 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for kron (A,B)", D0)) ;
-    ASSERT_OK (GB_check (B, "B for kron (A,B)", D0)) ;
-    ASSERT_OK (GB_check (op, "op for kron (A,B)", D0)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (A, "A for kron (A,B)", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for kron (A,B)", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for kron (A,B)", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -63,7 +63,7 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
 
     bool ok = GB_Index_multiply (&cvlen, A->vlen, bvlen) ;
     ok = ok & GB_Index_multiply (&cvdim, A->vdim, bvdim) ;
-    ok = ok & GB_Index_multiply (&cnzmax, NNZ (A), NNZ (B)) ;
+    ok = ok & GB_Index_multiply (&cnzmax, GB_NNZ (A), GB_NNZ (B)) ;
     ASSERT (ok) ;
 
     // C is hypersparse if either A or B are hypersparse
@@ -71,7 +71,7 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
 
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, op->ztype, (int64_t) cvlen, (int64_t) cvdim, GB_Ap_calloc,
-        C_is_csc, SAME_HYPER_AS (C_is_hyper), B->hyper_ratio,
+        C_is_csc, GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio,
         A->nvec_nonempty * B->nvec_nonempty, cnzmax, true) ;
     if (info != GrB_SUCCESS)
     { 
@@ -106,14 +106,14 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     GB_jstartup (C, &cj_last, &cnz, &cnz_last) ;
 
     GBI_iterator A_iter ;
-    for (each_vector (A_iter, A))
+    for (GB_each_vector (A_iter, A))
     {
 
         int64_t GBI1_initj (A_iter, aj, pA_start, pA_end) ;
         int64_t ajblock = aj * bvdim ;
 
         GBI_iterator B_iter ;
-        for (each_vector (B_iter, B))
+        for (GB_each_vector (B_iter, B))
         {
 
             int64_t GBI1_initj (B_iter, bj, pB_start, pB_end) ;
@@ -157,9 +157,9 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT (cnz == NNZ (A) * NNZ (B)) ;
-    ASSERT_OK (GB_check (C, "C=kron(A,B)", D0)) ;
+    ASSERT (cnz == GB_NNZ (A) * GB_NNZ (B)) ;
+    ASSERT_OK (GB_check (C, "C=kron(A,B)", GB0)) ;
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

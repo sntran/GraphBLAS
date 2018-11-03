@@ -47,13 +47,13 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M, "M for dot A'*B", D0)) ;
-    ASSERT_OK (GB_check (A, "A for dot A'*B", D0)) ;
-    ASSERT_OK (GB_check (B, "B for dot A'*B", D0)) ;
-    ASSERT (!PENDING (M)) ; ASSERT (!ZOMBIES (M)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
-    ASSERT_OK (GB_Semiring_check (semiring, "semiring for numeric A'*B", D0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for dot A'*B", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for dot A'*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for dot A'*B", GB0)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for numeric A'*B", GB0)) ;
     ASSERT (A->vlen == B->vlen) ;
 
     if (flipxy)
@@ -73,7 +73,7 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     (*Chandle) = NULL ;
 
     //--------------------------------------------------------------------------
-    // estimate NNZ(C) and allocate C
+    // estimate nnz(C) and allocate C
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
@@ -82,7 +82,7 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     int64_t cvdim = B->vdim ;
 
     info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
-        15 + NNZ (A) + NNZ (B)) ;
+        15 + GB_NNZ (A) + GB_NNZ (B)) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -106,7 +106,7 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
 
     #define GB_AdotB(add,mult,xyname) GB_AdotB_ ## add ## mult ## xyname
 
-    #define AxB(add,mult,xyname)                                        \
+    #define GB_AxB_WORKER(add,mult,xyname)                              \
     {                                                                   \
         info = GB_AdotB (add,mult,xyname) (Chandle, M, A, B, flipxy) ;  \
         done = true ;                                                   \
@@ -135,6 +135,42 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
 #endif
 
     //--------------------------------------------------------------------------
+    // user semirings created at compile time
+    //--------------------------------------------------------------------------
+
+    if (semiring->object_kind == GB_USER_COMPILED)
+    {
+
+        // determine the required type of A and B for the user semiring
+        GrB_Type atype_required, btype_required ;
+
+        if (flipxy)
+        { 
+            // A is passed as y, and B as x, in z = mult(x,y)
+            atype_required = semiring->multiply->ytype ;
+            btype_required = semiring->multiply->xtype ;
+        }
+        else
+        { 
+            // A is passed as x, and B as y, in z = mult(x,y)
+            atype_required = semiring->multiply->xtype ;
+            btype_required = semiring->multiply->ytype ;
+        }
+
+        if (A->type == atype_required && B->type == btype_required)
+        {
+            info = GB_AxB_user (GxB_AxB_DOT, semiring, Chandle, M, A, B,
+                flipxy, NULL, NULL, NULL, 0) ;
+            done = true ;
+            if (info != GrB_SUCCESS)
+            { 
+                // out of memory or invalid semiring
+                return (info) ;
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------------
     // C = A'*B, computing each entry with a dot product, with typecasting
     //--------------------------------------------------------------------------
 
@@ -159,14 +195,15 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         size_t xsize = multiply->xtype->size ;
         size_t ysize = multiply->ytype->size ;
 
-        // scalar workspace
+        // scalar workspace: because of typecasting, the x/y types need not
+        // be the same as the size of the A and B types.
         // flipxy false: aki = (xtype) A(k,i) and bkj = (ytype) B(k,j)
         // flipxy true:  aki = (ytype) A(k,i) and bkj = (xtype) B(k,j)
         size_t aki_size = flipxy ? ysize : xsize ;
         size_t bkj_size = flipxy ? xsize : ysize ;
 
         char aki [aki_size] ;
-        char bkj [bkj_size]  ;
+        char bkj [bkj_size] ;
 
         char zwork [csize] ;
 
@@ -196,78 +233,74 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         //----------------------------------------------------------------------
 
         // get A(k,i)
-        #define DOT_GETA(pA)                                            \
+        #define GB_DOT_GETA(pA)                                         \
         {                                                               \
             /* aki = A(k,i), located in Ax [pA] */                      \
             cast_A (aki, Ax +((pA)*asize), asize) ;                     \
         }
 
         // get B(k,j)
-        #define DOT_GETB(pB)                                            \
+        #define GB_DOT_GETB(pB)                                         \
         {                                                               \
             /* bkj = B(k,j), located in Bx [pB] */                      \
             cast_B (bkj, Bx +((pB)*bsize), bsize) ;                     \
         }
 
-        // multiply aki*bkj, reversing them if flipxy is true
-        #define DOT_MULT(bkj)                                           \
+        #define GB_MULTOP(z,x,y) fmult (z, x, y) ;
+
+        // multiply aki*bkj
+        #define GB_DOT_MULT(bkj)                                        \
         {                                                               \
-            if (flipxy)                                                 \
-            {                                                           \
-                /* zwork = bkj * aki */                                 \
-                fmult (zwork, bkj, aki) ;                               \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                /* zwork = aki * bkj */                                 \
-                fmult (zwork, aki, bkj) ;                               \
-            }                                                           \
+            GB_MULTIPLY (zwork, aki, bkj) ;                             \
         }
 
         // cij += zwork
-        #define DOT_ADD                                                 \
+        #define GB_DOT_ADD                                              \
         {                                                               \
             /* cij = cij + zwork */                                     \
             fadd (cij, cij, zwork) ;  /* (z x alias) */                 \
         }
 
         // cij = zwork
-        #define DOT_COPY    memcpy (cij, zwork, csize) ;
+        #define GB_DOT_COPY    memcpy (cij, zwork, csize) ;
 
         // C->x has moved so the pointer to cij needs to be recomputed
-        #define DOT_REACQUIRE                                           \
+        #define GB_DOT_REACQUIRE                                        \
         {                                                               \
             cij = Cx + cnz * csize ;                                    \
         }
 
         // cij = identity
-        #define DOT_CLEAR   memcpy (cij, identity, csize) ;
+        #define GB_DOT_CLEAR   memcpy (cij, identity, csize) ;
 
         // save the value of C(i,j) by advancing cij pointer to next value
-        #define DOT_SAVE    cij += csize ;
+        #define GB_DOT_SAVE    cij += csize ;
 
-        #define DOT_WORK_TYPE void
+        #define GB_DOT_WORK_TYPE void
 
-        #define DOT_WORK(k) (Work +((k)*bkj_size))
+        #define GB_DOT_WORK(k) (Work +((k)*bkj_size))
 
-        // Work [k] = (flipxy ? xtype : ytype) B (k,j)
-        #define DOT_SCATTER                                             \
+        // Work [k] = (btype) B (k,j)
+        #define GB_DOT_SCATTER                                             \
         {                                                               \
             /* Work [k] = B(k,j), located in Bx [p] */                  \
-            cast_B (DOT_WORK (k), Bx +((pB)*bsize), bsize) ;            \
+            cast_B (GB_DOT_WORK (k), Bx +((pB)*bsize), bsize) ;            \
         }
 
-        #include "GB_AxB_dot_meta.c"
+        #define GB_HANDLE_FLIPXY true
+        #define GB_XTYPE void
+        #define GB_YTYPE void
+        #include "GB_AxB_dot_flipxy.c"
     }
 
     //--------------------------------------------------------------------------
     // trim the size of C: this cannot fail
     //--------------------------------------------------------------------------
 
-    info = GB_ix_realloc (C, NNZ (C), true) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
     ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "dot: C = A'*B output", D0)) ;
+    ASSERT_OK (GB_check (C, "dot: C = A'*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

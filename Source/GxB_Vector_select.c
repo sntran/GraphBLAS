@@ -25,13 +25,13 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, select(u,k))
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Vector_select (w, mask, accum, op, u, k, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
+    GB_WHERE ("GxB_Vector_select (w, mask, accum, op, u, k, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // select the entries; do not transpose; assemble pending entries

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_to_hyper_check: check if a matrix should convert to hyperspasre
+// GB_to_nonhyper_test: test if a matrix should convert to non-hyperspasre
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,14 +7,14 @@
 
 //------------------------------------------------------------------------------
 
-// Returns true if a non-hypersparse matrix should be converted to hypersparse.
-// Returns false if the matrix is already hypersparse.
+// Returns true if a hypersparse matrix should be converted to non-hypersparse.
+// Returns false if the matrix is already non-hypersparse.
 
 #include "GB.h"
 
-bool GB_to_hyper_check      // check for conversion to hypersparse
+bool GB_to_nonhyper_test    // test for conversion to hypersparse
 (
-    GrB_Matrix A,           // matrix to check
+    GrB_Matrix A,           // matrix to test
     int64_t k,              // # of non-empty vectors of A, an estimate is OK,
                             // but normally A->nvec_nonempty
     int64_t vdim            // normally A->vdim
@@ -28,14 +28,14 @@ bool GB_to_hyper_check      // check for conversion to hypersparse
     ASSERT (A != NULL) ;
 
     //--------------------------------------------------------------------------
-    // check for conversion
+    // test for conversion
     //--------------------------------------------------------------------------
 
-    if (A->is_hyper)
+    if (!A->is_hyper)
     { 
 
         //----------------------------------------------------------------------
-        // A is already hypersparse: no need to convert it
+        // A is already non-hypersparse: no need to convert it
         //----------------------------------------------------------------------
 
         return (false) ;
@@ -45,7 +45,7 @@ bool GB_to_hyper_check      // check for conversion to hypersparse
     { 
 
         //----------------------------------------------------------------------
-        // A is non-hypersparse; check for conversion to hypersparse
+        // A is hypersparse; test for conversion to non-hypersparse
         //----------------------------------------------------------------------
 
         // get the vector dimension of this matrix
@@ -55,10 +55,10 @@ bool GB_to_hyper_check      // check for conversion to hypersparse
         float r = A->hyper_ratio ;
 
         // ensure k is in the range 0 to n, inclusive
-        k = IMAX (k, 0) ;
-        k = IMIN (k, n) ;
+        k = GB_IMAX (k, 0) ;
+        k = GB_IMIN (k, n) ;
 
-        return (n > 1 && (((float) k) <= n * r)) ;
+        return (n <= 1 || (((float) k) > n * r * 2)) ;
     }
 }
 

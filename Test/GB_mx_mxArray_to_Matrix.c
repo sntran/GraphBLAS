@@ -68,7 +68,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             // treat as a sparse 0-by-0 matrix, not NULL
             GrB_Matrix_new (&A, GrB_FP64, 0, 0) ;
-            ASSERT_OK (GB_check (A, "got A = [ ] from MATLAB", D0)) ;
+            ASSERT_OK (GB_check (A, "got A = [ ] from MATLAB", GB0)) ;
             return (A) ;
         }
         else
@@ -187,8 +187,8 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
     }
 
-    ASSERT_OK (GB_check (atype_in,  "A type in", D0)) ;
-    ASSERT_OK (GB_check (atype_out, "A type out", D0)) ;
+    ASSERT_OK (GB_check (atype_in,  "A type in", GB0)) ;
+    ASSERT_OK (GB_check (atype_out, "A type out", GB0)) ;
 
     if (atype_in == NULL || atype_out == NULL)
     {
@@ -231,7 +231,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
         memcpy (A->p, Mp, (ncols+1) * sizeof (int64_t)) ;
         memcpy (A->i, Mi, anz * sizeof (int64_t)) ;
-        A->magic = MAGIC ;
+        A->magic = GB_MAGIC ;
 
     }
     else
@@ -251,7 +251,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
 
         A->p = Mp ;
-        A->magic = MAGIC ;          // A->p now initialized ]
+        A->magic = GB_MAGIC ;       // A->p now initialized ]
         A->i = Mi ;
         A->p_shallow = true ;
         A->h_shallow = false ;      // A->h is NULL
@@ -280,7 +280,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         if (!deep_copy)
         {
             // allocate new space for the GraphBLAS values
-            A->nzmax = IMAX (anz, 1) ;
+            A->nzmax = GB_IMAX (anz, 1) ;
             GB_MALLOC_MEMORY (A->x, A->nzmax, atype_out->size) ;
             if (A->x == NULL)
             {
@@ -341,15 +341,15 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
     A->nvec_nonempty = GB_nvec_nonempty (A) ;
 
-    ASSERT_OK (GB_check (A, "got natural A from MATLAB", D0)) ;
+    ASSERT_OK (GB_check (A, "got natural A from MATLAB", GB0)) ;
     ASSERT (!A->is_hyper) ;
 
     //--------------------------------------------------------------------------
     // convert to CSR if requested
     //--------------------------------------------------------------------------
 
-    int64_t nrows_old = NROWS (A) ;
-    int64_t ncols_old = NCOLS (A) ;
+    int64_t nrows_old = GB_NROWS (A) ;
+    int64_t ncols_old = GB_NCOLS (A) ;
 
     if (!is_csc)
     {
@@ -360,7 +360,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         ASSERT (!A->is_csc) ;
     }
 
-    ASSERT_OK (GB_check (A, "conformed from MATLAB", D0)) ;
+    ASSERT_OK (GB_check (A, "conformed from MATLAB", GB0)) ;
     ASSERT (!A->is_hyper) ;
     ASSERT (A->is_csc == is_csc) ;
 
@@ -389,16 +389,16 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
     }
 
-    ASSERT_OK (GB_check (A, "final hyper/nonhyper", D0)) ;
+    ASSERT_OK (GB_check (A, "final hyper/nonhyper", GB0)) ;
     ASSERT (A->is_csc == is_csc) ;
-    ASSERT (nrows_old == NROWS (A)) ;
-    ASSERT (ncols_old == NCOLS (A)) ;
+    ASSERT (nrows_old == GB_NROWS (A)) ;
+    ASSERT (ncols_old == GB_NCOLS (A)) ;
 
     //--------------------------------------------------------------------------
     // return the GraphBLAS matrix
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A, "got A from MATLAB", D0)) ;
+    ASSERT_OK (GB_check (A, "got A from MATLAB", GB0)) ;
     return (A) ;
 }
 

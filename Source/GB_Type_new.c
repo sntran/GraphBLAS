@@ -24,8 +24,8 @@ GrB_Info GB_Type_new
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Type_new (&type, sizeof (ctype))") ;
-    RETURN_IF_NULL (type) ;
+    GB_WHERE ("GrB_Type_new (&type, sizeof (ctype))") ;
+    GB_RETURN_IF_NULL (type) ;
     (*type) = NULL ;
 
     //--------------------------------------------------------------------------
@@ -36,14 +36,14 @@ GrB_Info GB_Type_new
     GB_CALLOC_MEMORY (*type, 1, sizeof (struct GB_Type_opaque)) ;
     if (*type == NULL)
     { 
-        return (NO_MEMORY) ;
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the type
     GrB_Type t = *type ;
-    t->magic = MAGIC ;
-    t->size = IMAX (sizeof_ctype, 1) ;
-    t->code = GB_UDT_code ;
+    t->magic = GB_MAGIC ;
+    t->size = GB_IMAX (sizeof_ctype, 1) ;
+    t->code = GB_UDT_code ;     // run-time user-defined type
 
     //--------------------------------------------------------------------------
     // get the name
@@ -80,6 +80,6 @@ GrB_Info GB_Type_new
         strncpy (t->name, p, GB_LEN-1) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -26,13 +26,13 @@ GrB_Info GrB_Matrix_apply           // C<Mask> = accum (C, op(A)) or op(A')
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_apply (C, Mask, accum, op, A, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (Mask) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_Matrix_apply (C, Mask, accum, op, A, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     //--------------------------------------------------------------------------
     // apply the operator and optionally transpose; assemble pending tuples

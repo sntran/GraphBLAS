@@ -26,7 +26,7 @@
 
 #include "GB.h"
 
-#define FREE_ALL                                        \
+#define GB_FREE_ALL                                     \
 {                                                       \
     GB_MATRIX_FREE (&AT) ;                              \
     GB_MATRIX_FREE (&MT) ;                              \
@@ -61,11 +61,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (C, M_in, A_in)) ;
+    ASSERT (GB_ALIAS_OK2 (C, M_in, A_in)) ;
 
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL (Rows) ;
-    RETURN_IF_NULL (Cols) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL (Rows) ;
+    GB_RETURN_IF_NULL (Cols) ;
 
     GrB_Info info ;
     GrB_Matrix M = M_in ;
@@ -84,12 +84,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // GrB_*assign, not scalar:  The user's input matrix has been checked.
         // The pointer to the scalar is NULL.
         ASSERT (scalar == NULL) ;
-        ASSERT_OK (GB_check (A, "A for GB_assign", D0)) ;
+        ASSERT_OK (GB_check (A, "A for GB_assign", GB0)) ;
     }
 
-    ASSERT_OK (GB_check (C, "C input for GB_assign", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_assign", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_assign", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_assign", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_assign", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_assign", GB0)) ;
     ASSERT (scalar_code <= GB_UDT_code) ;
 
     // only one of these three cases can be true:
@@ -101,8 +101,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
     int64_t nRows, nCols, RowColon [3], ColColon [3] ;
     int RowsKind, ColsKind ;
-    GB_ijlength (Rows, nRows_in, NROWS (C), &nRows, &RowsKind, RowColon) ;
-    GB_ijlength (Cols, nCols_in, NCOLS (C), &nCols, &ColsKind, ColColon) ;
+    GB_ijlength (Rows, nRows_in, GB_NROWS (C), &nRows, &RowsKind, RowColon) ;
+    GB_ijlength (Cols, nCols_in, GB_NCOLS (C), &nCols, &ColsKind, ColColon) ;
 
     GrB_Matrix AT = NULL ;
     GrB_Matrix MT = NULL ;
@@ -136,7 +136,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     {
         if (!GB_code_compatible (C->type->code, scalar_code))
         { 
-            return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
                 "input scalar of type [%s]\n"
                 "cannot be typecast to output of type [%s]",
                 GB_code_string (scalar_code), C->type->name))) ;
@@ -146,7 +146,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     {
         if (!GB_Type_compatible (C->type, A->type))
         { 
-            return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
                 "input of type [%s]\n"
                 "cannot be typecast to output of type [%s]",
                 A->type->name, C->type->name))) ;
@@ -159,7 +159,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // M is typecast to boolean
         if (!GB_Type_compatible (M->type, GrB_BOOL))
         { 
-            return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
                 "Mask of type [%s] cannot be typecast to boolean",
                 M->type->name))) ;
         }
@@ -170,12 +170,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M is a column vector the same size as one row of C
             ASSERT (nRows == 1) ;
             ASSERT (!scalar_expansion && !col_assign) ;
-            ASSERT (VECTOR_OK (M)) ;
-            if (NROWS (M) != NCOLS (C))
+            ASSERT (GB_VECTOR_OK (M)) ;
+            if (GB_NROWS (M) != GB_NCOLS (C))
             { 
-                return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+                return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                     "mask vector m length is "GBd"; must match the number of "
-                    "columns of C ("GBd")", NROWS (M), NCOLS (C)))) ;
+                    "columns of C ("GBd")", GB_NROWS (M), GB_NCOLS (C)))) ;
             }
         }
         else if (col_assign)
@@ -184,12 +184,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M is a column vector the same size as one column of C
             ASSERT (nCols == 1) ;
             ASSERT (!scalar_expansion && !row_assign) ;
-            ASSERT (VECTOR_OK (M)) ;
-            if (NROWS (M) != NROWS (C))
+            ASSERT (GB_VECTOR_OK (M)) ;
+            if (GB_NROWS (M) != GB_NROWS (C))
             { 
-                return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+                return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                     "mask vector m length is "GBd"; must match the number of "
-                    "rows of C ("GBd")", NROWS (M), NROWS (C)))) ;
+                    "rows of C ("GBd")", GB_NROWS (M), GB_NROWS (C)))) ;
             }
         }
         else
@@ -197,12 +197,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // GrB_Matrix_assign, GrB_Vector_assign, and scalar variants:
             // M is a matrix the same size as C for entire matrix (or vector)
             // assignment, where A is either a matrix or a scalar
-            if (NROWS (M) != NROWS (C) || NCOLS (M) != NCOLS (C))
+            if (GB_NROWS (M) != GB_NROWS (C) || GB_NCOLS (M) != GB_NCOLS (C))
             { 
-                return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+                return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                     "mask M is "GBd"-by-"GBd"; "
                     "must match result C ("GBd"-by-"GBd")",
-                    NROWS (M), NCOLS (M), NROWS (C), NCOLS (C)))) ;
+                    GB_NROWS (M), GB_NCOLS (M), GB_NROWS (C), GB_NCOLS (C)))) ;
             }
         }
     }
@@ -210,11 +210,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // check the dimensions of A
     if (!scalar_expansion)
     {
-        int64_t anrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-        int64_t ancols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
+        int64_t anrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+        int64_t ancols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
         if (nRows != anrows || nCols != ancols)
         { 
-            return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+            return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
                 "Dimensions not compatible:\n"
                 "C(Rows,Cols) is "GBd"-by-"GBd"\n"
                 "input is "GBd"-by-"GBd"%s",
@@ -241,12 +241,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
         if (C_replace)
         {
-            ASSERT_OK (GB_check (C, "C for quick mask", D0)) ;
+            ASSERT_OK (GB_check (C, "C for quick mask", GB0)) ;
             if (row_assign || col_assign)
             {
                 // all pending tuples must first be assembled; zombies OK
-                WAIT_PENDING (C) ;
-                ASSERT_OK (GB_check (C, "waited C for quick mask", D0)) ;
+                GB_WAIT_PENDING (C) ;
+                ASSERT_OK (GB_check (C, "waited C for quick mask", GB0)) ;
                 int64_t *Ci = C->i ;
                 if ((row_assign && !C_is_csc) || (col_assign && C_is_csc))
                 {
@@ -262,7 +262,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                         { 
                             // delete C(i,j) by marking it as a zombie
                             C->nzombies++ ;
-                            Ci [p] = FLIP (i) ;
+                            Ci [p] = GB_FLIP (i) ;
                         }
                     }
                 }
@@ -270,7 +270,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 {
                     // delete all entries in each vector with index i
                     int64_t i = (row_assign) ? Rows [0] : Cols [0] ;
-                    for_each_vector (C)
+                    GB_for_each_vector (C)
                     {
                         // find C(i,j) if it exists
                         int64_t GBI1_initj (Iter, j, p, pend) ;
@@ -283,7 +283,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                             // delete C(i,j) by marking it as a zombie
                             ASSERT (i == Ci [p]) ;
                             C->nzombies++ ;
-                            Ci [p] = FLIP (i) ;
+                            Ci [p] = GB_FLIP (i) ;
                         }
                     }
                 }
@@ -292,7 +292,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             { 
                 // C<~NULL>=NULL since result does not depend on computing Z.
                 // Since C_replace is true, all of C is cleared.  This is the
-                // same as the RETURN_IF_QUICK_MASK macro, except that C may
+                // same as the GB_RETURN_IF_QUICK_MASK macro, except that C may
                 // have zombies and pending tuples.
                 return (GB_clear (C)) ;
             }
@@ -304,7 +304,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             GB_queue_insert (C) ;
         }
         // finalize C if blocking mode is enabled, and return result
-        ASSERT_OK (GB_check (C, "Final C for assign, quick mask", D0)) ;
+        ASSERT_OK (GB_check (C, "Final C for assign, quick mask", GB0)) ;
         return (GB_block (C)) ;
     }
 
@@ -347,10 +347,10 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
     // delete any lingering zombies and assemble any pending tuples
     // but only in A and M, not C
-    WAIT (M) ;
+    GB_WAIT (M) ;
     if (!scalar_expansion)
     { 
-        WAIT (A) ;
+        GB_WAIT (A) ;
     }
 
     //--------------------------------------------------------------------------
@@ -436,7 +436,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             ASSERT (ni <= I2_size) ;
@@ -452,7 +452,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             ASSERT (nj <= J2_size) ;
@@ -476,7 +476,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            FREE_ALL ;
+            GB_FREE_ALL ;
             return (info) ;
         }
         A = AT ;
@@ -491,16 +491,16 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // the mask M is the same for GB_assign and GB_subassign.  Either
         // both masks are NULL, or SubMask = M (:,:), and the two masks
         // are equivalent.
-        ASSERT_OK_OR_NULL (GB_check (SubMask, "SubMask is same as M", D0)) ;
+        ASSERT_OK_OR_NULL (GB_check (SubMask, "SubMask is same as M", GB0)) ;
     }
     else
     {
         // extract M (I,J)
-        ASSERT_OK (GB_check (M, "big mask", D0)) ;
+        ASSERT_OK (GB_check (M, "big mask", GB0)) ;
         if (row_assign)
         {
             // SubMask = M(Cols,:), but use I or J if they are the sorted I2, J2
-            ASSERT (VECTOR_OK (M)) ;
+            ASSERT (GB_VECTOR_OK (M)) ;
             ASSERT (M->is_csc) ;
             if (C_is_csc)
             { 
@@ -514,12 +514,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 info = GB_subref_numeric (&SubMask, true, M,
                     I, ni, GrB_ALL, 1, true) ;
             }
-            ASSERT (IMPLIES (info == GrB_SUCCESS, VECTOR_OK (SubMask))) ;
+            ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
         }
         else if (col_assign)
         {
             // SubMask = M(Rows,:), but use I or J if they are the sorted I2, J2
-            ASSERT (VECTOR_OK (M)) ;
+            ASSERT (GB_VECTOR_OK (M)) ;
             ASSERT (M->is_csc) ;
             if (C_is_csc)
             { 
@@ -533,7 +533,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 info = GB_subref_numeric (&SubMask, true, M,
                     J, nj, GrB_ALL, 1, true) ;
             }
-            ASSERT (IMPLIES (info == GrB_SUCCESS, VECTOR_OK (SubMask))) ;
+            ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
         }
         else
         {
@@ -552,11 +552,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            FREE_ALL ;
+            GB_FREE_ALL ;
             return (info) ;
         }
         M = SubMask ;
-        ASSERT_OK (GB_check (M, "extracted submask M", D0)) ;
+        ASSERT_OK (GB_check (M, "extracted submask M", GB0)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -586,7 +586,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             M = MT ;
@@ -606,22 +606,22 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // matrix will not add much time.
 
     GrB_Matrix Z ;
-    bool aliased = ALIASED (C, A) || ALIASED (C, M) ;
+    bool aliased = GB_ALIASED (C, A) || GB_ALIASED (C, M) ;
     if (C_replace_phase)
     { 
         // the C_replace_phase requires C and M_in not to be aliased
-        aliased = aliased || ALIASED (C, M_in) ;
+        aliased = aliased || GB_ALIASED (C, M_in) ;
     }
     if (aliased)
     {
         // Z = duplicate of C
-        ASSERT (!ZOMBIES (C)) ;
-        ASSERT (!PENDING (C)) ;
+        ASSERT (!GB_ZOMBIES (C)) ;
+        ASSERT (!GB_PENDING (C)) ;
         info = GB_dup (&Z, C) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            FREE_ALL ;
+            GB_FREE_ALL ;
             return (info) ;
         }
     }
@@ -652,7 +652,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     { 
         // out of memory
         if (aliased) GB_MATRIX_FREE (&Z) ;
-        FREE_ALL ;
+        GB_FREE_ALL ;
         return (info) ;
     }
 
@@ -688,28 +688,28 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
         M = M_in ;
         ASSERT (M != NULL) ;
-        ASSERT (NOT_ALIASED (Z, M)) ;
+        ASSERT (GB_NOT_ALIASED (Z, M)) ;
 
-        ASSERT_OK (GB_check (Z, "Z for C-replace-phase", D0)) ;
-        ASSERT_OK (GB_check (M, "M for C-replace-phase", D0)) ;
+        ASSERT_OK (GB_check (Z, "Z for C-replace-phase", GB0)) ;
+        ASSERT_OK (GB_check (M, "M for C-replace-phase", GB0)) ;
 
         //----------------------------------------------------------------------
         // assemble any pending tuples
         //----------------------------------------------------------------------
 
-        if (PENDING (Z))
+        if (GB_PENDING (Z))
         {
             info = GB_wait (Z) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
                 if (aliased) GB_MATRIX_FREE (&Z) ;
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
         }
 
-        ASSERT_OK (GB_check (Z, "Z cleaned up for C-replace-phase", D0)) ;
+        ASSERT_OK (GB_check (Z, "Z cleaned up for C-replace-phase", GB0)) ;
 
         //----------------------------------------------------------------------
         // get the original mask and transpose it if required
@@ -727,13 +727,13 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             { 
                 // out of memory
                 if (aliased) GB_MATRIX_FREE (&Z) ;
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             M = MT ;
         }
 
-        ASSERT_OK (GB_check (M, "M transposed for C-replace-phase", D0)) ;
+        ASSERT_OK (GB_check (M, "M transposed for C-replace-phase", GB0)) ;
 
         //----------------------------------------------------------------------
         // sort I and J, if they are GB_LIST, if not already done
@@ -742,8 +742,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // I2 and J2 may already have been constructed for scalar expansion,
         // so allocate them and construct them, if needed.
 
-        ASSERT (IMPLIES (I2 != NULL, (I == I2) && (I2_size > 1))) ;
-        ASSERT (IMPLIES (J2 != NULL, (J == J2) && (J2_size > 1))) ;
+        ASSERT (GB_IMPLIES (I2 != NULL, (I == I2) && (I2_size > 1))) ;
+        ASSERT (GB_IMPLIES (J2 != NULL, (J == J2) && (J2_size > 1))) ;
 
         if (Ikind == GB_LIST && ni > 1 && I2 == NULL)
         {
@@ -753,7 +753,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             ASSERT (ni <= I2_size) ;
@@ -769,7 +769,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                FREE_ALL ;
+                GB_FREE_ALL ;
                 return (info) ;
             }
             ASSERT (nj <= J2_size) ;
@@ -860,7 +860,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                     { 
                         // delete Z(i,j) by marking it as a zombie
                         Z->nzombies++ ;
-                        Zi [p] = FLIP (i) ;
+                        Zi [p] = GB_FLIP (i) ;
                     }
                 }
             }
@@ -881,7 +881,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             int64_t i = I [0] ;
             ASSERT (i == GB_ijlist (I, 0, Ikind, Icolon)) ;
 
-            for_each_vector2 (Z, M)
+            GB_for_each_vector2 (Z, M)
             {
                 int64_t GBI2_initj (Iter, j, pZ, pZ_end, pM, pM_end) ;
 
@@ -916,7 +916,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                         { 
                             // delete Z(i,j) by marking it as a zombie
                             Z->nzombies++ ;
-                            Zi [p] = FLIP (i) ;
+                            Zi [p] = GB_FLIP (i) ;
                         }
                     }
                 }
@@ -933,7 +933,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M has the same size as Z
             ASSERT (M->vlen == Z->vlen && M->vdim == Z->vdim) ;
 
-            for_each_vector2 (Z, M)
+            GB_for_each_vector2 (Z, M)
             {
                 int64_t GBI2_initj (Iter, j, pZ, pZ_end, pM, pM_end) ;
 
@@ -983,7 +983,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                         { 
                             // delete Z(i,j) by marking it as a zombie
                             Z->nzombies++ ;
-                            Zi [p] = FLIP (i) ;
+                            Zi [p] = GB_FLIP (i) ;
                         }
                     }
                 }
@@ -991,11 +991,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         }
 
         // Z is valid, but it has zombies and it not in the queue.
-        ASSERT_OK (GB_check (Z, "Z for C-replace-phase done", FLIP (D0))) ;
+        ASSERT_OK (GB_check (Z, "Z for C-replace-phase done", GB_FLIP (GB0))) ;
     }
 
     // free all workspace, except Z
-    FREE_ALL ;
+    GB_FREE_ALL ;
 
     //--------------------------------------------------------------------------
     // C = Z
@@ -1006,7 +1006,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (aliased)
     {
         // zombies can be transplanted into C but pending tuples cannot
-        if (PENDING (Z))
+        if (GB_PENDING (Z))
         { 
             // assemble all pending tuples, and delete all zombies too
             info = GB_wait (Z) ;
@@ -1040,9 +1040,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     }
 
     // finalize C if blocking mode is enabled, and return result
-    ASSERT_OK (GB_check (C, "Final C for assign", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C for assign", GB0)) ;
     return (GB_block (C)) ;
 }
-
-#undef FREE_ALL
 

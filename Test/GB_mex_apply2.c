@@ -36,7 +36,7 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 4 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -88,7 +88,7 @@ void mexFunction
     }
 
     // C<C> = accum(C,op(A))
-    if (NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
+    if (GB_NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
         METHOD (GrB_apply ((GrB_Vector) C, (GrB_Vector) C, accum, op,

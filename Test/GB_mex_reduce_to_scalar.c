@@ -42,7 +42,7 @@ void mexFunction
     bool reduce_is_complex = false ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

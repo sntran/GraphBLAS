@@ -22,9 +22,9 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_dup (&C, A)") ;
-    RETURN_IF_NULL (C) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_Matrix_dup (&C, A)") ;
+    GB_RETURN_IF_NULL (C) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // duplicate the matrix

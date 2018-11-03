@@ -22,7 +22,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
 )
 {
 
-    ASSERT (ALIAS_OK (C, Mask)) ;
+    ASSERT (GB_ALIAS_OK (C, Mask)) ;
 
     GrB_Info info ;
 
@@ -49,7 +49,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     // also C<Mask> = accum(C,T) for entries in T but not C
     if (!GB_Type_compatible (ctype, ttype))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "result of computation of type [%s]\n"
             "cannot be typecast to final output of type [%s]",
             ttype->name, ctype->name))) ;
@@ -62,6 +62,6 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
         return (info) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -62,7 +62,7 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (true) ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 5 || nargin > 6)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -90,7 +90,7 @@ void mexFunction
 
     // get A (shallow copy)
     A = GB_mx_mxArray_to_Matrix (pargin [4], "A input", false, true) ;
-    if (A == NULL || A->magic != MAGIC)
+    if (A == NULL || A->magic != GB_MAGIC)
     {
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
@@ -120,7 +120,7 @@ void mexFunction
     }
 
     // C<Mask> = accum(C,op(A))
-    if (NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
+    if (GB_NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
         METHOD (apply (false)) ;

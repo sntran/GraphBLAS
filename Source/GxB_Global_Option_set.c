@@ -20,7 +20,7 @@ GrB_Info GxB_Global_Option_set      // set a global default option
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Global_Option_set (field, value)") ;
+    GB_WHERE ("GxB_Global_Option_set (field, value)") ;
 
     //--------------------------------------------------------------------------
     // set the global option
@@ -51,13 +51,13 @@ GrB_Info GxB_Global_Option_set      // set a global default option
 
         default : 
 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
                     field, GxB_HYPER, GxB_FORMAT))) ;
 
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

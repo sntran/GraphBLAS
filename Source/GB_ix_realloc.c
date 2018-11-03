@@ -29,12 +29,12 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     // the following assertion is not possible here.  This is by design.
     // Thus, ASSERT_OK (GB_check (A, "A", ...)) ;  cannot be used here.
     ASSERT (A != NULL && A->p != NULL) ;
-    ASSERT (IMPLIES (A->is_hyper, A->h != NULL)) ;
+    ASSERT (GB_IMPLIES (A->is_hyper, A->h != NULL)) ;
     ASSERT (!A->i_shallow && !A->x_shallow) ;
 
     // This function tolerates pending tuples and zombies
-    ASSERT (PENDING_OK (A)) ;
-    ASSERT (ZOMBIES_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;
 
     double memory = GBYTES (nzmax,
         sizeof (int64_t) + (numeric ? A->type->size : 0)) ;
@@ -42,14 +42,14 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     if (nzmax > GB_INDEX_MAX)
     { 
         // problem too large
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     //--------------------------------------------------------------------------
     // reallocate the space
     //--------------------------------------------------------------------------
 
-    size_t nzmax1 = IMAX (nzmax, 1) ;
+    size_t nzmax1 = GB_IMAX (nzmax, 1) ;
     bool ok1 = true, ok2 = true ;
     GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1) ;
     if (numeric)
@@ -63,7 +63,7 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     bool ok = ok1 && ok2 ;
 
     // always succeeds if the space shrinks
-    ASSERT (IMPLIES (nzmax1 <= A->nzmax, ok)) ;
+    ASSERT (GB_IMPLIES (nzmax1 <= A->nzmax, ok)) ;
 
     if (ok)
     { 
@@ -75,9 +75,9 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 
     if (!ok)
     { 
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

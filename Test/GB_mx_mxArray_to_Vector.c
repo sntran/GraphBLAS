@@ -20,7 +20,7 @@ GrB_Vector GB_mx_mxArray_to_Vector     // returns GraphBLAS version of V
 {
 
     GrB_Matrix V = GB_mx_mxArray_to_Matrix (V_matlab, name, deep_copy, empty) ;
-    if (V != NULL && !VECTOR_OK (V))
+    if (V != NULL && !GB_VECTOR_OK (V))
     {
         mexWarnMsgIdAndTxt ("GB:warn", "must be a column vector") ;
         GB_MATRIX_FREE (&V) ;

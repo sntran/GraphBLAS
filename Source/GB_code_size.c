@@ -14,7 +14,7 @@
 size_t GB_code_size             // return the size of a type, given its code
 (
     const GB_Type_code code,    // input code of the type to find the size of
-    const size_t user_size      // known size of user-defined type
+    const size_t usize          // known size of user-defined type
 )
 {
 
@@ -31,7 +31,8 @@ size_t GB_code_size             // return the size of a type, given its code
         case GB_UINT64_code : return (sizeof (uint64_t)) ;
         case GB_FP32_code   : return (sizeof (float))    ;
         case GB_FP64_code   : return (sizeof (double))   ;
-        case GB_UDT_code    : return (user_size) ;
+        case GB_UCT_code    :
+        case GB_UDT_code    : return (usize) ;
         default             : return (0) ;
     }
 }

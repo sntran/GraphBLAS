@@ -11,11 +11,11 @@
 
 #include "GB.h"
 
-#define ICHECK(i,limit)                                                 \
+#define GB_ICHECK(i,limit)                                              \
 {                                                                       \
     if ((i) < 0 || (i) >= (limit))                                      \
     {                                                                   \
-        return (ERROR (GrB_INDEX_OUT_OF_BOUNDS, (LOG,                   \
+        return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,             \
         "index "GBu" out of bounds, must be < "GBd, (i), (limit)))) ;   \
     }                                                                   \
 }
@@ -97,8 +97,8 @@ GrB_Info GB_ijproperties        // check I and determine its properties
         else
         { 
             // check the limits
-            ICHECK (imin, limit) ;
-            ICHECK (imax, limit) ;
+            GB_ICHECK (imin, limit) ;
+            GB_ICHECK (imax, limit) ;
         }
 
     }
@@ -147,8 +147,8 @@ GrB_Info GB_ijproperties        // check I and determine its properties
             I_contig = false ;
 
             // check the limits
-            ICHECK (imin, limit) ;
-            ICHECK (imax, limit) ;
+            GB_ICHECK (imin, limit) ;
+            GB_ICHECK (imax, limit) ;
         }
 
     }
@@ -168,7 +168,7 @@ GrB_Info GB_ijproperties        // check I and determine its properties
         for (int64_t inew = 0 ; inew < ni ; inew++)
         {
             int64_t i = I [inew] ;
-            ICHECK (i, limit) ;
+            GB_ICHECK (i, limit) ;
             if (i < ilast)
             { 
                 // The list I of row indices is out of order, and C=A(I,J) will
@@ -181,8 +181,8 @@ GrB_Info GB_ijproperties        // check I and determine its properties
             { 
                 I_contig = false ;
             }
-            imin = IMIN (imin, i) ;
-            imax = IMAX (imax, i) ;
+            imin = GB_IMIN (imin, i) ;
+            imax = GB_IMAX (imax, i) ;
             ilast = i ;
         }
         if (ni == 1)
@@ -197,9 +197,9 @@ GrB_Info GB_ijproperties        // check I and determine its properties
         }
     }
 
-    ASSERT (IMPLIES (I_contig, !I_unsorted)) ;
-    ASSERT (IMPLIES (Ikind == GB_ALL, I_contig)) ;
-    ASSERT (IMPLIES (Ikind == GB_RANGE, I_contig)) ;
+    ASSERT (GB_IMPLIES (I_contig, !I_unsorted)) ;
+    ASSERT (GB_IMPLIES (Ikind == GB_ALL, I_contig)) ;
+    ASSERT (GB_IMPLIES (Ikind == GB_RANGE, I_contig)) ;
 
     // I_is_contig is true if the list of row indices is a contiguous list,
     // imin:imax in MATLAB notation.  This is an important special case.
@@ -211,6 +211,6 @@ GrB_Info GB_ijproperties        // check I and determine its properties
     (*I_is_unsorted) = I_unsorted ;
     (*imin_result) = imin ;
     (*imax_result) = imax ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

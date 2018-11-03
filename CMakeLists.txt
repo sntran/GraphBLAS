@@ -41,9 +41,9 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Oct 14, 2018" )
+set ( GraphBLAS_DATE "Nov 2, 2018 (BETA1)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
-set ( GraphBLAS_VERSION_MINOR 1 )
+set ( GraphBLAS_VERSION_MINOR 2 )
 set ( GraphBLAS_VERSION_SUB   0 )
 
 # GraphBLAS C API Specification version, at graphblas.org
@@ -59,24 +59,6 @@ else ( )
     project ( graphblas )
 endif ( )
 
-# Configure a header file to pass CMake information
-configure_file (
-    "Version/GraphBLAS.h.in" 
-    "${PROJECT_SOURCE_DIR}/Include/GraphBLAS.h"
-)
-configure_file (
-    "Version/GraphBLAS_version.tex.in"
-    "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_version.tex"
-)
-configure_file (
-    "Version/GraphBLAS_API_version.tex.in"
-    "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_API_version.tex"
-)
-configure_file (
-    "Version/README.txt.in"
-    "${PROJECT_SOURCE_DIR}/README.txt"
-)
-
 include ( GNUInstallDirs )
 
 if (NOT CMAKE_BUILD_TYPE )
@@ -86,10 +68,47 @@ endif ( )
 # For development only, not for end-users:
 # set ( CMAKE_BUILD_TYPE Debug )
 
+# configure user-defined objects defined in User/*.m4
+file ( GLOB USER_M4 "User/*.m4" )
+set ( DEF0 "Config/user_def0.m4" )
+set ( DEF1 "Config/user_def1.m4" )
+set ( DEF2 "Config/user_def2.m4" )
+execute_process (
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMAND m4 -P ${DEF0} ${DEF1} ${USER_M4} ${DEF2}
+    OUTPUT_FILE "Source/all_user_objects.c"
+)
+set ( DEC0 "Config/GraphBLAS.h.in" )
+set ( DEC1 "Config/user_dec1.m4" )
+set ( DEC2 "Config/user_dec2.m4" )
+execute_process (
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMAND m4 -P ${DEC0} ${DEC1} ${USER_M4} ${DEC2}
+    OUTPUT_FILE "Config/GraphBLAS.h.tmp"
+)
+
+# Configure Include/GraphBLAS.h and documentation with version number
+configure_file (
+    "Config/GraphBLAS.h.tmp" 
+    "${PROJECT_SOURCE_DIR}/Include/GraphBLAS.h" 
+)
+configure_file (
+    "Config/GraphBLAS_version.tex.in"
+    "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_version.tex"
+)
+configure_file (
+    "Config/GraphBLAS_API_version.tex.in"
+    "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_API_version.tex"
+)
+configure_file (
+    "Config/README.txt.in"
+    "${PROJECT_SOURCE_DIR}/README.txt"
+)
+
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # include directories for both graphblas and graphblasdemo libraries
-include_directories ( Source/Template Source Source/Generated Include Demo/Include )
+include_directories ( Source/Template Source Source/Generated Source/Generator Include Demo/Include )
 
 # check which compiler is being used.  If you need to make
 # compiler-specific modifications, here is the place to do it.
@@ -180,6 +199,7 @@ target_link_libraries ( graphblasdemo         m graphblas )
 target_link_libraries ( graphblasdemo_static  graphblas_static )
 
 # Demo programs
+add_executable ( pagerank_demo "Demo/Program/pagerank_demo.c" )
 add_executable ( bfs_demo      "Demo/Program/bfs_demo.c" )
 add_executable ( tri_demo      "Demo/Program/tri_demo.c" )
 add_executable ( mis_demo      "Demo/Program/mis_demo.c" )
@@ -189,6 +209,7 @@ add_executable ( simple_demo   "Demo/Program/simple_demo.c" )
 add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
 
 # Libraries required for Demo programs
+target_link_libraries ( pagerank_demo graphblas graphblasdemo )
 target_link_libraries ( bfs_demo      graphblas graphblasdemo )
 target_link_libraries ( tri_demo      graphblas graphblasdemo )
 target_link_libraries ( mis_demo      graphblas graphblasdemo )

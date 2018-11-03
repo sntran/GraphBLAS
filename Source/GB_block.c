@@ -31,8 +31,8 @@ GrB_Info GB_block   // apply all pending computations if blocking mode enabled
     if (GB_Global.mode == GrB_BLOCKING)
     { 
         // delete any lingering zombies and assemble any pending tuples
-        WAIT (A) ;
+        GB_WAIT (A) ;
     }
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -43,7 +43,7 @@ void mexFunction
     bool is_list ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -217,6 +217,7 @@ void mexFunction
             }
             break;
 
+        case GB_UCT_code   :
         case GB_UDT_code   :
             {
                 // user-defined complex type

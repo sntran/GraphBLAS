@@ -11,15 +11,15 @@
 
 #include "GB.h"
 
-#define EWISE(op)                                                           \
+#define GB_EWISE(op)                                                        \
 {                                                                           \
     /* check inputs */                                                      \
-    RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (A) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (B) ;                                          \
-    RETURN_IF_FAULTY (Mask) ;                                               \
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (B) ;                                       \
+    GB_RETURN_IF_FAULTY (Mask) ;                                            \
     /* get the descriptor */                                                \
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
     /* C<Mask> = accum (C,T) where T = A.*B, A'.*B, A.*B', or A'.*B' */     \
     return (GB_eWise (                                                      \
         C,          C_replace,      /* C matrix and its descriptor      */  \
@@ -51,14 +51,15 @@ GrB_Info GrB_eWiseMult_Matrix_BinaryOp       // C<Mask> = accum (C, A.*B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseMult_Matrix_BinaryOp (C, Mask, accum, mult, A, B, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (mult) ;
+    GB_WHERE ("GrB_eWiseMult_Matrix_BinaryOp (C, Mask, accum, mult, A, B,"
+        " desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (mult) ;
 
     //--------------------------------------------------------------------------
     // apply the eWise kernel (using set intersection)
     //--------------------------------------------------------------------------
 
-    EWISE (mult) ;
+    GB_EWISE (mult) ;
 }
 
 //------------------------------------------------------------------------------
@@ -83,14 +84,15 @@ GrB_Info GrB_eWiseMult_Matrix_Monoid         // C<Mask> = accum (C, A.*B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseMult_Matrix_Monoid (C, Mask, accum, monoid, A, B, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (monoid) ;
+    GB_WHERE ("GrB_eWiseMult_Matrix_Monoid (C, Mask, accum, monoid, A, B,"
+        " desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
 
     //--------------------------------------------------------------------------
     // eWise multiply using the monoid operator
     //--------------------------------------------------------------------------
 
-    EWISE (monoid->op) ;
+    GB_EWISE (monoid->op) ;
 }
 
 //------------------------------------------------------------------------------
@@ -115,16 +117,14 @@ GrB_Info GrB_eWiseMult_Matrix_Semiring       // C<Mask> = accum (C, A.*B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseMult_Matrix_Semiring (C, Mask, accum, semiring, A, B,"
+    GB_WHERE ("GrB_eWiseMult_Matrix_Semiring (C, Mask, accum, semiring, A, B,"
         " desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
     // eWise multiply using the semiring's multiply operator
     //--------------------------------------------------------------------------
 
-    EWISE (semiring->multiply) ;
+    GB_EWISE (semiring->multiply) ;
 }
-
-#undef EWISE
 

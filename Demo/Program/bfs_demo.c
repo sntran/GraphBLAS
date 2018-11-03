@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/Program/bfs_demo.c: breadth first search using mxv with a mask
+// GraphBLAS/Demo/Program/bfs_demo.c: breadth first search using vxm with a mask
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -72,8 +72,8 @@ int main (int argc, char **argv)
     OK (GxB_Matrix_type (&atype, A)) ;
     if (atype != GrB_BOOL)
     {
-        GrB_Matrix_new (&Abool, GrB_BOOL, n, n) ;
-        GrB_apply (Abool, NULL, NULL, GrB_IDENTITY_BOOL, A, NULL) ;
+        OK (GrB_Matrix_new (&Abool, GrB_BOOL, n, n)) ;
+        OK (GrB_apply (Abool, NULL, NULL, GrB_IDENTITY_BOOL, A, NULL)) ;
         A2 = Abool ;
     }
 

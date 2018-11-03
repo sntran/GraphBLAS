@@ -152,6 +152,7 @@
 //------------------------------------------------------------------------------
 
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -824,22 +825,23 @@ GrB_Info GrB_BinaryOp_free          // free a user-created binary operator
 // GxB_SelectOp is an operator used by GxB_select to select entries from an
 // input matrix A that are kept in the output C.  If an entry A(i,j) in the
 // matrix A, of size nrows-by-ncols, has the value aij, then it calls the
-// select function as result = f (i, j, nrows, ncols, aij, k).  If the function
-// returns true, the entry is kept in the output C.  If f returns false, the
-// entry is not kept in C.  The type of x for the GxB_SelectOp operator may be
-// any of the 11 built-in types, or any user-defined type.  It may also be
-// GrB_NULL, to indicate that the function is type-generic and does not depend
-// at all on the value aij.  In this case, x is passed to f as a NULL pointer.
-// The k parameter is a const void * pointer to a user-defined object that is
-// passed to GxB_select.  It is not used by GxB_select except to pass it to the
-// function f.
+// select function as result = f (i, j, nrows, ncols, aij, thunk).  If the
+// function returns true, the entry is kept in the output C.  If f returns
+// false, the entry is not kept in C.  The type of x for the GxB_SelectOp
+// operator may be any of the 11 built-in types, or any user-defined type.  It
+// may also be GrB_NULL, to indicate that the function is type-generic and does
+// not depend at all on the value aij.  In this case, x is passed to f as a
+// NULL pointer.  The thunk parameter is a const void * pointer to a
+// user-defined object that is passed to GxB_select (see for example the
+// 'thunk' argument to the qsort_r library function in the GNU C Library).  The
+// 'thunk' is not used by GxB_select except to pass it to the function f.
 
-// GxB_SelectOp:  a function z=f(i,j,m,n,x,k) for the GxB_Select operation.
+// GxB_SelectOp:  a function z=f(i,j,m,n,x,thunk) for the GxB_Select operation.
 // The function f must have the signature:
 
 //      bool f (GrB_Index i, GrB_Index j,
 //              GrB_Index nrows, GrB_Index ncols,
-//              const void *x, const void *k) ;
+//              const void *x, const void *thunk) ;
 
 typedef struct GB_SelectOp_opaque *GxB_SelectOp ;
 
@@ -847,23 +849,23 @@ typedef struct GB_SelectOp_opaque *GxB_SelectOp ;
 // built-in select operators
 //------------------------------------------------------------------------------
 
-// GxB_select (C, Mask, accum, op, A, k, desc) always returns a matrix C of the
+// GxB_select (C, Mask, accum, op, A, thunk, desc) always returns a matrix C of the
 // same size as A (or A' if GrB_TRAN is in the descriptor).
 
 extern GxB_SelectOp
-    GxB_TRIL,       // C=tril(A,k):   returns true if ((j-i) <= k)
-    GxB_TRIU,       // C=triu(A,k):   returns true if ((j-i) >= k)
-    GxB_DIAG,       // C=diag(A,k):   returns true if ((j-i) == k)
-    GxB_OFFDIAG,    // C=A-diag(A,k): returns true if ((j-i) != k)
+    GxB_TRIL,       // C=tril(A,thunk):   returns true if ((j-i) <= thunk)
+    GxB_TRIU,       // C=triu(A,thunk):   returns true if ((j-i) >= thunk)
+    GxB_DIAG,       // C=diag(A,thunk):   returns true if ((j-i) == thunk)
+    GxB_OFFDIAG,    // C=A-diag(A,thunk): returns true if ((j-i) != thunk)
     GxB_NONZERO ;   // C=A(A~=0):     returns true if aij is nonzero,
                     //                for any built-in or user-defined type
 
-// For GxB_TRIL, GxB_TRIU, GxB_DIAG, and GxB_OFFDIAG, the parameter k is a
-// const void * pointer to a single scalar value of type int64_t.  These
-// select operators do not depend on the values of A, but just their position.
+// For GxB_TRIL, GxB_TRIU, GxB_DIAG, and GxB_OFFDIAG, the parameter thunk is a
+// const void * pointer to a single scalar value of type int64_t.  These select
+// operators do not depend on the values of A, but just their position.
 
-// For GxB_NONZERO, the result depends only on the value of A(i,j), and the k
-// parameter may be GrB_NULL.  It works on all built-in types and all
+// For GxB_NONZERO, the result depends only on the value of A(i,j), and the
+// thunk parameter may be GrB_NULL.  It works on all built-in types and all
 // user-defined types.  When applied to user-defined types the operator it
 // returns true if all bits in the user-defined value are zero, which can be
 // tested regardless of how the user-defined type is defined.
@@ -2848,12 +2850,12 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 // The primary computation of an operation computes a matrix or vector T.  If
 // accum is NULL, Z=T.  Otherwise, Z=accum(C,T) is computed, where accum is a
 // binary operator applied in an element-wise add manner.  Next, C is
-// optionally cleared if the OUTP:REPLACE descriptor is enabled.  Finally,
-// C<Mask>=Z is computed.  If there is no Mask, C=Z, or if an empty Mask
-// (Mask==NULL) is complemented via the descriptor, C is not modified at all.
-// Otherwise C(Mask)=Z(Mask) is computed using MATLAB-style logical index, if
-// the Mask is not complemented.  Otherwise C(~Mask)=Z(~Mask) is computed.
-// This description is terse; see the User Guide for more details.
+// optionally cleared if the REPLACE descriptor is enabled.  Finally, C<Mask>=Z
+// is computed.  If there is no Mask, C=Z, or if an empty Mask (Mask==NULL) is
+// complemented via the descriptor, C is not modified at all.  Otherwise
+// C(Mask)=Z(Mask) is computed using MATLAB-style logical index, if the Mask is
+// not complemented.  Otherwise C(~Mask)=Z(~Mask) is computed.  This
+// description is terse; see the User Guide for more details.
 
 // GrB_NULL is used for the accum argument when no accum operation is desired,
 // for the Mask argument when no Mask is desired, and for the descriptor
@@ -4367,7 +4369,7 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, op(u,k))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GxB_SelectOp op,          // operator to apply to the entries
     const GrB_Vector u,             // first input:  vector u
-    const void *k,                  // optional input for the select operator
+    const void *thunk,              // optional input for the select operator
     const GrB_Descriptor desc       // descriptor for w and mask
 ) ;
 
@@ -4378,7 +4380,7 @@ GrB_Info GxB_Matrix_select          // C<Mask> = accum (C, op(A,k)) or op(A',k)
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GxB_SelectOp op,          // operator to apply to the entries
     const GrB_Matrix A,             // first input:  matrix A
-    const void *k,                  // optional input for the select operator
+    const void *thunk,              // optional input for the select operator
     const GrB_Descriptor desc       // descriptor for C, mask, and A
 ) ;
 
@@ -5210,16 +5212,18 @@ GxB_LOR_LE_BOOL        , GxB_LAND_LE_BOOL       , GxB_LXOR_LE_BOOL       , GxB_E
 // GxB_stats: memory usage and other statistics
 //------------------------------------------------------------------------------
 
-// This function is available but not documented, since its design is
-// tentative.
+// This function is still available, but deprecated.  It has never appeared in
+// any user guide, and will not appear.  It will be removed in future versions
+// and its use is not recommended.  Its functionality will be replaced by
+// GxB_get.
 
 typedef struct
 {
     int64_t nmalloc ;       // # of objects malloc'ed but not yet freed
     int64_t inuse ;         // memory in use (in bytes)
     int64_t maxused ;       // max memory used since last call to GxB_stats
-    int64_t future [20] ;   // not used, reserved for future use
-    double xfuture [20] ;   // not used, reserved for future use
+    int64_t future [20] ;   // not used
+    double xfuture [20] ;   // not used
 }
 GxB_Statistics ;
 
@@ -5276,6 +5280,159 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
     const GrB_Matrix B,             // second input: matrix B
     const GrB_Descriptor desc       // descriptor for C, Mask, A, and B
 ) ;
+
+//------------------------------------------------------------------------------
+// GxB_fprint and GxB_print: print the contents of a GraphBLAS object
+//------------------------------------------------------------------------------
+
+// GxB_fprint (object, GxB_Print_Level pr, FILE *f) prints the contents of any
+// of the 9 GraphBLAS objects to the file f, and also does an extensive test on
+// the object to determine if it is valid.  It returns one of the following
+// error conditions:
+//
+//      GrB_SUCCESS               object is valid
+//      GrB_UNINITIALIZED_OBJECT  object is not initialized
+//      GrB_INVALID_OBJECT        object is not valid
+//      GrB_NULL_POINTER          object is a NULL pointer
+//      GrB_INVALID_VALUE         fprintf returned an I/O error; see the ANSI C
+//                                errno or GrB_error( )for details.
+//
+// GxB_fprint does not modify the status of any object.  If a matrix or vector
+// has not been completed, the pending computations are guaranteed to *not* be
+// performed by GxB_fprint.  The reason is simple.  It is possible for a bug in
+// the user application (such as accessing memory outside the bounds of an
+// array) to mangle the internal content of a GraphBLAS object, and GxB_fprint
+// can be a helpful tool to track down this bug.  If GxB_fprint attempted to
+// complete any computations prior to printing or checking the contents of the
+// matrix or vector, then further errors could occur, including a segfault.
+//
+// The type-specific functions include an additional argument, the name string.
+// The name is printed at the beginning of the display (assuming pr is not
+// GxB_SILENT) so that the object can be more easily identified in the output.
+// For the type-generic methods GxB_fprint and GxB_print, the name string is
+// the variable name of the object itself.
+//
+// If f is NULL, nothing is printed (pr is effectively GxB_SILENT); this is not
+// an error condition.  If pr is outside the bounds 0 to 3, negative values are
+// treated as GxB_SILENT, and values > 3 are treated as GxB_COMPLETE.  If name
+// is NULL, it is treated as the empty string.
+//
+// GxB_print (object, GxB_Print_Level pr) is the same as GxB_fprint, except
+// that it prints the contents of the object to stdout instead of a file f.
+//
+// The exact content and format of what is printed is implementation-dependent,
+// and will change from version to version of SuiteSparse:GraphBLAS.  Do not
+// attempt to rely on the exact content or format by trying to parse the
+// resulting output via another program.  The intent of these functions is to
+// produce a report of the object for visual inspection.
+
+typedef enum
+{
+    GxB_SILENT = 0,     // nothing is printed, just check the object
+    GxB_SUMMARY = 1,    // print a terse summary
+    GxB_SHORT = 2,      // short description, about 30 entries of a matrix
+    GxB_COMPLETE = 3    // print the entire contents of the object
+}
+GxB_Print_Level ;
+
+GrB_Info GxB_Type_fprint            // print and check a GrB_Type
+(
+    GrB_Type type,                  // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_UnaryOp_fprint         // print and check a GrB_UnaryOp
+(
+    GrB_UnaryOp unaryop,            // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_BinaryOp_fprint        // print and check a GrB_BinaryOp
+(
+    GrB_BinaryOp binaryop,          // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_SelectOp_fprint        // print and check a GxB_SelectOp
+(
+    GxB_SelectOp selectop,          // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_Monoid_fprint          // print and check a GrB_Monoid
+(
+    GrB_Monoid monoid,              // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_Semiring_fprint        // print and check a GrB_Semiring
+(
+    GrB_Semiring semiring,          // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_Descriptor_fprint      // print and check a GrB_Descriptor
+(
+    GrB_Descriptor descriptor,      // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_Matrix_fprint          // print and check a GrB_Matrix
+(
+    GrB_Matrix A,                   // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
+(
+    GrB_Vector v,                   // object to print and check
+    const char *name,               // name of the object
+    GxB_Print_Level pr,             // print level
+    FILE *f                         // file for output
+) ;
+
+#define GxB_fprint(object,pr,f)                         \
+    _Generic                                            \
+    (                                                   \
+        (object),                                       \
+        const GrB_Type       : GxB_Type_fprint       ,  \
+              GrB_Type       : GxB_Type_fprint       ,  \
+        const GrB_UnaryOp    : GxB_UnaryOp_fprint    ,  \
+              GrB_UnaryOp    : GxB_UnaryOp_fprint    ,  \
+        const GrB_BinaryOp   : GxB_BinaryOp_fprint   ,  \
+              GrB_BinaryOp   : GxB_BinaryOp_fprint   ,  \
+        const GxB_SelectOp   : GxB_SelectOp_fprint   ,  \
+              GxB_SelectOp   : GxB_SelectOp_fprint   ,  \
+        const GrB_Monoid     : GxB_Monoid_fprint     ,  \
+              GrB_Monoid     : GxB_Monoid_fprint     ,  \
+        const GrB_Semiring   : GxB_Semiring_fprint   ,  \
+              GrB_Semiring   : GxB_Semiring_fprint   ,  \
+        const GrB_Vector     : GxB_Vector_fprint     ,  \
+              GrB_Vector     : GxB_Vector_fprint     ,  \
+        const GrB_Matrix     : GxB_Matrix_fprint     ,  \
+              GrB_Matrix     : GxB_Matrix_fprint     ,  \
+        const GrB_Descriptor : GxB_Descriptor_fprint ,  \
+              GrB_Descriptor : GxB_Descriptor_fprint    \
+    )                                                   \
+    (object, GB_STR(object), pr, f)
+
+#define GxB_print(object,pr) GxB_fprint(object,pr,stdout)
 
 #endif
 

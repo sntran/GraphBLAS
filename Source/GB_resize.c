@@ -21,11 +21,11 @@ GrB_Info GB_resize              // change the size of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A, "A to resize", D0)) ;
+    ASSERT_OK (GB_check (A, "A to resize", GB0)) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (A) ;
-    ASSERT_OK (GB_check (A, "A to resize, wait", D0)) ;
+    GB_WAIT (A) ;
+    ASSERT_OK (GB_check (A, "A to resize, wait", GB0)) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format
@@ -55,7 +55,7 @@ GrB_Info GB_resize              // change the size of a matrix
 
     GrB_Info info = GrB_SUCCESS ;
 
-    if (GB_to_hyper_check (A, A->nvec_nonempty, vdim_new))
+    if (GB_to_hyper_test (A, A->nvec_nonempty, vdim_new))
     { 
         info = GB_to_hyper (A) ;
     }
@@ -95,7 +95,7 @@ GrB_Info GB_resize              // change the size of a matrix
         // descrease A->nvec to delete the vectors outside the range
         // 0...vdim_new-1.
         int64_t pleft = 0 ;
-        int64_t pright = IMIN (A->nvec, vdim_new) - 1 ;
+        int64_t pright = GB_IMIN (A->nvec, vdim_new) - 1 ;
         bool found ;
         GB_BINARY_SPLIT_SEARCH (vdim_new, Ah, pleft, pright, found) ;
         A->nvec = pleft ;
@@ -118,7 +118,8 @@ GrB_Info GB_resize              // change the size of a matrix
             { 
                 // out of memory
                 GB_phix_free (A) ;
-                return (OUT_OF_MEMORY (GBYTES (vdim_new+1, sizeof (int64_t)))) ;
+                double memory = GBYTES (vdim_new+1, sizeof (int64_t)) ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
             Ap = A->p ;
             A->plen = vdim_new ;
@@ -127,7 +128,7 @@ GrB_Info GB_resize              // change the size of a matrix
         if (vdim_new > vdim_old)
         {
             // number of vectors is increasing, extend the vector pointers
-            int64_t anz = NNZ (A) ;
+            int64_t anz = GB_NNZ (A) ;
             for (int64_t j = vdim_old + 1 ; j <= vdim_new ; j++)
             { 
                 Ap [j] = anz ;
@@ -154,9 +155,8 @@ GrB_Info GB_resize              // change the size of a matrix
         // also compute A->nvec_nonempty
         int64_t vdim = vdim_new ;
         int64_t anz ;
-        #define PRUNE if (i >= vlen_new) break ;
+        #define GB_PRUNE if (i >= vlen_new) break ;
         #include "GB_prune_inplace.c"
-        #undef PRUNE
         recount = false ;
     }
 
@@ -171,7 +171,7 @@ GrB_Info GB_resize              // change the size of a matrix
 
     // vlen has been resized
     A->vlen = vlen_new ;
-    ASSERT_OK (GB_check (A, "A vlen resized", D0)) ;
+    ASSERT_OK (GB_check (A, "A vlen resized", GB0)) ;
 
     //--------------------------------------------------------------------------
     // check for conversion to hypersparse or to non-hypersparse

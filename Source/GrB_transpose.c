@@ -25,21 +25,21 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (C, M, A)) ;
+    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
 
-    WHERE ("GrB_transpose (C, M, accum, A, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_FAULTY (M) ;
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_transpose (C, M, accum, A, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (M) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
-    ASSERT_OK (GB_check (C, "C input for GrB_transpose", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GrB_transpose", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GrB_transpose", D0)) ;
-    ASSERT_OK (GB_check (A, "A input for GrB_transpose", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GrB_transpose", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GrB_transpose", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GrB_transpose", GB0)) ;
+    ASSERT_OK (GB_check (A, "A input for GrB_transpose", GB0)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     // check domains and dimensions for C<M> = accum (C,T)
     info = GB_compatible (C->type, C, M, accum, A->type) ;
@@ -49,25 +49,25 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     }
 
     // check the dimensions
-    int64_t tnrows = (!A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t tncols = (!A_transpose) ? NROWS (A) : NCOLS (A) ;
-    if (NROWS (C) != tnrows || NCOLS (C) != tncols)
+    int64_t tnrows = (!A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t tncols = (!A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    if (GB_NROWS (C) != tnrows || GB_NCOLS (C) != tncols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "output is "GBd"-by-"GBd"\n"
             "input is "GBd"-by-"GBd"%s",
-            NROWS (C), NCOLS (C),
+            GB_NROWS (C), GB_NCOLS (C),
             tnrows, tncols, (!A_transpose) ? " (transposed)" : ""))) ;
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // T = A or A', where T can have the type of C or the type of A
@@ -133,7 +133,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // C<M> = accum (C,T): accumulate the results into C via the mask M
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (T, "T for GrB_transpose", D0)) ;
+    ASSERT_OK (GB_check (T, "T for GrB_transpose", GB0)) ;
     return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
 }
 

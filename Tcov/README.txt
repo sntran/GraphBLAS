@@ -10,7 +10,12 @@ To compile GraphBLAS for statement coverage testing, and to run the tests, do:
     testcov
 
 Statement coverage tests results will be saved in log.txt.  The entire test
-can take about 20 minutes, including the compile time.
+can take about 30 to 40 minutes, including the compile time.  Note that full
+coverage requires some or all of the GraphBLAS/User/Examples/*.m4 files to
+first be moved into the GraphBLAS/User/ directory (and then run "make cmake"
+in the shell before doing testcov in MATLAB).  The tests will work without
+this step, but some statements that handle compile-time user-defined semirings
+in the User/*m4 files will not be tested.
 
 To list the lines covered by the test, do this in MATLAB:
 
@@ -42,7 +47,7 @@ Files in GraphBLAS/Tcov:
     Makefile       just for 'make clean' and 'make purge'
     README.txt     this file
 
-    gbcover_util.c      get/put the coverage to/from MATLAB
+    GB_cover_util.c     get/put the coverage to/from MATLAB
     log_*.txt           100% test coverage certificates
 
     tmp_cover       where coverage reports are placed

@@ -37,7 +37,7 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
     // access the row indices at all, so it works fine if the columns have
     // jumbled row indices.
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converting to hypersparse", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converting to hypersparse", GB0)) ;
 
     GrB_Info info ;
 
@@ -75,7 +75,7 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
             A->is_hyper = true ;    // A is hypersparse, but otherwise invalid
             GB_FREE_MEMORY (Ap_new, nvec_new+1, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ah_new, nvec_new,   sizeof (int64_t)) ;
-            return (OUT_OF_MEMORY (GBYTES (2*nvec_new+1, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (2*nvec_new+1, sizeof (int64_t))));
         }
 
         //----------------------------------------------------------------------
@@ -129,8 +129,8 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
     // A is now in hypersparse form
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to hypersparse", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to hypersparse", GB0)) ;
     ASSERT (A->is_hyper) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

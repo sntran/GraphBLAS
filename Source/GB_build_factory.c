@@ -50,7 +50,7 @@
 GrB_Info GB_build_factory           // build a matrix
 (
     GrB_Matrix *Thandle,            // matrix T to build
-    const int64_t tnz0,             // final NNZ(T)
+    const int64_t tnz0,             // final nnz(T)
     int64_t **iwork_handle,         // for (i,k) or (j,i,k) tuples
     int64_t **kwork_handle,         // for (i,k) or (j,i,k) tuples
     const void *S,                  // array of values of tuples
@@ -70,7 +70,7 @@ GrB_Info GB_build_factory           // build a matrix
     ASSERT (Thandle != NULL) ;
     GrB_Matrix T = *Thandle ;
     ASSERT (T != NULL) ;
-    ASSERT (IMPLIES (len > 0, S != NULL)) ;
+    ASSERT (GB_IMPLIES (len > 0, S != NULL)) ;
     ASSERT (iwork_handle != NULL) ;
     ASSERT (kwork_handle != NULL) ;
     ASSERT (scode <= GB_UDT_code) ;
@@ -101,7 +101,7 @@ GrB_Info GB_build_factory           // build a matrix
     GB_Type_code tcode = ttype->code ;
     bool op_2nd ;
 
-    ASSERT_OK (GB_check (ttype, "ttype for build_factorize", D0)) ;
+    ASSERT_OK (GB_check (ttype, "ttype for build_factorize", GB0)) ;
 
     if (dup == NULL)
     { 
@@ -126,7 +126,7 @@ GrB_Info GB_build_factory           // build a matrix
         //      x = (dup->xtype) T(i,j)
         //      z = (dup->ztype) dup (x,y)
         //      T(i,j) = (ttype) z
-        ASSERT_OK (GB_check (dup, "dup for build_factory", D0)) ;
+        ASSERT_OK (GB_check (dup, "dup for build_factory", GB0)) ;
         opcode = dup->opcode ;
         xtype = dup->xtype ;
         ytype = dup->ytype ;
@@ -161,8 +161,8 @@ GrB_Info GB_build_factory           // build a matrix
     // ijlen*sizeof(int64_t).  tnz <= ijlen always holds, and tsize <=
     // size(int64_t) holds for all built-in types.
 
-    T->nzmax = IMAX (tnz0, 1) ;
-    ASSERT (tnz0 == NNZ (T)) ;
+    T->nzmax = GB_IMAX (tnz0, 1) ;
+    ASSERT (tnz0 == GB_NNZ (T)) ;
     ASSERT (tnz0 <= len && tnz0 <= ijlen) ;
     GB_MALLOC_MEMORY (T->x, T->nzmax, tsize) ;
     T->i = NULL ;
@@ -173,7 +173,7 @@ GrB_Info GB_build_factory           // build a matrix
         GB_MATRIX_FREE (Thandle) ;
         GB_FREE_MEMORY (*kwork_handle, len, sizeof (int64_t)) ;
         GB_FREE_MEMORY (*iwork_handle, ijlen, sizeof (int64_t)) ;
-        return (OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
     void *restrict Tx = T->x ;
@@ -202,15 +202,15 @@ GrB_Info GB_build_factory           // build a matrix
         // In addition, the FIRST and SECOND operators are hard-coded, for
         // another 22 workers, since SECOND is used by GB_wait and since FIRST
         // is useful for keeping the first tuple seen.  It is controlled by the
-        // #define, so they do not appear in GB_reduce_to_* where the FIRST and
-        // SECOND operators are not needed.
+        // GB_INCLUDE_SECOND_OPERATOR definition, so they do not appear in
+        // GB_reduce_to_* where the FIRST and SECOND operators are not needed.
 
-        #define INCLUDE_SECOND_OPERATOR
+        #define GB_INCLUDE_SECOND_OPERATOR
 
         bool done = false ;
 
         // define the worker for the switch factory
-        #define WORKER(type)                                                \
+        #define GB_WORKER(type)                                             \
         {                                                                   \
             const type *restrict sx = (type *) S ;                          \
             type *restrict tx = (type *) Tx ;                               \
@@ -222,7 +222,7 @@ GrB_Info GB_build_factory           // build a matrix
                 if (i < 0)                                                  \
                 {                                                           \
                     /* duplicate entry: Tx [tnz-1] '+=' S [k] */            \
-                    ADD (tx [tnz-1], sx [k]) ;                              \
+                    GB_DUP (tx [tnz-1], sx [k]) ;                           \
                 }                                                           \
                 else                                                        \
                 {                                                           \
@@ -251,9 +251,6 @@ GrB_Info GB_build_factory           // build a matrix
             #include "GB_assoc_template.c"
 
         #endif
-
-        #undef WORKER
-        #undef INCLUDE_SECOND_OPERATOR
 
         //----------------------------------------------------------------------
         // generic worker
@@ -340,11 +337,11 @@ GrB_Info GB_build_factory           // build a matrix
 
         // The type of the S array differs from the type of T and dup, but both
         // types are built-in since user-defined types cannot be typecasted.
-        ASSERT (scode != GB_UDT_code) ;
-        ASSERT (tcode != GB_UDT_code) ;
-        ASSERT (xcode != GB_UDT_code) ;
-        ASSERT (ycode != GB_UDT_code) ;
-        ASSERT (zcode != GB_UDT_code) ;
+        ASSERT (scode <= GB_FP64_code) ;
+        ASSERT (tcode <= GB_FP64_code) ;
+        ASSERT (xcode <= GB_FP64_code) ;
+        ASSERT (ycode <= GB_FP64_code) ;
+        ASSERT (zcode <= GB_FP64_code) ;
 
         // scalar workspace
         char twork [tsize] ;
@@ -444,6 +441,6 @@ GrB_Info GB_build_factory           // build a matrix
     // in the caller to NULL.
     (*iwork_handle) = NULL ;
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

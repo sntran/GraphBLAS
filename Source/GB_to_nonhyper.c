@@ -37,7 +37,7 @@ GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
     // access the row indices at all, so it works fine if the columns have
     // jumbled row indices.
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A being converted to nonhyper", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A being converted to nonhyper", GB0)) ;
 
     //--------------------------------------------------------------------------
     // convert A to non-hypersparse form
@@ -55,7 +55,7 @@ GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
             // out of memory
             GB_phix_free (A) ;
             A->is_hyper = false ;    // A is non-hypersparse, but invalid
-            return (OUT_OF_MEMORY (GBYTES (vdim+1, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (vdim+1, sizeof (int64_t)))) ;
         }
 
         // get the old hyperlist
@@ -106,15 +106,15 @@ GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
         A->plen = vdim ;
         A->p_shallow = false ;
         A->h_shallow = false ;
-        A->magic = MAGIC ;
+        A->magic = GB_MAGIC ;
     }
 
     //--------------------------------------------------------------------------
     // A is now in non-hypersparse form
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to nonhypersparse", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to nonhypersparse", GB0)) ;
     ASSERT (!(A->is_hyper)) ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

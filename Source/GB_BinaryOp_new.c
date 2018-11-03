@@ -30,13 +30,13 @@ GrB_Info GB_BinaryOp_new
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_BinaryOp_new (binaryop, function, ztype, xtype, ytype)") ;
-    RETURN_IF_NULL (binaryop) ;
+    GB_WHERE ("GrB_BinaryOp_new (binaryop, function, ztype, xtype, ytype)") ;
+    GB_RETURN_IF_NULL (binaryop) ;
     (*binaryop) = NULL ;
-    RETURN_IF_NULL (function) ;
-    RETURN_IF_NULL_OR_FAULTY (ztype) ;
-    RETURN_IF_NULL_OR_FAULTY (xtype) ;
-    RETURN_IF_NULL_OR_FAULTY (ytype) ;
+    GB_RETURN_IF_NULL (function) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (ztype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (xtype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (ytype) ;
 
     //--------------------------------------------------------------------------
     // create the binary op
@@ -46,19 +46,19 @@ GrB_Info GB_BinaryOp_new
     GB_CALLOC_MEMORY (*binaryop, 1, sizeof (struct GB_BinaryOp_opaque)) ;
     if (*binaryop == NULL)
     { 
-        return (NO_MEMORY) ;
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the binary operator
     GrB_BinaryOp op = *binaryop ;
-    op->magic = MAGIC ;
+    op->magic = GB_MAGIC ;
     op->xtype = xtype ;
     op->ytype = ytype ;
     op->ztype = ztype ;
     op->function = function ;
     strncpy (op->name, name, GB_LEN-1) ;
-    op->opcode = GB_USER_opcode ;           // generic opcode for all user ops
-    ASSERT_OK (GB_check (op, "new user-defined binary op", D0)) ;
-    return (REPORT_SUCCESS) ;
+    op->opcode = GB_USER_R_opcode ;     // run-time user-defined operator
+    ASSERT_OK (GB_check (op, "new user-defined binary op", GB0)) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

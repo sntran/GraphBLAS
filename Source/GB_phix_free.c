@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Frees all allocatable content of a matrix, except for the header itself.
-// A->magic becomes MAGIC2.  If this matrix is given to a user-callable
+// A->magic becomes GB_MAGIC2.  If this matrix is given to a user-callable
 // GraphBLAS function, it will generate a GrB_INVALID_OBJECT error.
 
 #include "GB.h"

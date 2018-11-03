@@ -11,7 +11,7 @@ function count = gbcover_edit (infiles, count, outdir)
 % input files are modified in a simple way.  Each line that is all blank except
 % for "{ " at the end of the line is converted to:
 %
-%   { gbcov [count]++ ;
+%   { GB_cov [count]++ ;
 %
 % In a switch statement, a counter is added to each case and to the default,
 % but only if the colon has spaces on either side (" : ").
@@ -21,8 +21,8 @@ function count = gbcover_edit (infiles, count, outdir)
 %
 % are converted to:
 %
-%       case stuff :  gbcov[count]++ ; statement
-%       default :     gbcov[count]++ ; statement
+%       case stuff :  GB_cov[count]++ ; statement
+%       default :     GB_cov[count]++ ; statement
 %
 %  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
@@ -61,9 +61,9 @@ for k = 1:nfiles
                 && (cline (len-1) == '{') && (cline (len) == ' '))
 
             % left curly brackect and space at the end of the line
-            % "{ " changes to "{   gbcov[n]++ ; "
+            % "{ " changes to "{   GB_cov[n]++ ; "
 
-            fprintf (f_output, '%s  gbcov[%d]++ ;\n', cline, count) ;
+            fprintf (f_output, '%s  GB_cov[%d]++ ;\n', cline, count) ;
             count = count + 1 ;
 
         elseif ((~isempty (strfind (cline, ' case ')) || ...
@@ -71,9 +71,9 @@ for k = 1:nfiles
                  ~isempty (strfind (cline, ' : ')))
 
             % a switch case statement, or "default : "
-            % "case stuff : statement" => "case stuff : gbcov[n]++ ; statement"
+            % "case stuff : statement" => "case stuff : GB_cov[n]++ ; statement"
             colon = find (cline == ':', 1) ;
-            fprintf (f_output, '%s : gbcov[%d]++ ; %s\n', ...
+            fprintf (f_output, '%s : GB_cov[%d]++ ; %s\n', ...
                 cline (1:colon-1), count, cline (colon+1:end)) ;
             count = count+1 ;
 

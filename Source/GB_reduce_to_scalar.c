@@ -45,16 +45,16 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     // but this could be done only if the reduce monoid is the same as the
     // pending operator.
 
-    WAIT_PENDING (A) ;
-    ASSERT (ZOMBIES_OK (A)) ;       // Zombies are tolerated, and not deleted
-    RETURN_IF_NULL_OR_FAULTY (reduce) ;
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL (c) ;
+    GB_WAIT_PENDING (A) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;       // Zombies are tolerated, and not deleted
+    GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL (c) ;
 
-    ASSERT_OK (GB_check (ctype, "type of scalar c", D0)) ;
-    ASSERT_OK (GB_check (reduce, "reduce for reduce_to_scalar", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_to_scalar", D0)) ;
-    ASSERT_OK (GB_check (A, "A for reduce_to_scalar", D0)) ;
+    ASSERT_OK (GB_check (ctype, "type of scalar c", GB0)) ;
+    ASSERT_OK (GB_check (reduce, "reduce for reduce_to_scalar", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for reduce_to_scalar", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for reduce_to_scalar", GB0)) ;
 
     // check domains and dimensions for c = accum (c,twork)
     GrB_Type ztype = reduce->op->ztype ;
@@ -67,7 +67,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     // twork = reduce (twork,A) must be compatible
     if (!GB_Type_compatible (A->type, ztype))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "incompatible type for reduction operator z=%s(x,y):\n"
             "input of type [%s]\n"
             "cannot be typecast to reduction operator of type [%s]",
@@ -79,7 +79,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     //--------------------------------------------------------------------------
 
     int64_t asize = A->type->size ;
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
     const int64_t *restrict Ai = A->i ;
 
     int64_t zsize = ztype->size ;
@@ -110,10 +110,12 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         // hard-coded below via a switch factory.  If the case is not handled
         // by the switch factory, 'done' remains false.
 
+        // FUTURE: some operators can terminate early
+
         bool done = false ;
 
         // define the worker for the switch factory
-        #define WORKER(type)                                                \
+        #define GB_WORKER(type)                                             \
         {                                                                   \
             const type *restrict Ax = (type *) A->x ;                       \
             type s ;                                                        \
@@ -123,8 +125,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 for (int64_t p = 0 ; p < anz ; p++)                         \
                 {                                                           \
                     /* s += A(i,j) */                                       \
-                    ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;                       \
-                    ADD (s, Ax [p]) ;                                       \
+                    ASSERT (GB_IS_NOT_ZOMBIE (Ai [p])) ;                    \
+                    GB_DUP (s, Ax [p]) ;                                    \
                 }                                                           \
             }                                                               \
             else                                                            \
@@ -132,7 +134,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 for (int64_t p = 0 ; p < anz ; p++)                         \
                 {                                                           \
                     /* s += A(i,j) if the entry is not a zombie */          \
-                    if (IS_NOT_ZOMBIE (Ai [p])) ADD (s, Ax [p]) ;           \
+                    if (GB_IS_NOT_ZOMBIE (Ai [p])) GB_DUP (s, Ax [p]) ;     \
                 }                                                           \
             }                                                               \
             memcpy (twork, &s, zsize) ;                                     \
@@ -157,8 +159,6 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
 
         #endif
 
-        #undef WORKER
-
         //----------------------------------------------------------------------
         // generic worker: sum up the entries, no typecasting
         //----------------------------------------------------------------------
@@ -173,7 +173,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 for (int64_t p = 0 ; p < anz ; p++)
                 { 
                     // twork += A(i,j)
-                    ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
+                    ASSERT (GB_IS_NOT_ZOMBIE (Ai [p])) ;
                     // twork += Ax [p]
                     freduce (twork, twork, Ax +(p*asize)) ; // (z x alias)
                 }
@@ -183,7 +183,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
                 for (int64_t p = 0 ; p < anz ; p++)
                 {
                     // twork += A(i,j) if not a zombie
-                    if (IS_NOT_ZOMBIE (Ai [p]))
+                    if (GB_IS_NOT_ZOMBIE (Ai [p]))
                     { 
                         // twork += Ax [p]
                         freduce (twork, twork, Ax +(p*asize)) ; // (z x alias)
@@ -209,7 +209,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
             for (int64_t p = 0 ; p < anz ; p++)
             { 
                 // twork += (ztype) A(i,j)
-                ASSERT (IS_NOT_ZOMBIE (Ai [p])) ;
+                ASSERT (GB_IS_NOT_ZOMBIE (Ai [p])) ;
                 // awork = (ztype) Ax [p]
                 cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
                 // twork += awork
@@ -221,7 +221,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
             for (int64_t p = 0 ; p < anz ; p++)
             {
                 // twork += (ztype) A(i,j) if not a zombie
-                if (IS_NOT_ZOMBIE (Ai [p]))
+                if (GB_IS_NOT_ZOMBIE (Ai [p]))
                 { 
                     // awork = (ztype) Ax [p]
                     cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
@@ -274,6 +274,6 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         cast_zaccum_to_C (c, zaccum, ctype->size) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

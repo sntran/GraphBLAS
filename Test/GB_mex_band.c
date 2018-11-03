@@ -11,7 +11,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_band (A, lo, hi, atranspose)"
+#define USAGE "C = GB_mex_band (A, lo, hi, atranspose, pre)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -64,8 +64,8 @@ void mexFunction
     #define FREE_DEEP_COPY ;
 
     // check inputs
-    WHERE (USAGE) ;
-    if (nargout > 1 || nargin < 3 || nargin > 4)
+    GB_WHERE (USAGE) ;
+    if (nargout > 1 || nargin < 3 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -92,8 +92,23 @@ void mexFunction
         OK (GxB_set (desc, GrB_INP0, GrB_TRAN)) ;
     }
 
+    // get the pre/run-time option
+    int GET_SCALAR (0, int, pre, 4) ;
+
     // create operator
-    METHOD (GxB_SelectOp_new (&op, band, NULL)) ;
+    op = NULL ;
+    if (pre)
+    {
+        // use the compile-time defined operator, My_band
+        #ifdef MY_BAND
+        op = My_band ;
+        #endif
+    }
+    if (op == NULL)
+    {
+        // use the run-time defined operator, from the band function
+        METHOD (GxB_SelectOp_new (&op, band, NULL)) ;
+    }
 
     // create result matrix C
     if (atranspose)
@@ -106,7 +121,7 @@ void mexFunction
     }
 
     // C<Mask> = accum(C,op(A))
-    if (NCOLS (C) == 1 && !atranspose)
+    if (GB_NCOLS (C) == 1 && !atranspose)
     {
         // this is just to test the Vector version
         OK (GxB_select ((GrB_Vector) C, NULL, NULL, op, (GrB_Vector) A,

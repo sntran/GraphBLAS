@@ -13,7 +13,7 @@
 #include "GB.h"
 
 // ensure an unsigned integer does not cause signed integer overflow
-#define LIMIT(u) (int64_t) (IMIN (u, INT64_MAX))
+#define GB_LIMIT(u) (int64_t) (GB_IMIN (u, INT64_MAX))
 
 void GB_ijlength            // get the length and kind of an index list I
 (
@@ -65,8 +65,8 @@ void GB_ijlength            // get the length and kind of an index list I
 
         // the array I must have size at least 2
 
-        int64_t ibegin = LIMIT (I [GxB_BEGIN]) ;
-        int64_t iend   = LIMIT (I [GxB_END  ]) ;
+        int64_t ibegin = GB_LIMIT (I [GxB_BEGIN]) ;
+        int64_t iend   = GB_LIMIT (I [GxB_END  ]) ;
 
         ASSERT (ibegin >= 0) ;
 
@@ -104,9 +104,9 @@ void GB_ijlength            // get the length and kind of an index list I
         // The array I must have size at least 3.  It is an unsigned uint64_t
         // array, so integers must be positive.
 
-        int64_t ibegin = LIMIT (I [GxB_BEGIN]) ;
-        int64_t iinc   = LIMIT (I [GxB_INC  ]) ;
-        int64_t iend   = LIMIT (I [GxB_END  ]) ;
+        int64_t ibegin = GB_LIMIT (I [GxB_BEGIN]) ;
+        int64_t iinc   = GB_LIMIT (I [GxB_INC  ]) ;
+        int64_t iend   = GB_LIMIT (I [GxB_END  ]) ;
 
         ASSERT (ibegin >= 0) ;
         ASSERT (iinc   >= 0) ;
@@ -162,9 +162,9 @@ void GB_ijlength            // get the length and kind of an index list I
         // The array I must have size at least 3.  It is an unsigned uint64_t
         // array, so integers must be positive.
 
-        int64_t ibegin = LIMIT (I [GxB_BEGIN]) ;
-        int64_t iinc   = LIMIT (I [GxB_INC  ]) ;
-        int64_t iend   = LIMIT (I [GxB_END  ]) ;
+        int64_t ibegin = GB_LIMIT (I [GxB_BEGIN]) ;
+        int64_t iinc   = GB_LIMIT (I [GxB_INC  ]) ;
+        int64_t iend   = GB_LIMIT (I [GxB_END  ]) ;
 
         ASSERT (iinc   >= 0) ;
 

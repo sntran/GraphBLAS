@@ -25,8 +25,8 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Desc_get (desc, field, &value)") ;
-    RETURN_IF_FAULTY (desc) ;
+    GB_WHERE ("GxB_Desc_get (desc, field, &value)") ;
+    GB_RETURN_IF_FAULTY (desc) ;
 
     //--------------------------------------------------------------------------
     // get the parameter
@@ -42,7 +42,7 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             va_start (ap, field) ;
             value = va_arg (ap, GrB_Desc_Value *) ;
             va_end (ap) ;
-            RETURN_IF_NULL (value) ;
+            GB_RETURN_IF_NULL (value) ;
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->out ;
             break ;
 
@@ -51,7 +51,7 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             va_start (ap, field) ;
             value = va_arg (ap, GrB_Desc_Value *) ;
             va_end (ap) ;
-            RETURN_IF_NULL (value) ;
+            GB_RETURN_IF_NULL (value) ;
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->mask ;
             break ;
 
@@ -60,7 +60,7 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             va_start (ap, field) ;
             value = va_arg (ap, GrB_Desc_Value *) ;
             va_end (ap) ;
-            RETURN_IF_NULL (value) ;
+            GB_RETURN_IF_NULL (value) ;
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->in0 ;
             break ;
 
@@ -69,7 +69,7 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             va_start (ap, field) ;
             value = va_arg (ap, GrB_Desc_Value *) ;
             va_end (ap) ;
-            RETURN_IF_NULL (value) ;
+            GB_RETURN_IF_NULL (value) ;
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->in1 ;
             break ;
 
@@ -78,19 +78,19 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             va_start (ap, field) ;
             value = va_arg (ap, GrB_Desc_Value *) ;
             va_end (ap) ;
-            RETURN_IF_NULL (value) ;
+            GB_RETURN_IF_NULL (value) ;
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->axb ;
             break ;
 
         default : 
 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                 "invalid descriptor field [%d], must be one of:\n"
                 "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]"
                 "or GxB_AxB_METHOD [%d]\n", field,
                 GrB_OUTP, GrB_MASK, GrB_INP0, GrB_INP1, GxB_AxB_METHOD))) ;
     }
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// A wrapper for REALLOC
+// A wrapper for realloc
 
 // If p is non-NULL on input, it points to a previously allocated object of
 // size nitems_old * size_of_item.  The object is reallocated to be of size
@@ -27,9 +27,9 @@
 //          p points to the old space of size nold*size, which is left
 //          unchanged.  This case never occurs if nnew < nold.
 
-// By default, REALLOC is defined in GB.h as realloc.  For a MATLAB
+// By default, GB_REALLOC is defined in GB.h as realloc.  For a MATLAB
 // mexFunction, it is mxRealloc.  It can also be defined at compile time with
-// -DREALLOC=myreallocfunc.
+// -DGB_REALLOC=myreallocfunc.
 
 #include "GB.h"
 
@@ -48,11 +48,11 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
     int nmalloc ;
 
     // make sure at least one item is allocated
-    nitems_old = IMAX (1, nitems_old) ;
-    nitems_new = IMAX (1, nitems_new) ;
+    nitems_old = GB_IMAX (1, nitems_old) ;
+    nitems_new = GB_IMAX (1, nitems_new) ;
 
     // make sure at least one byte is allocated
-    size_of_item = IMAX (1, size_of_item) ;
+    size_of_item = GB_IMAX (1, size_of_item) ;
 
     (*ok) = GB_size_t_multiply (&size, nitems_new, size_of_item) ;
     if (!(*ok) || nitems_new > GB_INDEX_MAX || size_of_item > GB_INDEX_MAX)
@@ -92,14 +92,14 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
         if (pretend_to_fail)
         {
             // brutal malloc debug; pretend to fail if the count <= 0,
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
             printf ("pretend to fail: realloc\n") ;
 #endif
             pnew = NULL ;
         }
         else
         {
-            pnew = (void *) REALLOC (p, size) ;
+            pnew = (void *) GB_REALLOC (p, size) ;
         }
 
         #pragma omp critical (GB_memory)
@@ -125,12 +125,13 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
                 p = pnew ;
                 (*ok) = true ;
                 GB_Global.inuse += (nitems_new - nitems_old) * size_of_item ;
-                GB_Global.maxused = IMAX (GB_Global.maxused, GB_Global.inuse) ;
+                GB_Global.maxused
+                    = GB_IMAX (GB_Global.maxused, GB_Global.inuse) ;
             }
             nmalloc = GB_Global.nmalloc ;
         }
 
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
         printf ("realloc: %14p %3d %1d n "GBd" -> "GBd" size "GBd"\n",
             pnew, nmalloc, GB_Global.malloc_debug, (int64_t) nitems_old,
             (int64_t) nitems_new, (int64_t) size_of_item) ;

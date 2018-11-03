@@ -30,7 +30,7 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
     // trivial case
     //--------------------------------------------------------------------------
 
-    if (NNZ (A) == 0)
+    if (GB_NNZ (A) == 0)
     { 
         return (0) ;
     }
@@ -41,7 +41,7 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
 
     int64_t nvec_nonempty = 0 ;
 
-    for_each_vector (A)
+    GB_for_each_vector (A)
     { 
         int64_t GBI1_initj (Iter, j, p, pend) ;
         int64_t ajnz = pend - p ;

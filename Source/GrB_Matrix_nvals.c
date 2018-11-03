@@ -20,8 +20,8 @@ GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_nvals (&nvals, A)") ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_Matrix_nvals (&nvals, A)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     // do not check nvals; pending updates must be applied first, in
     // GB_nvals, per Table 2.4 in the spec

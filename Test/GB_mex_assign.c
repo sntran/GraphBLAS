@@ -113,29 +113,29 @@ GrB_Info assign ( )
     if (kind == 1)
     {
         // test GrB_Col_assign
-        ASSERT (VECTOR_OK (A)) ;
-        ASSERT (Mask == NULL || VECTOR_OK (Mask)) ;
+        ASSERT (GB_VECTOR_OK (A)) ;
+        ASSERT (Mask == NULL || GB_VECTOR_OK (Mask)) ;
         OK (GrB_assign (C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
             I, ni, J [0], desc)) ;
     }
     else if (kind == 2)
     {
         // test GrB_Row_assign
-        ASSERT (VECTOR_OK (A)) ;
-        ASSERT (Mask == NULL || VECTOR_OK (Mask)) ;
-        ASSERT_OK_OR_NULL (GB_check ((GrB_Vector) Mask, "row mask", D0)) ;
-        ASSERT_OK (GB_check ((GrB_Vector) A, "row u", D0)) ;
+        ASSERT (GB_VECTOR_OK (A)) ;
+        ASSERT (Mask == NULL || GB_VECTOR_OK (Mask)) ;
+        ASSERT_OK_OR_NULL (GB_check ((GrB_Vector) Mask, "row mask", GB0)) ;
+        ASSERT_OK (GB_check ((GrB_Vector) A, "row u", GB0)) ;
 
         OK (GrB_assign (C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
             I [0], J, nj, desc)) ;
     }
-    else if (NROWS (A) == 1 && NCOLS (A) == 1 && NNZ (A) == 1)
+    else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
     {
         // scalar expansion to matrix or vector
         void *Ax = A->x ;
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
-            && GB_op_is_second (accum, C->type) && A->type->code != GB_UDT_code
+            && GB_op_is_second (accum, C->type) && A->type->code <= GB_FP64_code
             && desc == NULL)
         {
             // test GrB_Matrix_setElement
@@ -158,6 +158,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -165,10 +166,10 @@ GrB_Info assign ( )
             }
             #undef ASSIGN
 
-            ASSERT_OK (GB_check (C, "C after setElement", D0)) ;
+            ASSERT_OK (GB_check (C, "C after setElement", GB0)) ;
 
         }
-        if (VECTOR_OK (C) && (Mask == NULL || VECTOR_OK (Mask)))
+        if (GB_VECTOR_OK (C) && (Mask == NULL || GB_VECTOR_OK (Mask)))
         {
 
             // test GrB_Vector_assign_scalar functions
@@ -192,6 +193,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign ((GrB_Vector) C, (GrB_Vector) Mask,
@@ -228,6 +230,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign (C, Mask, accum, Ax, I, ni, J, nj, desc)) ;
@@ -241,8 +244,8 @@ GrB_Info assign ( )
             #undef ASSIGN
         }
     }
-    else if (VECTOR_OK (C) && VECTOR_OK (A) &&
-        (Mask == NULL || VECTOR_OK (Mask)) && !at)
+    else if (GB_VECTOR_OK (C) && GB_VECTOR_OK (A) &&
+        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
     {
         // test GrB_Vector_assign
         OK (GrB_assign ((GrB_Vector) C, (GrB_Vector) Mask, accum,
@@ -254,7 +257,7 @@ GrB_Info assign ( )
         OK (GrB_assign (C, Mask, accum, A, I, ni, J, nj, desc)) ;
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }
@@ -392,7 +395,7 @@ GrB_Info many_assign
         }
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", D0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }
@@ -421,7 +424,7 @@ void mexFunction
     desc = NULL ;
 
     // check inputs
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || !
         (nargin == 2 || nargin == 6 || nargin == 7 || nargin == 8))
     {

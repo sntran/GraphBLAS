@@ -79,9 +79,9 @@
 // the same struct: GrB_LOR == GxB_LOR_BOOL, GrB_LAND == GxB_LAND_BOOL, and
 // GrB_LXOR == GxB_LXOR_BOOL are all true):
 
-//      'or'           z = x || y       GRB_LOR, with no suffix
-//      'and'          z = x && y       GRB_LAND, with no suffix
-//      'xor'          z = x != y       GRB_LXOR, with no suffix
+//      'or'           z = x || y       GrB_LOR, with no suffix
+//      'and'          z = x && y       GrB_LAND, with no suffix
+//      'xor'          z = x != y       GrB_LXOR, with no suffix
 
 // There are a total of 17*11 + 6*11 + 3 = 256 named built-in binary operators.
 
@@ -215,19 +215,19 @@ GrB_Info GB_AxB_Gustavson_builtin
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
     if (M == NULL)
     {
         // C contains the pattern of C=A*B
-        ASSERT_OK (GB_check (C, "C pattern for builtin AxB", D0)) ;
+        ASSERT_OK (GB_check (C, "C pattern for Gustavson A*B", GB0)) ;
     }
-    ASSERT_OK (GB_check (A, "A for builtin AxB", D0)) ;
-    ASSERT_OK (GB_check (B, "B for builtin AxB", D0)) ;
-    ASSERT (!PENDING (C)) ; ASSERT (!ZOMBIES (C)) ;
-    ASSERT (!PENDING (M)) ; ASSERT (!ZOMBIES (M)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
-    ASSERT_OK (GB_check (semiring, "semiring for builtin", D0)) ;
+    ASSERT_OK (GB_check (A, "A for Gustavson A*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for Gustavson A*B", GB0)) ;
+    ASSERT (!GB_PENDING (C)) ; ASSERT (!GB_ZOMBIES (C)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (semiring, "semiring for Gustavson", GB0)) ;
     ASSERT (C->type == semiring->add->op->ztype) ;
 
     GB_Opcode mult_opcode, add_opcode ;
@@ -241,7 +241,7 @@ GrB_Info GB_AxB_Gustavson_builtin
         &mult_opcode, &add_opcode, &xycode, &zcode))
     { 
         // no error condition, just not a built-in semiring.  done is false.
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -250,7 +250,7 @@ GrB_Info GB_AxB_Gustavson_builtin
 
     #define GB_AXB(add,mult,xyname) GB_AgusB_ ## add ## mult ## xyname
 
-    #define AxB(add,mult,xyname)                                \
+    #define GB_AxB_WORKER(add,mult,xyname)                      \
     {                                                           \
         info = GB_AXB (add,mult,xyname) (C, M, A, B, flipxy) ;  \
         (*done) = true ;                                        \
@@ -262,9 +262,6 @@ GrB_Info GB_AxB_Gustavson_builtin
     //--------------------------------------------------------------------------
 
     #include "GB_AxB_factory.c"
-
-    #undef AxB
-    #undef GB_AXB
 
     //--------------------------------------------------------------------------
     // return result

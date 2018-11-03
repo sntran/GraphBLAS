@@ -8,8 +8,8 @@
 // This file is #include'd in GB_AxB_Gustavson.c, and Template/GB_AxB.c, the
 // latter of which expands into Generated/GB_AxB__* for all built-in semirings.
 
-// The pattern of C has not been computed, but NNZ(M) has given an upper bound
-// on NNZ(C) so this method will not run out of memory.  This is Gustavson's
+// The pattern of C has not been computed, but nnz(M) has given an upper bound
+// on nnz(C) so this method will not run out of memory.  This is Gustavson's
 // method, extended to handle hypersparse matrices, arbitrary semirings, and a
 // mask matrix M.
 
@@ -19,7 +19,7 @@
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
     ASSERT (C->vdim == B->vdim) ;
     ASSERT (C->vlen == A->vlen) ;
     ASSERT (A->vdim == B->vlen) ;
@@ -51,7 +51,7 @@
     const int64_t *restrict Ai = A->i ;
     const int64_t *restrict Bi = B->i ;
 
-    #ifdef HYPER
+    #ifdef GB_HYPER_CASE
     const int64_t *restrict Ah = A->h ;
     int64_t anvec = A->nvec ;
     int64_t pleft, pright ;
@@ -70,8 +70,8 @@
     // C<M>=A*B using the Gustavson method, pattern of C is a subset of M
     //--------------------------------------------------------------------------
 
-    #ifdef HYPER
-    for_each_vector2 (B, M)
+    #ifdef GB_HYPER_CASE
+    GB_for_each_vector2 (B, M)
     #else
     int64_t *restrict Bp = B->p ;
     int64_t *restrict Mp = M->p ;
@@ -85,7 +85,7 @@
         // get B(:,j) and M(:,j)
         //----------------------------------------------------------------------
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         int64_t GBI2_initj (Iter, j, pB_start, pB_end, pM_start, pM_end) ;
         #else
         int64_t pB_start = Bp [j] ;
@@ -98,7 +98,7 @@
         int64_t bjnz = pB_end - pB_start ;
         if (pM_start == pM_end || bjnz == 0)
         {
-            #ifndef HYPER
+            #ifndef GB_HYPER_CASE
             Cp [j+1] = cnz ;
             #endif
             continue ;
@@ -108,7 +108,7 @@
         int64_t im_first = Mi [pM_start] ;
         int64_t im_last  = Mi [pM_end-1] ;
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         // trim Ah on right
         if (A_is_hyper)
         { 
@@ -145,7 +145,7 @@
 
             // find A(:,k), reusing pleft since Bi [...] is sorted
             int64_t pA_start, pA_end ;
-            #ifdef HYPER
+            #ifdef GB_HYPER_CASE
             GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k,
                 &pA_start, &pA_end) ;
             #else
@@ -188,7 +188,7 @@
             // get the value of B(k,j)
             //------------------------------------------------------------------
 
-            COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
+            GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
 
             //------------------------------------------------------------------
             // w += (A(:,k) * B(k,j)) .* M(:,j)
@@ -201,7 +201,7 @@
                 int8_t flag = Flag [i] ;
                 if (flag == 0) continue ;
                 // M(i,j) == 1 so do the work
-                MULTADD_WITH_MASK ;
+                GB_MULTADD_WITH_MASK ;
             }
 
             //------------------------------------------------------------------
@@ -221,7 +221,7 @@
         // empty.  C(:,j) can still be empty if marked is false, but in that
         // case the Flag must still be cleared.
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         if (!marked) continue ;
         #endif
 
@@ -238,7 +238,7 @@
                 { 
                     // C(i,j) is a live entry, gather its row and value
                     // Cx [cnz] = w [i] ;
-                    COPY_ARRAY_TO_ARRAY (Cx, cnz, w, i, zsize) ;
+                    GB_COPY_ARRAY_TO_ARRAY (Cx, cnz, w, i, zsize) ;
                     Ci [cnz++] = i ;
                 }
                 // clear the Flag
@@ -250,7 +250,7 @@
         // log the end of C(:,j)
         //----------------------------------------------------------------------
 
-        #ifdef HYPER
+        #ifdef GB_HYPER_CASE
         // cannot fail since C->plen is the upper bound: number of non-empty
         // columns of B
         info = GB_jappend (C, j, &jlast, cnz, &cnz_last) ;
@@ -266,11 +266,11 @@
     // finalize C
     //--------------------------------------------------------------------------
 
-    #ifdef HYPER
+    #ifdef GB_HYPER_CASE
     GB_jwrapup (C, jlast, cnz) ;
     ASSERT (info == GrB_SUCCESS) ;
     #else
-    C->magic = MAGIC ;
+    C->magic = GB_MAGIC ;
     #endif
 }
 

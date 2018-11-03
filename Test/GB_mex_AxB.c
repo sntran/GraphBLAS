@@ -61,23 +61,12 @@ GrB_Info axb ( )
         return (info) ;
     }
 
-    /*
-    double tic [2] ;
-    simple_tic (tic) ;
-    */
-
     // C = A*B, A'*B, A*B', or A'*B'
     info = GB_AxB_meta (&C, true /* CSC */,
         NULL /* no MT returned */,
         NULL /* no Mask */,
         A, B, semiring, /* GrB_PLUS_TIMES_FP64 */
         atranspose, btranspose, false, &ignore, AxB_method) ;
-
-    /*
-    double t = simple_toc (tic) ;
-    printf ("GB_AxB_meta atrans %d btrans %d time %g method %d\n", atranspose, btranspose, t,
-        GB_thread_local.AxB_method) ;
-    */
 
     GrB_free (&add) ;
     GrB_free (&semiring) ;
@@ -128,12 +117,34 @@ GrB_Info axb_complex ( )
 
     }
 
+    #ifdef MY_COMPLEX
+    // use the precompiled complex type
+    if (Aconj != NULL) Aconj->type = My_Complex ;
+    if (Bconj != NULL) Bconj->type = My_Complex ;
+    if (A     != NULL) A->type     = My_Complex ;
+    if (B     != NULL) B->type     = My_Complex ;
+    #endif
+
     info = GB_AxB_meta (&C, true /*CSC*/,
         NULL /* no MT returned */,
         NULL /* no Mask */,
         (atranspose) ? Aconj : A,
-        (btranspose) ? Bconj : B, Complex_plus_times,
+        (btranspose) ? Bconj : B,
+        #ifdef MY_COMPLEX
+            My_Complex_plus_times,
+        #else
+            Complex_plus_times,
+        #endif
         atranspose, btranspose, false, &ignore, AxB_method) ;
+
+    #ifdef MY_COMPLEX
+    // convert back to run-time complex type
+    if (C     != NULL) C->type     = Complex ;
+    if (Aconj != NULL) Aconj->type = Complex ;
+    if (Bconj != NULL) Bconj->type = Complex ;
+    if (A     != NULL) A->type     = Complex ;
+    if (B     != NULL) B->type     = Complex ;
+    #endif
 
     GrB_free (&Bconj) ;
     GrB_free (&Aconj) ;
@@ -164,7 +175,7 @@ void mexFunction
     add = NULL ;
     semiring = NULL ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 2 || nargin > 5)
@@ -218,10 +229,10 @@ void mexFunction
     }
 
     // determine the dimensions
-    anrows = (atranspose) ? NCOLS (A) : NROWS (A) ;
-    ancols = (atranspose) ? NROWS (A) : NCOLS (A) ;
-    bnrows = (btranspose) ? NCOLS (B) : NROWS (B) ;
-    bncols = (btranspose) ? NROWS (B) : NCOLS (B) ;
+    anrows = (atranspose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    ancols = (atranspose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    bnrows = (btranspose) ? GB_NCOLS (B) : GB_NROWS (B) ;
+    bncols = (btranspose) ? GB_NROWS (B) : GB_NCOLS (B) ;
     if (ancols != bnrows)
     {
         FREE_ALL ;

@@ -8,12 +8,15 @@
 //------------------------------------------------------------------------------
 
 {
+    const GB_atype *restrict Ax = A->x ;
+    const GB_btype *restrict Bx = B->x ;
+
     if (M != NULL)
     { 
         // C<M> = A*B via a heap
-        #define MASK
+        #define GB_MASK_CASE
         #include "GB_AxB_heap_mask.c"
-        #undef MASK
+        #undef GB_MASK_CASE
     }
     else
     { 

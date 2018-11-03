@@ -20,8 +20,8 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Vector_resize (u, nrows_new)") ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
+    GB_WHERE ("GxB_Vector_resize (u, nrows_new)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
     //--------------------------------------------------------------------------
     // resize the vector

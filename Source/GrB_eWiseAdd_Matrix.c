@@ -11,15 +11,15 @@
 
 #include "GB.h"
 
-#define EWISE(op)                                                           \
+#define GB_EWISE(op)                                                        \
 {                                                                           \
     /* check inputs */                                                      \
-    RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (A) ;                                          \
-    RETURN_IF_NULL_OR_FAULTY (B) ;                                          \
-    RETURN_IF_FAULTY (Mask) ;                                               \
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                       \
+    GB_RETURN_IF_NULL_OR_FAULTY (B) ;                                       \
+    GB_RETURN_IF_FAULTY (Mask) ;                                            \
     /* get the descriptor */                                                \
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
     /* C<Mask> = accum (C,T) where T = A+B, A'+B, A+B', or A'+B' */         \
     return (GB_eWise (                                                      \
         C,          C_replace,      /* C matrix and its descriptor    */    \
@@ -51,14 +51,14 @@ GrB_Info GrB_eWiseAdd_Matrix_BinaryOp       // C<Mask> = accum (C, A+B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Matrix_BinaryOp (C, Mask, accum, add, A, B, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (add) ;
+    GB_WHERE ("GrB_eWiseAdd_Matrix_BinaryOp (C, Mask, accum, add, A, B, desc)");
+    GB_RETURN_IF_NULL_OR_FAULTY (add) ;
 
     //--------------------------------------------------------------------------
     // apply the eWise kernel (using set union)
     //--------------------------------------------------------------------------
 
-    EWISE (add) ;
+    GB_EWISE (add) ;
 }
 
 //------------------------------------------------------------------------------
@@ -83,14 +83,15 @@ GrB_Info GrB_eWiseAdd_Matrix_Monoid         // C<Mask> = accum (C, A+B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Matrix_Monoid (C, Mask, accum, monoid, A, B, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (monoid) ;
+    GB_WHERE ("GrB_eWiseAdd_Matrix_Monoid (C, Mask, accum, monoid, A, B,"
+        " desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
 
     //--------------------------------------------------------------------------
     // eWiseAdd using the monoid operator
     //--------------------------------------------------------------------------
 
-    EWISE (monoid->op) ;
+    GB_EWISE (monoid->op) ;
 }
 
 //------------------------------------------------------------------------------
@@ -115,15 +116,14 @@ GrB_Info GrB_eWiseAdd_Matrix_Semiring       // C<Mask> = accum (C, A+B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_eWiseAdd_Matrix_Semiring (C, M, accum, semiring, A, B, desc)") ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    GB_WHERE ("GrB_eWiseAdd_Matrix_Semiring (C, M, accum, semiring, A, B,"
+        " desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
     // eWise add using the semiring's monoid operator
     //--------------------------------------------------------------------------
 
-    EWISE (semiring->add->op) ;
+    GB_EWISE (semiring->add->op) ;
 }
-
-#undef EWISE
 

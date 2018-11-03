@@ -20,14 +20,14 @@ GrB_Info GB_type            // get the type of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    RETURN_IF_NULL (type) ;
-    ASSERT_OK (GB_check (A, "A for type", D0)) ;
+    GB_RETURN_IF_NULL (type) ;
+    ASSERT_OK (GB_check (A, "A for type", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the type
     //--------------------------------------------------------------------------
 
     (*type) = A->type ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

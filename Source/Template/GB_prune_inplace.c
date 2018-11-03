@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// The function that #include's this file #define's a PRUNE macro that defines
+// The function that #include's this file defines a GB_PRUNE macro that defines
 // how entries are pruned in place from the matrix.  This task is similar to
 // GB_select, except that here the pruning is done in place, whereas GB_select
 // constructs a new matrix T with the pruned version of A.
@@ -17,7 +17,7 @@
 
 {
 
-    // for_each_* cannot be used since A->p is changing
+    // GB_for_each_* cannot be used since A->p is changing
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ap = A->p ;
     int64_t *restrict Ai = A->i ;
@@ -46,16 +46,16 @@
         int64_t nvec = A->nvec ;    // current nvec
         A->nvec = 0 ;               // nvec after pruning empty vectors
 
-        // for_each_vector (A): but where A->p and A->h are changing:
+        // GB_for_each_vector (A): but where A->p and A->h are changing:
         for (int64_t k = 0 ; k < nvec ; k++)
         {
-            // for_each_entry (j, p, pend)) but A->p is changing:
+            // GB_for_each_entry (j, p, pend)) but A->p is changing:
             int64_t j = Ah [k] ;
             int64_t pend = Ap [k+1] ;
             for ( ; p < pend ; p++)
             {
                 int64_t i = Ai [p] ;
-                PRUNE ;                     // test, then break or continue
+                GB_PRUNE ;                     // test, then break or continue
                 // keep this entry
                 if (anz != p)
                 { 
@@ -82,7 +82,7 @@
         }
 
         // GB_jwrapup not needed when A is hypersparse, and A->magic already OK
-        ASSERT (A->magic == MAGIC) ;
+        ASSERT (A->magic == GB_MAGIC) ;
         ASSERT (A->nvec <= nvec) ;
 
         // get the number of non-empty vectors
@@ -96,15 +96,15 @@
         // prune entries from a standard matrix
         //----------------------------------------------------------------------
 
-        // for_each_vector (A): but where A->p is changing:
+        // GB_for_each_vector (A): but where A->p is changing:
         for (int64_t j = 0 ; j < vdim ; j++)
         {
-            // for_each_entry (j, p, pend)) but A->p is changing:
+            // GB_for_each_entry (j, p, pend)) but A->p is changing:
             int64_t pend = Ap [j+1] ;
             for ( ; p < pend ; p++)
             {
                 int64_t i = Ai [p] ;
-                PRUNE ;                     // test, then break or continue
+                GB_PRUNE ;                     // test, then break or continue
                 // keep this entry
                 if (anz != p)
                 { 
@@ -126,7 +126,7 @@
         }
         // GB_jwrapup not needed since all vectors have been traversed anyway,
         // and A->magic is already OK
-        ASSERT (A->magic == MAGIC) ;
+        ASSERT (A->magic == GB_MAGIC) ;
 
     }
 

@@ -40,26 +40,26 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     // do this as early as possible (see Table 2.4 in spec)
     ASSERT (A != NULL) ;
     ASSERT (p_nvals != NULL) ;
-    WAIT (A) ;
+    GB_WAIT (A) ;
     ASSERT (xcode <= GB_UDT_code) ;
 
     // xcode and A must be compatible
     if (!GB_code_compatible (xcode, A->type->code))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "entries in A of type [%s] cannot be typecast\n"
             "to output array X of type [%s]",
             A->type->name, GB_code_string (xcode)))) ;
     }
 
-    ASSERT_OK (GB_check (A, "A to extract", D0)) ;
+    ASSERT_OK (GB_check (A, "A to extract", GB0)) ;
 
-    int64_t anz = NNZ (A) ;
+    int64_t anz = GB_NNZ (A) ;
 
     if (anz == 0)
     { 
         // no work to do
-        return (REPORT_SUCCESS) ;
+        return (GB_REPORT_SUCCESS) ;
     }
 
     int64_t nvals = *p_nvals ;          // size of I,J,X on input
@@ -67,7 +67,7 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     if (nvals < anz && (I_out != NULL || J_out != NULL | X != NULL))
     { 
         // output arrays are not big enough
-        return (ERROR (GrB_INSUFFICIENT_SPACE, (LOG,
+        return (GB_ERROR (GrB_INSUFFICIENT_SPACE, (GB_LOG,
             "output arrays I,J,X are not big enough: nvals "GBu" < "
             "number of entries "GBd, nvals, anz))) ;
     }
@@ -103,9 +103,9 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     if (J != NULL)
     {
-        for_each_vector (A)
+        GB_for_each_vector (A)
         {
-            for_each_entry (j, p, pend)
+            GB_for_each_entry (j, p, pend)
             { 
                 J [p] = j ;
             }
@@ -118,7 +118,7 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     if (X != NULL)
     {
-        if (xcode == GB_UDT_code || xcode == A->type->code)
+        if (xcode > GB_FP64_code || xcode == A->type->code)
         { 
             // Copy the values without typecasting.  For user-defined types,
             // the (void *) X array is assumed to point to values of the right
@@ -140,6 +140,6 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     *p_nvals = anz ;            // number of tuples extracted
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

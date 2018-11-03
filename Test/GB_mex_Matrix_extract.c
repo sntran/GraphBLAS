@@ -38,7 +38,7 @@ void mexFunction
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool ignore ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 6 || nargin > 7)

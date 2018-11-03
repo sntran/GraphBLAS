@@ -34,21 +34,21 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK3 (C, M, A, B)) ;
+    ASSERT (GB_ALIAS_OK3 (C, M, A, B)) ;
 
-    RETURN_IF_NULL_OR_FAULTY (C) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
-    RETURN_IF_NULL_OR_FAULTY (B) ;
-    RETURN_IF_FAULTY (M) ;
-    RETURN_IF_NULL_OR_FAULTY (op) ;
-    RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (B) ;
+    GB_RETURN_IF_FAULTY (M) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (op) ;
+    GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_kron", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_kron", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_kron", D0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_kron", D0)) ;
-    ASSERT_OK (GB_check (A, "A for GB_kron", D0)) ;
-    ASSERT_OK (GB_check (B, "B for GB_kron", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_kron", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_kron", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_kron", GB0)) ;
+    ASSERT_OK (GB_check (op, "op for GB_kron", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for GB_kron", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for GB_kron", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info = GB_compatible (C->type, C, M, accum, op->ztype) ;
@@ -65,38 +65,38 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     }
 
     // delete any lingering zombies and assemble any pending tuples in A and B,
-    // so that cnz = NNZ(A) * NNZ(B) can be computed.  Pending updates of C
+    // so that cnz = nnz(A) * nnz(B) can be computed.  Pending updates of C
     // and M are done after this check.
-    WAIT (A) ;
-    WAIT (B) ;
+    GB_WAIT (A) ;
+    GB_WAIT (B) ;
 
     // check the dimensions of C
-    int64_t anrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t ancols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
-    int64_t bnrows = (B_transpose) ? NCOLS (B) : NROWS (B) ;
-    int64_t bncols = (B_transpose) ? NROWS (B) : NCOLS (B) ;
+    int64_t anrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t ancols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    int64_t bnrows = (B_transpose) ? GB_NCOLS (B) : GB_NROWS (B) ;
+    int64_t bncols = (B_transpose) ? GB_NROWS (B) : GB_NCOLS (B) ;
     GrB_Index cnrows, cncols, cnz = 0 ;
     bool ok = GB_Index_multiply (&cnrows, anrows,  bnrows) ;
     ok = ok && GB_Index_multiply (&cncols, ancols,  bncols) ;
-    ok = ok && GB_Index_multiply (&cnz, NNZ (A), NNZ (B)) ;
-    if (!ok || NROWS (C) != cnrows || NCOLS (C) != cncols)
+    ok = ok && GB_Index_multiply (&cnz, GB_NNZ (A), GB_NNZ (B)) ;
+    if (!ok || GB_NROWS (C) != cnrows || GB_NCOLS (C) != cncols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG, "%s:\n"
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG, "%s:\n"
             "output is "GBd"-by-"GBd"; must be "GBd"-by-"GBd"\n"
             "first input is "GBd"-by-"GBd"%s with "GBd" entries\n"
             "second input is "GBd"-by-"GBd"%s with "GBd" entries",
             ok ? "Dimensions not compatible:" : "Problem too large:",
-            NROWS (C), NCOLS (C), cnrows, cncols,
-            anrows, ancols, A_transpose ? " (transposed)" : "", NNZ (A),
-            bnrows, bncols, B_transpose ? " (transposed)" : "", NNZ (B)))) ;
+            GB_NROWS (C), GB_NCOLS (C), cnrows, cncols,
+            anrows, ancols, A_transpose ? " (transposed)" : "", GB_NNZ (A),
+            bnrows, bncols, B_transpose ? " (transposed)" : "", GB_NNZ (B)))) ;
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
 
     //--------------------------------------------------------------------------
     // transpose A and B if requested
@@ -124,8 +124,8 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
         { 
             return (info) ;
         }
-        ASSERT_OK (GB_check (A , "A after AT kron", D0)) ;
-        ASSERT_OK (GB_check (AT, "AT kron", D0)) ;
+        ASSERT_OK (GB_check (A , "A after AT kron", GB0)) ;
+        ASSERT_OK (GB_check (AT, "AT kron", GB0)) ;
     }
 
     GrB_Matrix BT = NULL ;
@@ -139,7 +139,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
             GB_MATRIX_FREE (&AT) ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (BT, "BT kron", D0)) ;
+        ASSERT_OK (GB_check (BT, "BT kron", GB0)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -159,7 +159,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (T, "T = kron(A,B)", D0)) ;
+    ASSERT_OK (GB_check (T, "T = kron(A,B)", GB0)) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask

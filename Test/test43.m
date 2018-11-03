@@ -55,14 +55,17 @@ A(1,2) =44 ;
 
 fprintf ('-------------------------- case 5, ni large, qsort, no dupl:\n') ;
 p = amd (A) ;
+fprintf ('MATLAB:\n') ;
 tic
 A1 = A (p,p) ;
 t0 = toc ;
 p0 = uint64 (p-1) ;
+fprintf ('GB:\n') ;
 tic
 A2 = GB_mex_Matrix_subref (A, p0, p0) ;
 t1 = toc ;
 
+fprintf ('CSparse permute:\n') ;
 try
     tic
     A3 = cs_permute (A, p, p) ;
@@ -85,9 +88,11 @@ I = uint64 (randperm (floor (n/2))) ;
 J = uint64 (randperm (floor (n/2))) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -99,9 +104,11 @@ J = sort (J) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
 fprintf ('length (I), %d min %d max %d\n', length (I), min (I), max (I)) ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -112,9 +119,11 @@ I = uint64 (floor (n * rand (n,1))) ;
 J = uint64 (floor (n * rand (n,1))) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -167,9 +176,11 @@ I = uint64 (0:floor(n/2)) ;
 J = uint64 (0:floor(n/2)) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -181,9 +192,11 @@ J = uint64 (floor(n/2):n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
 fprintf ('length (I), %d min %d max %d\n', length (I), min (I), max (I)) ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -279,9 +292,11 @@ I = [ ] ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (:,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, [ ], J) ;
     toc
@@ -292,9 +307,11 @@ I = uint64 (floor (n/2 : 0.5 : n-1)) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -305,9 +322,11 @@ I = uint64 ([ floor(n/2) floor((2+n/2):n-1) ]) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc
@@ -318,9 +337,11 @@ I = uint64 ([ floor(n/2:n-1) ]) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
+fprintf ('MATLAB:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
+fprintf ('GB:\n') ;
     tic
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     toc

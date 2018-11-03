@@ -20,8 +20,8 @@ GrB_Info GxB_Vector_type    // get the type of a vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Vector_type (&type, v)") ;
-    RETURN_IF_NULL_OR_FAULTY (v) ;
+    GB_WHERE ("GxB_Vector_type (&type, v)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;
 
     //--------------------------------------------------------------------------
     // get the type

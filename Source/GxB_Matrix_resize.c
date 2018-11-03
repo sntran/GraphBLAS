@@ -21,8 +21,8 @@ GrB_Info GxB_Matrix_resize      // change the size of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Matrix_resize (A, nrows_new, ncols_new)") ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GxB_Matrix_resize (A, nrows_new, ncols_new)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // resize the matrix

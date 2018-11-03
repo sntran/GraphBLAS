@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* GraphBLAS/Demo/simple_timer.c: a timer for performance measurements        */
+/* GraphBLAS/Demo/Source/simple_timer.c: a timer for performance measurements */
 /* -------------------------------------------------------------------------- */
 
 /* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved*/

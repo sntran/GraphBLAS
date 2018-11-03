@@ -20,16 +20,16 @@ GrB_Info GxB_Semiring_multiply      // return multiply operator of a semiring
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Semiring_multiply (&multiply, semiring)") ;
-    RETURN_IF_NULL (multiply) ;
-    RETURN_IF_NULL_OR_FAULTY (semiring) ;
-    ASSERT_OK (GB_check (semiring, "semiring for mult", D0)) ;
+    GB_WHERE ("GxB_Semiring_multiply (&multiply, semiring)") ;
+    GB_RETURN_IF_NULL (multiply) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
+    ASSERT_OK (GB_check (semiring, "semiring for mult", GB0)) ;
 
     //--------------------------------------------------------------------------
     // return the ztype
     //--------------------------------------------------------------------------
 
     (*multiply) = semiring->multiply ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

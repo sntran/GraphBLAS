@@ -130,27 +130,27 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     // C and M may be aliased but nothing else
     ASSERT (Thandle != NULL) ;
-    ASSERT (ALIAS_OK (C, M_in)) ;       // C can be aliased with M_in
+    ASSERT (GB_ALIAS_OK (C, M_in)) ;       // C can be aliased with M_in
 
     GrB_Matrix T = *Thandle ;
     GrB_Matrix MT = NULL ;
     GrB_Matrix M = M_in ;
 
-    ASSERT_OK (GB_check (C, "C input for C<M>=accum(C,T)", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_accum_mask", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (MT_in, "MT_in for GB_accum_mask", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_accum_mask", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for C<M>=accum(C,T)", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_accum_mask", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (MT_in, "MT_in for GB_accum_mask", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_accum_mask", GB0)) ;
 
     // GB_extract can pass in a matrix T that is jumbled, but it does so
     // only if T->is_csc and C->is_csc are different.  In that case, T is
     // transposed, so the sort can be skipped.
-    ASSERT_OK_OR_JUMBLED (GB_check (T, "[T = results of computation]", D0)) ;
+    ASSERT_OK_OR_JUMBLED (GB_check (T, "[T = results of computation]", GB0)) ;
 
-    ASSERT (!PENDING (C)) ; ASSERT (!ZOMBIES (C)) ;
-    ASSERT (!PENDING (M)) ; ASSERT (!ZOMBIES (M)) ;
-    ASSERT (!PENDING (T)) ; ASSERT (!ZOMBIES (T)) ;
+    ASSERT (!GB_PENDING (C)) ; ASSERT (!GB_ZOMBIES (C)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (T)) ; ASSERT (!GB_ZOMBIES (T)) ;
 
-    ASSERT (NOT_ALIASED_2 (T, C, M)) ;    // T is not aliased with anything
+    ASSERT (GB_NOT_ALIASED_2 (T, C, M)) ;    // T is not aliased with anything
 
     //--------------------------------------------------------------------------
     // ensure M and T have the same CSR/CSC format as C
@@ -172,7 +172,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         T = (*Thandle) ;
     }
 
-    ASSERT_OK (GB_check (T, "[T = transposed]", D0)) ;
+    ASSERT_OK (GB_check (T, "[T = transposed]", GB0)) ;
 
     if (M != NULL && C->is_csc != M->is_csc)
     {
@@ -204,7 +204,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     ASSERT (C->is_csc == T->is_csc) ;
     ASSERT (M == NULL || (C->vlen == M->vlen && C->vdim == M->vdim)) ;
     ASSERT (M == NULL || (C->is_csc == M->is_csc)) ;
-    ASSERT (!PENDING (M)) ; ASSERT (!ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
 
     //--------------------------------------------------------------------------
     // Z = accum (C,T) or Z = T if accum not present
@@ -225,7 +225,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // if needed.  Z has the same hypersparsity as T.
         Z = NULL ;                  // allocate a new header for Z
         GB_NEW (&Z, C->type, C->vlen, C->vdim, GB_Ap_null, C->is_csc,
-            SAME_HYPER_AS (T->is_hyper), T->hyper_ratio, T->plen) ;
+            GB_SAME_HYPER_AS (T->is_hyper), T->hyper_ratio, T->plen) ;
         if (info != GrB_SUCCESS)
         { 
             GB_MATRIX_FREE (Thandle) ;
@@ -265,7 +265,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     }
 
     // C and Z have the same type
-    ASSERT_OK (GB_check (Z, "Z in accum_mask", D0)) ;
+    ASSERT_OK (GB_check (Z, "Z in accum_mask", GB0)) ;
     ASSERT (Z->type == C->type) ;
 
     //--------------------------------------------------------------------------
@@ -278,7 +278,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     // the hypersparsity of C to that parameter.
 
     // apply the mask, storing the results back into C, and free Z.
-    ASSERT_OK (GB_check (C, "C<M>=Z input", D0)) ;
+    ASSERT_OK (GB_check (C, "C<M>=Z input", GB0)) ;
     info = GB_mask (C, M, &Z, C_replace, Mask_complement) ;
     ASSERT (Z == NULL) ;
     ASSERT (!C->p_shallow && !C->h_shallow && !C->i_shallow && !C->x_shallow) ;
@@ -292,7 +292,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (C, "C<M>=accum(C,T) output", D0)) ;
-    return (REPORT_SUCCESS)  ;
+    ASSERT_OK (GB_check (C, "C<M>=accum(C,T) output", GB0)) ;
+    return (GB_REPORT_SUCCESS)  ;
 }
 

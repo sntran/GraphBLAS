@@ -47,7 +47,7 @@ GrB_Info GB_builder
 
     ASSERT (Thandle != NULL) ;
     (*Thandle) = NULL ;
-    ASSERT (IMPLIES (len > 0, S != NULL)) ;
+    ASSERT (GB_IMPLIES (len > 0, S != NULL)) ;
     ASSERT (len >= 0) ;
     ASSERT (scode <= GB_UDT_code) ;
 
@@ -58,10 +58,10 @@ GrB_Info GB_builder
     ASSERT (iwork != NULL) ;
 
     // If T has more than one vector, jwork must be present on input
-    ASSERT (IMPLIES (vdim > 1, jwork != NULL)) ;
+    ASSERT (GB_IMPLIES (vdim > 1, jwork != NULL)) ;
 
-    ASSERT_OK (GB_check (ttype, "ttype for builder", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (dup, "dup for builder", D0)) ;
+    ASSERT_OK (GB_check (ttype, "ttype for builder", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (dup, "dup for builder", GB0)) ;
 
     // When this function returns, iwork and jwork are freed, and the iwork and
     // jwork pointers (in the caller) are set to NULL by setting their handles
@@ -84,7 +84,7 @@ GrB_Info GB_builder
             // out of memory
             GB_FREE_MEMORY (*iwork_handle, ijlen, sizeof (int64_t)) ;
             GB_FREE_MEMORY (*jwork_handle, ijlen, sizeof (int64_t)) ;
-            return (OUT_OF_MEMORY (GBYTES (len, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (len, sizeof (int64_t)))) ;
         }
 
         // The k part of each tuple (i,k) or (j,i,k) records the original
@@ -270,7 +270,7 @@ GrB_Info GB_builder
     }
     #endif
 
-    T->magic = MAGIC ;                      // T->p and T->h are now valid ]
+    T->magic = GB_MAGIC ;                      // T->p and T->h are now valid ]
 
     // all duplicates have been removed from T
     // int64_t nduplicates = len - tnz ;    // if needed for reporting

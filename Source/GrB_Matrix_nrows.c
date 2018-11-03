@@ -20,15 +20,15 @@ GrB_Info GrB_Matrix_nrows   // get the number of rows of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Matrix_nrows (&nrows, A)") ;
-    RETURN_IF_NULL (nrows) ;
-    RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_WHERE ("GrB_Matrix_nrows (&nrows, A)") ;
+    GB_RETURN_IF_NULL (nrows) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     //--------------------------------------------------------------------------
     // get the number of rows
     //--------------------------------------------------------------------------
 
-    (*nrows) = NROWS (A) ;
-    return (REPORT_SUCCESS) ;
+    (*nrows) = GB_NROWS (A) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

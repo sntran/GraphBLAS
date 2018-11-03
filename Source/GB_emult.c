@@ -32,7 +32,7 @@
 // FUTURE: this could be faster with built-in operators and types.
 
 // C (i,j) = fmult (A (i,j), B (i,j))
-#define MULTIPLY                                                    \
+#define GB_EMULT                                                    \
 {                                                                   \
     Ci [cnz] = ib ;                                                 \
     if (nocasting)                                                  \
@@ -73,11 +73,11 @@ GrB_Info GB_emult           // C = A.*B
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for C=A.*B", D0)) ;
-    ASSERT_OK (GB_check (B, "B for C=A.*B", D0)) ;
-    ASSERT (!PENDING (A)) ; ASSERT (!ZOMBIES (A)) ;
-    ASSERT (!PENDING (B)) ; ASSERT (!ZOMBIES (B)) ;
-    ASSERT_OK (GB_check (op, "op for C=A.*B", D0)) ;
+    ASSERT_OK (GB_check (A, "A for C=A.*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for C=A.*B", GB0)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT_OK (GB_check (op, "op for C=A.*B", GB0)) ;
     ASSERT (A->vdim == A->vdim && B->vlen == A->vlen) ;
 
     ASSERT (GB_Type_compatible (ctype,   op->ztype)) ;
@@ -98,9 +98,9 @@ GrB_Info GB_emult           // C = A.*B
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, ctype, A->vlen, A->vdim, GB_Ap_malloc, C_is_csc,
-        SAME_HYPER_AS (C_is_hyper), B->hyper_ratio,
-        IMIN (A->nvec_nonempty, B->nvec_nonempty),
-        IMIN (NNZ (A), NNZ (B)), true) ;
+        GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio,
+        GB_IMIN (A->nvec_nonempty, B->nvec_nonempty),
+        GB_IMIN (GB_NNZ (A), GB_NNZ (B)), true) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -153,7 +153,7 @@ GrB_Info GB_emult           // C = A.*B
     const int64_t *Ai = A->i, *Bi = B->i ;
     const void    *Ax = A->x, *Bx = B->x ;
 
-    for_each_vector2 (A, B)
+    GB_for_each_vector2 (A, B)
     {
 
         //----------------------------------------------------------------------
@@ -219,7 +219,7 @@ GrB_Info GB_emult           // C = A.*B
                 else // ia == ib
                 { 
                     // A (i,j) and B (i,j) match
-                    MULTIPLY ;
+                    GB_EMULT ;
                 }
             }
 
@@ -253,7 +253,7 @@ GrB_Info GB_emult           // C = A.*B
                 else // ia == ib
                 { 
                     // A (i,j) and B (i,j) match
-                    MULTIPLY ;
+                    GB_EMULT ;
                 }
             }
 
@@ -282,7 +282,7 @@ GrB_Info GB_emult           // C = A.*B
                 else // ia == ib
                 { 
                     // A (i,j) and B (i,j) match
-                    MULTIPLY ;
+                    GB_EMULT ;
                 }
             }
         }
@@ -311,10 +311,8 @@ GrB_Info GB_emult           // C = A.*B
     ASSERT (cnz <= C->nzmax) ;
     info = GB_ix_realloc (C, cnz, true) ;
     ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "C output for C=A.*B", D0)) ;
+    ASSERT_OK (GB_check (C, "C output for C=A.*B", GB0)) ;
     (*Chandle) = C ;
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
-
-#undef MULTIPLY
 

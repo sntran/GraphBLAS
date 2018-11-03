@@ -43,22 +43,22 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (ALIAS_OK2 (C, M, A)) ;
+    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
 
-    RETURN_IF_FAULTY (accum) ;
-    RETURN_IF_NULL_OR_FAULTY (op) ;
+    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (op) ;
     int64_t kk = 0 ;
     if (op->opcode < GB_NONZERO_opcode)
     { 
-        RETURN_IF_NULL (k) ;
+        GB_RETURN_IF_NULL (k) ;
         kk = *((int64_t *) k) ;
     }
 
-    ASSERT_OK (GB_check (C, "C input for GB_select", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_select", D0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_select", D0)) ;
-    ASSERT_OK (GB_check (op, "selectop for GB_select", D0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_select", D0)) ;
+    ASSERT_OK (GB_check (C, "C input for GB_select", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_select", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_select", GB0)) ;
+    ASSERT_OK (GB_check (op, "selectop for GB_select", GB0)) ;
+    ASSERT_OK (GB_check (A, "A input for GB_select", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info = GB_compatible (C->type, C, M, accum, A->type) ;
@@ -71,7 +71,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // A must also be compatible with op->xtype, unless op->xtype is NULL
     if (op->xtype != NULL && !GB_Type_compatible (A->type, op->xtype))
     { 
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "incompatible type for C=%s(A,k):\n"
             "input A type [%s]\n"
             "cannot be typecast to operator x of type [%s]",
@@ -79,25 +79,25 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     }
 
     // check the dimensions
-    int64_t tnrows = (A_transpose) ? NCOLS (A) : NROWS (A) ;
-    int64_t tncols = (A_transpose) ? NROWS (A) : NCOLS (A) ;
-    if (NROWS (C) != tnrows || NCOLS (C) != tncols)
+    int64_t tnrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
+    int64_t tncols = (A_transpose) ? GB_NROWS (A) : GB_NCOLS (A) ;
+    if (GB_NROWS (C) != tnrows || GB_NCOLS (C) != tncols)
     { 
-        return (ERROR (GrB_DIMENSION_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
             "Dimensions not compatible:\n"
             "output is "GBd"-by-"GBd"\n"
             "input is "GBd"-by-"GBd"%s",
-            NROWS (C), NCOLS (C),
+            GB_NROWS (C), GB_NCOLS (C),
             tnrows, tncols, A_transpose ? " (transposed)" : ""))) ;
     }
 
     // quick return if an empty mask is complemented
-    RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    WAIT (C) ;
-    WAIT (M) ;
-    WAIT (A) ;
+    GB_WAIT (C) ;
+    GB_WAIT (M) ;
+    GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format and the transposed case
@@ -105,8 +105,9 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
     // A and C can be in CSR or CSC format (in any combination), and A can be
     // transposed first via A_transpose.  However, A is not explicitly
-    // transposed first.  Instead, the selection operation is modified via the
-    // flip, and the resulting matrix T is transposed, if needed.
+    // transposed first.  Instead, the selection operation is modified by
+    // changing the operator, and the resulting matrix T is transposed, if
+    // needed.
 
     // Instead of explicitly transposing the input matrix A and output T:
     // If A in CSC format and not transposed: treat as if A and T were CSC
@@ -121,7 +122,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // do not match, GB_accum_mask transposes T, computing C<M>=accum(C,T').
 
     //--------------------------------------------------------------------------
-    // get the opcode and flip it if needed
+    // get the opcode and change it if needed
     //--------------------------------------------------------------------------
 
     GB_Select_Opcode opcode = op->opcode ;
@@ -157,13 +158,14 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
     int64_t vlen = A->vlen ;
     int64_t vdim = A->vdim ;
-    int64_t tnzmax = (opcode == GB_DIAG_opcode) ? IMIN (vlen,vdim) : NNZ (A) ;
+    int64_t tnzmax = (opcode == GB_DIAG_opcode) ?
+        GB_IMIN (vlen,vdim) : GB_NNZ (A) ;
 
     // [ create T in same format as A_csc, with just as many non-empty vectors,
     // and same hypersparsity as A
     GrB_Matrix T = NULL ;           // allocate a new header for T
     GB_CREATE (&T, A->type, A->vlen, A->vdim, GB_Ap_malloc, A_csc,
-        SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, A->nvec_nonempty,
+        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, A->nvec_nonempty,
         tnzmax, true) ;
     if (info != GrB_SUCCESS)
     { 
@@ -184,7 +186,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     GB_jstartup (T, &jlast, &tnz, &tnz_last) ;
 
     // keep an entry that satisfies a condition, copying it from A to T:
-    #define KEEP_IF(condition)                                      \
+    #define GB_KEEP_IF(condition)                                   \
         if (condition)                                              \
         {                                                           \
             Ti [tnz] = i ;                                          \
@@ -201,7 +203,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_TRIL_opcode:
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
                 int64_t GBI1_initj (Iter, j, p, pend) ;
                 // an entry is kept if (j-i) <= kk, so smallest i is j-kk.
@@ -213,7 +215,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     for ( ; p < pend ; p++)
                     { 
                         int64_t i = Ai [p] ;
-                        KEEP_IF ((j-i) <= kk) ;
+                        GB_KEEP_IF ((j-i) <= kk) ;
                     }
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
@@ -229,12 +231,12 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_TRIU_opcode:
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
-                for_each_entry (j, p, pend)
+                GB_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
-                    KEEP_IF ((j-i) >= kk) else break ;
+                    GB_KEEP_IF ((j-i) >= kk) else break ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
                 ASSERT (info == GrB_SUCCESS) ;
@@ -248,7 +250,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_DIAG_opcode:
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
                 // use binary search to find the entry on the kk-th diagonal:
                 // look for entry A(i,j) with index i = j-kk
@@ -267,7 +269,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     int64_t pright = pend - 1 ;
                     GB_BINARY_SEARCH (i, Ai, p, pright, found) ;
                 }
-                KEEP_IF (found) ;
+                GB_KEEP_IF (found) ;
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
@@ -280,12 +282,12 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_OFFDIAG_opcode:
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
-                for_each_entry (j, p, pend)
+                GB_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
-                    KEEP_IF ((j-i) != kk) ;
+                    GB_KEEP_IF ((j-i) != kk) ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
                 ASSERT (info == GrB_SUCCESS) ;
@@ -299,12 +301,12 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_NONZERO_opcode:
         {
-            for_each_vector (A)
+            GB_for_each_vector (A)
             {
-                for_each_entry (j, p, pend)
+                GB_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
-                    KEEP_IF (is_nonzero (Ax +(p*asize), asize)) ;
+                    GB_KEEP_IF (is_nonzero (Ax +(p*asize), asize)) ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
                 ASSERT (info == GrB_SUCCESS) ;
@@ -316,12 +318,13 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         // T = userselect (A,k)
         //----------------------------------------------------------------------
 
-        case GB_USER_SELECT_opcode:
+        case GB_USER_SELECT_C_opcode:
+        case GB_USER_SELECT_R_opcode:
         {
-            GB_select_function select = op->function  ;
-            for_each_vector (A)
+            GB_select_function select = op->function ;
+            GB_for_each_vector (A)
             {
-                for_each_entry (j, p, pend)
+                GB_for_each_entry (j, p, pend)
                 {
                     int64_t i = Ai [p] ;
                     bool keep ;
@@ -333,7 +336,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     { 
                         keep = select (j, i, vdim, vlen, Ax +(p*asize), k) ;
                     }
-                    KEEP_IF (keep) ;
+                    GB_KEEP_IF (keep) ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
                 ASSERT (info == GrB_SUCCESS) ;
@@ -344,7 +347,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
     ASSERT (info == GrB_SUCCESS) ;
     GB_jwrapup (T, jlast, tnz) ;        // T->p is now finalized ]
-    ASSERT_OK (GB_check (T, "T=select(A,k)", D0)) ;
+    ASSERT_OK (GB_check (T, "T=select(A,k)", GB0)) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask

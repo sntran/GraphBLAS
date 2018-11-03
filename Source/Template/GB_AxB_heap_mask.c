@@ -8,7 +8,7 @@
 // This file is #include'd in GB_AxB_heap.c, and Template/GB_AxB.c, the
 // latter of which expands into Generated/GB_AxB__* for all built-in semirings.
 
-// if MASK is #define'd, then the mask matrix M is present.  Otherwise it
+// if GB_MASK_CASE is defined, then the mask matrix M is present.  Otherwise it
 // is not present.
 
 {
@@ -17,7 +17,7 @@
     // get the mask
     //--------------------------------------------------------------------------
 
-    #ifdef MASK
+    #ifdef GB_MASK_CASE
     const int64_t *restrict Mi = M->i ;
     const void    *restrict Mx = M->x ;
     GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
@@ -51,10 +51,10 @@
     // C<M> = A*B
     //--------------------------------------------------------------------------
 
-    #ifdef MASK
-    for_each_vector2 (B, M)
+    #ifdef GB_MASK_CASE
+    GB_for_each_vector2 (B, M)
     #else
-    for_each_vector (B)
+    GB_for_each_vector (B)
     #endif
     {
 
@@ -62,7 +62,7 @@
         // get B(:,j) and M(:,j)
         //----------------------------------------------------------------------
 
-        #ifdef MASK
+        #ifdef GB_MASK_CASE
         int64_t GBI2_initj (Iter, j, pB_start, pB_end, pM, pM_end) ;
         #else
         int64_t GBI1_initj (Iter, j, pB_start, pB_end) ;
@@ -72,7 +72,7 @@
         int64_t bjnz = pB_end - pB_start ;
         if (bjnz == 0) continue ;
 
-        #ifdef MASK
+        #ifdef GB_MASK_CASE
         int64_t mjnz = pM_end - pM ;
         if (mjnz == 0) continue ;
 
@@ -108,14 +108,14 @@
         // Construct a Heap containing each vector A(:,k) for which B(k,j) is
         // nonzero.
 
-        // The key of an Element in the Heap is the index i at the head of the
-        // A(:,k) list.  The name each Elemens is the corresponding entry in
-        // B(:,j) with index k.  The name is kk if B(k,j) is the (kk)th nonzero
-        // in B(:,j), if kk is in the range 0 to bjnz-1.
+        // The key of an GB_Element in the Heap is the index i at the head of
+        // the A(:,k) list.  The name each Elemens is the corresponding entry
+        // in B(:,j) with index k.  The name is kk if B(k,j) is the (kk)th
+        // nonzero in B(:,j), if kk is in the range 0 to bjnz-1.
 
         // each array is of size bjnz_max
         // int64_t pA_pair [0..bjnz-1] ;
-        // Element Heap [1..bjnz] ;     note that Heap [0] is not valid
+        // GB_Element Heap [1..bjnz] ;     note that Heap [0] is not valid
         // int64_t List [0..bjnz-1] ;
         int64_t nheap = 0 ;
         ASSERT (bjnz <= bjnz_max) ;
@@ -132,7 +132,7 @@
             // skip if A(:,k) empty
             if (pA == pA_end) continue ;
 
-            #ifdef MASK
+            #ifdef GB_MASK_CASE
             // A(:,k) is non-empty; get the first and last index of A(:,k)
             int64_t alo = Ai [pA] ;
             int64_t ahi = Ai [pA_end-1] ;
@@ -170,7 +170,7 @@
         // C (:,j) = A (:,K) * B(K,j), for all indices K = find (B (:,j))
         //----------------------------------------------------------------------
 
-        #ifdef MASK
+        #ifdef GB_MASK_CASE
         while (nheap > 0)   // iterate until all A(:,k) are done
         #else
         while (nheap > 1)   // iterate until only one A(:,k) is left
@@ -203,7 +203,7 @@
             // get the mask M(i,j)
             //------------------------------------------------------------------
 
-            #ifdef MASK
+            #ifdef GB_MASK_CASE
             // get M(i,j) and advance the mask
             for ( ; pM < pM_end && Mi [pM] < i ; pM++) ;
             if (pM >= pM_end)
@@ -225,8 +225,8 @@
             // ensure enough space exists in C
             //------------------------------------------------------------------
 
-            #ifdef MASK
-            // C->nzmax == NNZ (M) + 1, so cnz < C->nzmax will always hold
+            #ifdef GB_MASK_CASE
+            // C->nzmax == nnz (M) + 1, so cnz < C->nzmax will always hold
             ASSERT (cnz < C->nzmax) ;
             #else
             {
@@ -244,7 +244,7 @@
                     Ci = C->i ;
                     Cx = C->x ;
                     // reacquire cij since C->x has moved
-                    CIJ_REACQUIRE ;
+                    GB_CIJ_REACQUIRE ;
                 }
             }
             #endif
@@ -253,12 +253,12 @@
             // cij = 0
             //------------------------------------------------------------------
 
-            #ifdef MASK
+            #ifdef GB_MASK_CASE
             if (mij)
             #endif
             {
                 // cij = 0
-                CIJ_CLEAR ;
+                GB_CIJ_CLEAR ;
             }
 
             //------------------------------------------------------------------
@@ -293,19 +293,19 @@
                 // operators.  Early termination cannot be exploited for
                 // user-defined semirings since their properties are unknown.
 
-                #ifdef MASK
+                #ifdef GB_MASK_CASE
                 if (mij)
                 #endif
                 {
                     // cij += A(i,k) * B(k,j)
-                    CIJ_MULTADD (pA, pB_start + kk) ;
+                    GB_CIJ_MULTADD (pA, pB_start + kk) ;
                 }
 
                 //--------------------------------------------------------------
                 // move to the next entry in A(:,k)
                 //--------------------------------------------------------------
 
-                #ifdef MASK
+                #ifdef GB_MASK_CASE
                 // skip past all rows in A(:,k) that are < im_next
                 if (im_next == cvlen)
                 { 
@@ -363,7 +363,7 @@
             // prune the Heap if mostly dead
             //------------------------------------------------------------------
 
-            ASSERT (IMPLIES (nheap > 0, nlive <= nheap && nlive >= 0)) ;
+            ASSERT (GB_IMPLIES (nheap > 0, nlive <= nheap && nlive >= 0)) ;
 
             if (nlive == 0)
             { 
@@ -381,7 +381,7 @@
                 {
                     if (Heap [p].key < cvlen)
                     { 
-                        // keep this Element in the Heap
+                        // keep this element in the Heap
                         Heap [++nheap_pruned] = Heap [p] ;
                     }
                 }
@@ -397,13 +397,13 @@
             // insert C(i,j) into C
             //------------------------------------------------------------------
 
-            #ifdef MASK
+            #ifdef GB_MASK_CASE
             if (mij)
             #endif
             { 
                 Ci [cnz] = i ;
                 // Cx [cnz] = cij ;
-                CIJ_SAVE ;
+                GB_CIJ_SAVE ;
                 cnz++ ;
             }
         }
@@ -416,7 +416,7 @@
         // present, the while loop above terminates only when the Heap is
         // empty.
 
-        #ifndef MASK
+        #ifndef GB_MASK_CASE
         if (nheap == 1)
         {
             // get the last A(:,k)
@@ -446,11 +446,11 @@
                 Ci = C->i ;
                 Cx = C->x ;
                 // reacquire cij since C->x has moved
-                CIJ_REACQUIRE ;
+                GB_CIJ_REACQUIRE ;
             }
 
             // bkj = Bx [] ;
-            CIJ_GETB (pB_start + kk) ;
+            GB_CIJ_GETB (pB_start + kk) ;
 
             // C(ilast:end,j) = A (ilast:end,k) * B (k,j)
             for ( ; pA < pA_end ; pA++)
@@ -459,11 +459,11 @@
                 int64_t i = Ai [pA] ;
 
                 // cij = A(i,k) * B(k,j)
-                CIJ_MULT (pA) ;
+                GB_CIJ_MULT (pA) ;
 
                 Ci [cnz] = i ;
                 // Cx [cnz] = cij ;
-                CIJ_SAVE ;
+                GB_CIJ_SAVE ;
                 cnz++ ;
             }
         }

@@ -41,7 +41,28 @@ GrB_Info adotb_complex ( )
         GrB_free (&Aconj) ;
         return (info) ;
     }
-    info = GB_AxB_dot (&C, Mask, Aconj, B, Complex_plus_times,false) ;
+
+    #ifdef MY_COMPLEX
+    // use the precompiled complex type
+    if (Aconj != NULL) Aconj->type = My_Complex ;
+    if (B     != NULL) B->type     = My_Complex ;
+    #endif
+
+    info = GB_AxB_dot (&C, Mask, Aconj, B,
+        #ifdef MY_COMPLEX
+            My_Complex_plus_times,
+        #else
+            Complex_plus_times,
+        #endif
+        false) ;
+
+    #ifdef MY_COMPLEX
+    // convert back to run-time complex type
+    if (C     != NULL) C->type     = Complex ;
+    if (B     != NULL) B->type     = Complex ;
+    if (Aconj != NULL) Aconj->type = Complex ;
+    #endif
+
     GrB_free (&Aconj) ;
     return (info) ;
 }
@@ -61,7 +82,7 @@ GrB_Info adotb ( )
     }
     // C = A'*B
     info = GB_AxB_dot (&C, Mask, A, B,
-        semiring /* GrB_PLUS_TIMES_FP64 */, false) ;
+        semiring /* GxB_PLUS_TIMES_FP64 */, false) ;
     GrB_free (&add) ;
     GrB_free (&semiring) ;
     return (info) ;
@@ -80,7 +101,7 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
 
-    WHERE (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 2 || nargin > 3)
@@ -122,25 +143,10 @@ void mexFunction
     {
         // C = A'*B, complex case
         METHOD (adotb_complex ( )) ;
-        /*
-        METHOD (GrB_Matrix_new (&Aconj, Complex, A->vlen, A->vdim)) ;
-        METHOD (GrB_apply (Aconj, NULL, NULL, Complex_conj, A, NULL)) ;
-        METHOD (GB_AxB_dot (&C, Mask, Aconj, B, Complex_plus_times,false));
-        */
     }
     else
     {
         METHOD (adotb ( )) ;
-
-        #if 0
-        // create the Semiring for regular z += x*y
-        METHOD (GrB_Monoid_new (&add, GrB_PLUS_FP64, (double) 0)) ;
-        METHOD (GrB_Semiring_new (&semiring, add, GrB_TIMES_FP64)) ;
-        // C = A'*B
-        METHOD (GB_AxB_dot (&C, Mask, A, B, semiring
-            /* GrB_PLUS_TIMES_FP64 */, false)) ;
-        #endif
-
     }
 
     // return C to MATLAB

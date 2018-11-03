@@ -28,7 +28,6 @@
 
 // timer functions, and result statistics
 extern double gbtime, tic [2] ;
-extern int gb_AxB_selected ;
 void GB_mx_put_time ( ) ;               // return the time to MATLAB
 void GB_mx_clear_time ( ) ;             // clear the time and start the tic
 #define TIC { GB_mx_clear_time ( ) ; }
@@ -253,7 +252,7 @@ bool GB_mx_isequal  // true if A and B are exactly the same
 
 //------------------------------------------------------------------------------
 
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
 
 #define AS_IF_FREE(p)           \
 {                               \
@@ -275,7 +274,7 @@ bool GB_mx_isequal  // true if A and B are exactly the same
 
 #endif
 
-#ifdef PRINT_MALLOC
+#ifdef GB_PRINT_MALLOC
 
 #define METHOD_START(OP) \
     printf ("\n================================================================================\n") ; \
@@ -378,17 +377,17 @@ bool GB_mx_isequal  // true if A and B are exactly the same
 // statement coverage
 //------------------------------------------------------------------------------
 
-// gbcover_get copies GraphBLAS_gbcov from the MATLAB global workspace into
-// the internal gbcov array.  The MATLAB array is created if it doesn't exist.
+// GB_cover_get copies GraphBLAS_gbcov from the MATLAB global workspace into
+// the internal GB_cov array.  The MATLAB array is created if it doesn't exist.
 // Thus, to clear the counts simply clear GraphBLAS_gbcov from the MATLAB
 // global workpace.
-void gbcover_get ( ) ;
+void GB_cover_get ( ) ;
 
-// gbcover_put copies the internal gbcov array back into the MATLAB
+// GB_cover_put copies the internal GB_cov array back into the MATLAB
 // GraphBLAS_gbcov array, for analysis and for subsequent statement counting.
 // This way, multiple tests in MATLAB can be accumulated into a single array
 // of counters.
-void gbcover_put ( ) ;
+void GB_cover_put ( ) ;
 
 #endif
 

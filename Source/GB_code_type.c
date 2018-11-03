@@ -19,7 +19,7 @@
 GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
 (
     const GB_Type_code code,    // type code to convert
-    const GrB_Type type         // user type if code is GB_UDT_code
+    const GrB_Type type         // user type if code is user-defined
 )
 {
 
@@ -37,6 +37,7 @@ GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
         case GB_UINT64_code : return (GrB_UINT64) ;
         case GB_FP32_code   : return (GrB_FP32)   ;
         case GB_FP64_code   : return (GrB_FP64)   ;
+        case GB_UCT_code    : 
         case GB_UDT_code    : 
         default             : return (type) ;
     }

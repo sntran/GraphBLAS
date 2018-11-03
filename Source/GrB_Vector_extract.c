@@ -25,19 +25,16 @@ GrB_Info GrB_Vector_extract         // w<mask> = accum (w, u(I))
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Vector_extract (w, mask, accum, u, I, ni, desc)") ;
-
-    RETURN_IF_NULL_OR_FAULTY (w) ;
-    RETURN_IF_FAULTY (mask) ;
-    RETURN_IF_NULL_OR_FAULTY (u) ;
-
-    // w, mask, and u are valid n-by-1 vectors in CSC format
-    ASSERT (VECTOR_OK (w)) ;
-    ASSERT (mask == NULL || VECTOR_OK (mask)) ;
-    ASSERT (VECTOR_OK (u)) ;
+    GB_WHERE ("GrB_Vector_extract (w, mask, accum, u, I, ni, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // extract entries

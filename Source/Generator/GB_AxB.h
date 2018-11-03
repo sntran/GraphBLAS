@@ -4,7 +4,7 @@ GrB_Info GB_AgusB
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip
+    bool flipxy
 ) ;
 
 GrB_Info GB_AdotB
@@ -13,7 +13,7 @@ GrB_Info GB_AdotB
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip
+    bool flipxy
 ) ;
 
 GrB_Info GB_AheapB
@@ -22,10 +22,10 @@ GrB_Info GB_AheapB
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip,
+    bool flipxy,
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
-    Element *restrict Heap,
+    GB_Element *restrict Heap,
     const int64_t bjnz_max
 ) ;
 

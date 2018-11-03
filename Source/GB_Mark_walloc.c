@@ -28,7 +28,7 @@ GrB_Info GB_Mark_walloc             // allocate Mark space
         if (GB_thread_local.Mark == NULL)
         { 
             // out of memory
-            return (OUT_OF_MEMORY (GBYTES (newsize, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY (GBYTES (newsize, sizeof (int64_t)))) ;
         }
         GB_thread_local.Mark_size = newsize ;
         GB_thread_local.Mark_flag = 1 ;
@@ -38,6 +38,6 @@ GrB_Info GB_Mark_walloc             // allocate Mark space
     // assertion for debugging only:
     ASSERT_MARK_IS_RESET ;          // assert that Mark [...] < flag
 
-    return (REPORT_SUCCESS) ;
+    return (GB_REPORT_SUCCESS) ;
 }
 

@@ -15,7 +15,6 @@ function gbmake (what, flags, mexfunctions, cfiles, hfiles, inc)
 % what: if empty, compile the code; 'clean' removes object files, 'distclean'
 %       removes object files and compiled mexFunctions
 %
-% These arguments are used by ../Tcov/gbcover.m:
 % flags: defaults to '-O'
 % mexfunctions: list of source files of mexFunctions
 % cfiles: list of C source files
@@ -83,13 +82,14 @@ if (nargin < 5)
                dir('Template/*.h') ; ...
                dir('../Source/*.h') ; ...
                dir('../Source/Generated/*.h') ; ...
-               dir('../Demo/Include*.h') ; ...
+               dir('../Source/Generator/*.c') ; ...
+               dir('../Demo/Include/*.h') ; ...
                dir('../Source/Template/*.h') ; ...
                dir('../Source/Template/*.c') ] ;
 end
 
 if (nargin < 6)
-    inc = '-ITemplate -I../Include -I../Source -I../Source/Generated -I../Source/Template -I../Demo/Include' ;
+    inc = '-ITemplate -I../Include -I../Source -I../Source/Generated -I../Source/Template -I../Demo/Include -I../Source/Generator' ;
 end
 
 %-------------------------------------------------------------------------------

@@ -30,26 +30,26 @@ GrB_Info GB_user_build          // check inputs then build matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C for GB_user_build", D0)) ;
-    RETURN_IF_NULL (I) ;
+    ASSERT_OK (GB_check (C, "C for GB_user_build", GB0)) ;
+    GB_RETURN_IF_NULL (I) ;
     if (I == GrB_ALL)
     { 
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "List of row indices cannot be GrB_ALL"))) ;
     }
 
     if (nvals == GxB_RANGE || nvals == GxB_STRIDE || nvals == GxB_BACKWARDS)
     { 
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "nvals cannot be GxB_RANGE, GxB_STRIDE, or GxB_BACKWARDS"))) ;
     }
 
     if (is_matrix)
     {
-        RETURN_IF_NULL (J) ;
+        GB_RETURN_IF_NULL (J) ;
         if (J == GrB_ALL)
         { 
-            return (ERROR (GrB_INVALID_VALUE, (LOG,
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                 "List of column indices cannot be 'GrB_ALL'"))) ;
         }
     }
@@ -59,16 +59,16 @@ GrB_Info GB_user_build          // check inputs then build matrix
         ASSERT (J == NULL) ;
     }
 
-    RETURN_IF_NULL (S) ;
-    RETURN_IF_NULL_OR_FAULTY (dup) ;
+    GB_RETURN_IF_NULL (S) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (dup) ;
 
-    ASSERT_OK (GB_check (dup, "dup operator for assembling duplicates", D0)) ;
+    ASSERT_OK (GB_check (dup, "dup operator for assembling duplicates", GB0)) ;
     ASSERT (scode <= GB_UDT_code) ;
 
     if (nvals > GB_INDEX_MAX)
     { 
         // problem too large
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "problem too large: nvals "GBu" exceeds "GBu,
             nvals, GB_INDEX_MAX))) ;
     }
@@ -78,7 +78,7 @@ GrB_Info GB_user_build          // check inputs then build matrix
     { 
         // all 3 types of z = dup (x,y) must be the same.  dup must also be
         // associative but there is no way to check this in general.
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG, "All domains of dup "
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG, "All domains of dup "
         "operator for assembling duplicates must be identical.\n"
         "operator is: [%s] = %s ([%s],[%s])",
         dup->ztype->name, dup->name, dup->xtype->name, dup->ytype->name))) ;
@@ -87,7 +87,7 @@ GrB_Info GB_user_build          // check inputs then build matrix
     if (!GB_Type_compatible (C->type, dup->ztype))
     { 
         // the type of C and dup must be compatible
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
         "operator dup [%s] has type [%s]\n"
         "cannot be typecast to entries in output of type [%s]",
         dup->name, dup->ztype->name, C->type->name))) ;
@@ -102,21 +102,21 @@ GrB_Info GB_user_build          // check inputs then build matrix
         // Thus, if C, dup, or S have any user-defined type, this
         // condition requires all three types to be identical: the same
         // user-defined type.  No casting will be done in this case.
-        return (ERROR (GrB_DOMAIN_MISMATCH, (LOG,
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
         "numerical values of tuples of type [%s]\n"
         "cannot be typecast as input to the dup operator\n"
         "z=%s(x,y), whose input types are [%s]",
         GB_code_string (scode), dup->name, dup->ztype->name))) ;
     }
 
-    if (!EMPTY (C))
+    if (!GB_EMPTY (C))
     { 
         // The matrix has existing entries.  This is required by the GraphBLAS
         // API specification to generate an error, so the test is made here.
         // However, any existing content is safely freed immediately below, so
         // this test is not required, except to conform to the spec.  Zombies
         // are excluded from this test.
-        return (ERROR (GrB_OUTPUT_NOT_EMPTY, (LOG,
+        return (GB_ERROR (GrB_OUTPUT_NOT_EMPTY, (GB_LOG,
             "output already has existing entries"))) ;
     }
 

@@ -56,7 +56,7 @@ bool GB_mx_get_global      // true if doing malloc_debug
     //--------------------------------------------------------------------------
 
     #ifdef GBCOVER
-    if (cover) gbcover_get ( ) ;
+    if (cover) GB_cover_get ( ) ;
     #endif
 
     //--------------------------------------------------------------------------
@@ -65,6 +65,7 @@ bool GB_mx_get_global      // true if doing malloc_debug
 
     GB_Global.GrB_init_called = false ;
     GrB_init (GrB_NONBLOCKING) ;
+    GxB_set (GxB_FORMAT, GxB_BY_COL) ;
     ASSERT (GB_Global.nmalloc == 0) ;
     Complex_init ( ) ;
 
