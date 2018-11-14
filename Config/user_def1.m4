@@ -58,14 +58,13 @@ m4_define(`GxB_BinaryOp_define', `
 
 m4_define(`GxB_Monoid_define', `
     #define GB_DEF_$1_add GB_DEF_$2_function
-    #define GB_DEF_$1_identity $3
-    GB_DEF_$2_ztype GB_opaque_identity_$1 = $3 ;
+    GB_DEF_$2_ztype GB_DEF_$1_identity = $3 ;
     struct GB_Monoid_opaque GB_opaque_$1 =
     {
         GB_MAGIC,           // object is defined
-        & GB_opaque_$2,             // binary operator
-        & GB_opaque_identity_$1,    // identity value
-        GB_USER_COMPILED            // user-defined at compile-time
+        & GB_opaque_$2,     // binary operator
+        & GB_DEF_$1_identity,   // identity value
+        GB_USER_COMPILED    // user-defined at compile-time
     } ;
     GrB_Monoid $1 = & GB_opaque_$1')
 

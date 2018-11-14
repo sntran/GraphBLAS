@@ -18,6 +18,8 @@
     #define MY_SCALE
 
     extern double my_scalar ;
+    // for thread safety if the user application uses OpenMP
+    #pragma omp threadprivate(my_scalar)
 
     static inline void my_scale
     (
@@ -42,18 +44,6 @@
 
 #endif
 
-
-//------------------------------------------------------------------------------
-// OpenMP thread safety
-//------------------------------------------------------------------------------
-
-// In case the user application is parallelized with OpenMP, the global
-// variable my_scalar should be private to each user thread.  It is also valid
-// to have all user threads share the same global value.  It's up to the user
-// to decide, but the following ensures that each thread has its own private
-// version of my_scalar.
-
-#pragma omp threadprivate(my_scalar)
 
 //------------------------------------------------------------------------------
 // define/declare the GrB_UnaryOp My_scale

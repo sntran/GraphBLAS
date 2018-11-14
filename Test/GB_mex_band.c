@@ -93,7 +93,7 @@ void mexFunction
     }
 
     // get the pre/run-time option
-    int GET_SCALAR (0, int, pre, 4) ;
+    int GET_SCALAR (4, int, pre, 0) ;
 
     // create operator
     op = NULL ;

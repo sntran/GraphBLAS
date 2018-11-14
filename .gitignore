@@ -35,6 +35,7 @@ my_*.out
 .DS_Store
 .nfs*
 .pyc
+*.tmp
 
 Demo/bfs_demo.out
 Demo/complex_demo_out.m
@@ -42,6 +43,8 @@ Demo/mis_demo.out
 Demo/simple_demo.out
 Demo/wildtype_demo.out
 Demo/tri_demo.out
+Demo/pagerank_demo.out
+
 Test/errlog.txt
 Test/log.txt
 Doc/GraphBLAS_UserGuide.log
@@ -49,6 +52,8 @@ Doc/GraphBLAS_UserGuide.out
 Tcov/errlog.txt
 Tcov/log.txt
 Tcov/gbstat.mat
+Tcov/fprint.txt
+Test/fprint.txt
 
 # Do not ignore this file
 !.gitignore

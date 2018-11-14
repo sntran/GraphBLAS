@@ -35,9 +35,6 @@ To compile the library without running the demos or installing it:
 
     make library
 
-NOTE: this package has not yet been ported to Windows.  It uses cmake to build
-the package so porting to Windows should be straight-forward (in progress).
-
 --------------------------------------------------------------------------------
 Files and folders in this GraphBLAS directory:
 

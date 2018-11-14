@@ -160,6 +160,18 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     GrB_Matrix A
 ) ;
 
+// like dpagerank but with user-defined type, operators, and semiring;
+// also a stopping critirion
+GrB_Info dpagerank2         // GrB_SUCCESS or error condition
+(
+    PageRank **Phandle,     // output: pointer to array of PageRank structs
+    GrB_Matrix A,           // input graph, not modified
+    int itermax,            // max number of iterations
+    double tol,             // stop when norm (r-rnew,2) < tol
+    int *iters,             // number of iterations taken
+    GrB_Desc_Value method   // method to use for GrB_vxm (for testing only)
+) ;
+
 GrB_Info drowscale          // GrB_SUCCESS or error condition
 (
     GrB_Matrix *Chandle,    // output matrix C = rowscale (A)

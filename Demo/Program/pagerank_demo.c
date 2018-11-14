@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/Program/pagerank_demo.c: PageRank via real and int semirings
+// GraphBLAS/Demo/Program/pagerank_demo.c: PageRank via various semirings
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -45,7 +45,7 @@ int main (int argc, char **argv)
 
     GrB_Info info ;
     GrB_Matrix A = NULL ;
-    PageRank *Pd = NULL ;
+    PageRank *Pd = NULL, *P2 = NULL ;
     iPageRank *Pi = NULL ;
 
     double tic [2], t ;
@@ -64,7 +64,7 @@ int main (int argc, char **argv)
         stdin,      // read matrix from stdin
         false,      // unsymmetric
         false,      // self edges OK
-        one_based,  // 0-based or 1-based
+        one_based,  // 0-based or 1-based, depending on input arg
         true,       // read input file as Boolean
         true)) ;    // print status to stdout
 
@@ -80,9 +80,9 @@ int main (int argc, char **argv)
     OK (dpagerank (&Pd, A)) ;
     t = simple_toc (tic) ;
 
-    fprintf (stderr, "n %g edges %g  dpagerank time in seconds: %14.6f\n",
+    fprintf (stderr, "n %g edges %g  dpagerank time : %14.6f iters: 20\n",
         (double) n, (double) nvals, t) ;
-    printf  (        "n %g edges %g  dpagerank time in seconds: %14.6f\n",
+    printf  (        "n %g edges %g  dpagerank time : %14.6f iters: 20\n",
         (double) n, (double) nvals, t) ;
 
     //--------------------------------------------------------------------------
@@ -93,10 +93,24 @@ int main (int argc, char **argv)
     OK (ipagerank (&Pi, A)) ;
     t = simple_toc (tic) ;
 
-    fprintf (stderr, "n %g edges %g  ipagerank time in seconds: %14.6f\n",
+    fprintf (stderr, "n %g edges %g  ipagerank time : %14.6f iters: 20\n",
         (double) n, (double) nvals, t) ;
-    printf  (        "n %g edges %g  ipagerank time in seconds: %14.6f\n",
+    printf  (        "n %g edges %g  ipagerank time : %14.6f iters: 20\n",
         (double) n, (double) nvals, t) ;
+
+    //--------------------------------------------------------------------------
+    // compute the page rank via an extreme semiring
+    //--------------------------------------------------------------------------
+
+    int iters ;
+    simple_tic (tic) ;
+    OK (dpagerank2 (&P2, A, 100, 1e-5, &iters, GxB_DEFAULT)) ;
+    t = simple_toc (tic) ;
+
+    fprintf (stderr, "n %g edges %g  dpagerank time : %14.6f iters: %d\n",
+        (double) n, (double) nvals, t, iters) ;
+    printf  (        "n %g edges %g  dpagerank time : %14.6f iters: %d\n",
+        (double) n, (double) nvals, t, iters) ;
 
     //--------------------------------------------------------------------------
     // print results
@@ -106,10 +120,15 @@ int main (int argc, char **argv)
     printf ("Top %g nodes:\n", (double) limit) ;
     for (int64_t i = 0 ; i < limit ; i++)
     {
-        printf ("%5g d:[%6g : %16.8e] i:[%6g : %16.8e] ", (double) i,
+        printf ("%5g d:[%6g : %16.8e] i:[%6g : %16.8e] x:[%6g : %16.8e]",
+            (double) i,
             (double) Pd [i].page, (double) Pd [i].pagerank,
-            (double) Pi [i].page, (double) Pi [i].pagerank) ;
-        if (Pd [i].page != Pi [i].page) printf ("mismatch") ;
+            (double) Pi [i].page, (double) Pi [i].pagerank,
+            (double) P2 [i].page, (double) P2 [i].pagerank) ;
+        if (Pd [i].page != Pi [i].page || Pd [i].page != P2 [i].page)
+        {
+            printf ("mismatch") ;
+        }
         printf ("\n") ;
     }
 

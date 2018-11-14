@@ -12,7 +12,7 @@
 #include "GB_mex.h"
 #include "demos.h"
 
-#define USAGE "[r,irank] = GB_mex_dpagerank (A)"
+#define USAGE "[r,irank,iters] = GB_mex_dpagerank (A, method)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -38,10 +38,13 @@ void mexFunction
     GB_WHERE (USAGE) ;
 
     // check inputs
-    if (nargout > 2 || nargin != 1)
+    if (nargout > 3 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
+
+    // get the method 
+    int GET_SCALAR (1, int, method, GxB_DEFAULT) ;
 
     // get A (shallow copy)
     A = GB_mx_mxArray_to_Matrix (pargin [0], "A", false, true) ;
@@ -55,13 +58,30 @@ void mexFunction
     GrB_Matrix_nrows (&n, A) ;
 
     // compute the PageRank P
+    int iters = 0 ;
     TIC ;
-    dpagerank (&P, A) ;
+    if (nargin > 1)
+    {
+        printf ("dpagerank2, method %d\n", method) ;
+        info = dpagerank2 (&P, A, 100, 1e-5, &iters, method) ;
+    }
+    else // default method
+    {
+        info= dpagerank (&P, A) ;
+    }
     TOC ;
+
+    if (info != GrB_SUCCESS)
+    {
+        FREE_ALL ;
+        printf ("%s\n", GrB_error ( )) ;
+        mexErrMsgTxt ("failed") ;
+    }
 
     // return PageRank to MATLAB
     pargout [0] = mxCreateDoubleMatrix (1, n, mxREAL) ;
     pargout [1] = mxCreateDoubleMatrix (1, n, mxREAL) ;
+    pargout [2] = mxCreateDoubleScalar ((double) iters) ;
 
     double *r     = mxGetPr (pargout [0]) ;
     double *irank = mxGetPr (pargout [1]) ;

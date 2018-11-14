@@ -1,3 +1,9 @@
+Version 2.2.0 (BETA2), Nov 15, 2018
+
+    * added additional pagerank example in Demo/
+    * GxB_Monoid_define: bug fix for C struct types.  This bug only appears
+        in Version 2.2.0 (BETA1), not in any non-BETA final release. 
+
 Version 2.2.0 (BETA1), Nov 2, 2018
 
     * added GxB_*_define: to create user-defined objects at compile-time.

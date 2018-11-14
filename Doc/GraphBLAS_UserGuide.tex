@@ -2086,20 +2086,20 @@ should be kept in the output of \verb'GxB_select', or \verb'false' if it should
 not appear in the output.
 
 The type \verb'xtype' is the GraphBLAS type of the input $x$ of the
-user-defined function $z=f(i,j,m,n,x,\mbox{thunk})$.  The type may be built-in or
-user-defined, or it may even be \verb'GrB_NULL'.  If the \verb'xtype' is
-\verb'GrB_NULL', then \verb'GxB_select' does not pass the value of $x=a_{ij}$
-to the select function, but passes \verb'GrB_NULL' for the input \verb'x' to
-the user-defined select \verb'function'.
+user-defined function $z=f(i,j,m,n,x,\mbox{thunk})$.  The type may be built-in
+or user-defined, or it may even be \verb'GrB_NULL'.  If the \verb'xtype' is
+\verb'GrB_NULL', then the \verb'selectop' is type-generic.  The
+\verb'GxB_select' operation does not pass the value of $x=a_{ij}$ to the select
+function, but passes \verb'GrB_NULL' for the input \verb'x' to the user-defined
+select \verb'function'.
 
 For example, to delete all entries in a matrix equal to the additive identity
 of a monoid, create a user-defined \verb'GxB_SelectOp' with a function that
 compares its input value \verb'x' with the value of the identity, passed in to
-it via the \verb'thunk' parameter of type \verb'void *'.  The user-defined function
-should return \verb'false' if \verb'x' is equal the value \verb'(*thunk)', and
-false otherwise.
+it via the \verb'thunk' parameter of type \verb'void *'.  The user-defined
+function should return \verb'false' if \verb'x' is equal the value
+\verb'(*thunk)', and \verb'true' otherwise.
 
-\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_SelectOp\_xtype:} return the type of $x$} 
 %-------------------------------------------------------------------------------
@@ -2246,14 +2246,14 @@ GrB_Info GrB_Monoid_new             // create a monoid
 \verb'GrB_Monoid_new' creates a monoid.  The operator, \verb'op', must be an
 associative binary operator, either built-in or user-defined.
 
-In the definition above, \verb'<type>' is a type-generic place-holder.  For
-built-in types, it is the C type corresponding to the built-in type (see
-Section~\ref{type}), such as \verb'bool', \verb'int32_t', \verb'float', or
-\verb'double'.  In this case, \verb'identity' is a \verb'const' scalar value of
-the particular type, not a pointer.  For user-defined types, \verb'<type>' is
-\verb'void *', and thus \verb'identity' is a not a scalar itself but a
-\verb'void *' pointer to a memory location containing the identity value of the
-user-defined operator, \verb'op'.
+In the definition above, \verb'<type>' is a place-holder for the specific type
+of the monoid.  For built-in types, it is the C type corresponding to the
+built-in type (see Section~\ref{type}), such as \verb'bool', \verb'int32_t',
+\verb'float', or \verb'double'.  In this case, \verb'identity' is a
+\verb'const' scalar value of the particular type, not a pointer.  For
+user-defined types, \verb'<type>' is \verb'void *', and thus \verb'identity' is
+a not a scalar itself but a \verb'void *' pointer to a memory location
+containing the identity value of the user-defined operator, \verb'op'.
 
 % \newpage
 %-------------------------------------------------------------------------------
@@ -7878,7 +7878,10 @@ use in the \verb'User/*m4' file, in the following style:
 Placing user functions inside this \verb'#ifdef' structure gives the user
 control over what declarations should be available to all of GraphBLAS and to
 all user application files (Part 1), and what definitions should appear just
-once (Part 2).  For example, \verb'User/Example/my_scale.m4' in
+once (Part 2).
+
+\newpage
+For example, \verb'User/Example/my_scale.m4' in
 Figure~\ref{fig:scale} defines a unary operator that computes
 \verb'z=my_scalar*x', where \verb'my_scalar' is a global variable.
 The declaration of \verb'my_scalar' should appear in \verb'GraphBLAS.h', but
@@ -7905,6 +7908,8 @@ of the \verb'#ifdef GxB_USER_INCLUDE'.
     #define MY_SCALE
 
     extern double my_scalar ;
+    // for thread safety if the user application uses OpenMP
+    #pragma omp threadprivate(my_scalar)
 
     static inline void my_scale
     (
@@ -7928,9 +7933,6 @@ of the \verb'#ifdef GxB_USER_INCLUDE'.
     double my_scalar = 0 ;
 
 #endif
-
-// for thread safety if the user application uses OpenMP
-#pragma omp threadprivate(my_scalar)
 
 // Unary operator to compute z = my_scalar*x
 GxB_UnaryOp_define(My_scale, my_scale, GrB_FP64, GrB_FP64) ; \end{verbatim}}
@@ -7983,7 +7985,8 @@ reserved prefixes \verb'GrB', \verb'GxB', \verb'GXB', \verb'GB', and
 user-defined macro is safe if it has a name that is all upper case of length 3
 characters or more and avoids the reserved prefixes.  For best practice,
 however, all user-defined macros should use a unique prefix such as \verb'MY_',
-\verb'USER_', or the name of the user application (say \verb'RealCoolApp_').
+\verb'USER_', or the name of the user application (say \verb'RealCoolApp_',
+or \verb'PAGERANK_' as exemplified in the \verb'my_pagerank.m4' example).
 This will ensure that no name conflicts will occur.
 
 An example macro name conflict occurs in the \verb'User/Example/my_complex.m4'
@@ -7998,11 +8001,13 @@ The six \verb'GxB_*_define' macros are presented below.  They all have
 essentially the same parameters in the same order as the corresponding
 \verb'GrB_*_new' methods, except that where the \verb'GrB_*_new' methods use
 pointers to the new objects, the corresponding \verb'GxB_*_define' macro uses
-just the name of the object.  Since they are \verb'm4' macros, no space can
-appear between the macro name \verb'GxB_*_define' and the subsequent left
-parenthesis.  Unlike their \verb'GrB_*_new' counterparts, the six
-\verb'GxB_*_define' macros do not return an error code.  Any errors will be
+just the name of the object.  Unlike their \verb'GrB_*_new' counterparts, the
+six \verb'GxB_*_define' macros do not return an error code.  Any errors will be
 detected by the compiler.
+
+Since they are \verb'm4' macros, no space can appear between the macro name
+\verb'GxB_*_define' and the subsequent left parenthesis.  This restriction may
+be relaxed in subsequent versions of SuiteSparse:GraphBLAS.
 
 Since these objects are constructed at compile-time, they do not need to be
 freed with \verb'GrB_free'.  Attempting to free them is safe, however.
@@ -8102,8 +8107,10 @@ GxB_SelectOp_define(GxB_SelectOp op, func, GrB_Type xtype) ;
     that it defines a select operator when SuiteSparse:GraphBLAS is compiled.
     The function \verb'func' is the name of a user-defined function, normally a
     static inline function in the user's \verb'*.m4' file.  The \verb'xtype'
-    must be a built-in type (\verb'GrB_BOOL', \verb'GrB_FP64', etc) or a type
-    defined with \verb'GxB_Type_define'.
+    may be \verb'GrB_NULL' or \verb'NULL', which denotes a type-generic
+    \verb'GxB_SelectOp' operator.  If not null, \verb'xtype' must be a built-in
+    type (\verb'GrB_BOOL', \verb'GrB_FP64', etc), a type defined with
+    \verb'GxB_Type_define'.
 
 %-------------------------------------------------------------------------------
 \subsection{{\sf GxB\_Monoid\_define:}
@@ -8120,10 +8127,58 @@ GxB_Monoid_define(GrB_Monoid monoid, GrB_BinaryOp op, identity) ;
     \verb'GxB_Monoid_define' is identical to \verb'GrB_Monoid_new', except that
     it defines a monoid when SuiteSparse:GraphBLAS is compiled.  The \verb'op'
     is a built-in binary operator (\verb'GrB_PLUS_FP32', for example) or a
-    binary operator defined by \verb'GxB_BinaryOp_define'.  The identity is a
-    scalar value (not a pointer, as in \verb'GrB_Monoid_new').  The three types
-    of the operator must be the same, but this cannot be checked by this method
-    at compile time.  Results are undefined if this condition does not hold.
+    binary operator defined by \verb'GxB_BinaryOp_define'.  The three types of
+    the operator must be the same, but this cannot be checked by this method at
+    compile time.  Results are undefined if this condition does not hold.
+
+    Unlike \verb'GrB_Monoid_new', the \verb'identity' parameter must be a
+    compile-time constant expression.  It must also be parsable as a valid
+    argument to an \verb'm4' macro.  For example, the following is a valid
+    definition that appears in \verb'User/Example/my_complex.m4',  It defines a
+    plus monoid for the \verb'My_complex' type, which is \verb'double complex'
+    in C.
+
+{\footnotesize
+\begin{verbatim}
+GxB_Monoid_define(My_Complex_plus_monoid, My_Complex_plus, CMPLX(0,0)) ; \end{verbatim}}
+
+For user-defined types created from a C struct, another method must be used
+for the value of the \verb'identity' parameter of \verb'GxB_Monoid_define'.
+Consider the following excerpt from \verb'User/Example/my_pagerank.m4'.  A
+struct variable such as the \verb'pagerank_type' can be initialized with the C
+expression \verb'identity = {0,0}', but the expression \verb'{0,0}' cannot be
+passed to an \verb'm4' macro since it is interpretted by \verb'm4' as two
+arguments.  The solution is to define a C preprocessor token,
+\verb'PAGERANK_ZERO', and pass that token as the third argument of
+\verb'GxB_Monoid_define'.
+
+{\footnotesize
+\begin{verbatim}
+#ifdef GxB_USER_INCLUDE
+typedef struct
+{
+    double rank ;
+    double invdegree ;
+}
+pagerank_type ;
+
+// This is valid.  It defines the identity value of the monoid as a
+// struct with identity.rank = 0 and identity.invdegree = 0.
+#define PAGERANK_ZERO {0,0}
+#endif
+
+GxB_Monoid_define(PageRank_monoid, PageRank_add, PAGERANK_ZERO) ;
+\end{verbatim} }
+
+\noindent
+The following definition will fail to compile, since \verb'm4' interprets the
+comma in the \verb'identity' argument as the start of a fourth argument:
+
+{\footnotesize
+\begin{verbatim}
+// This will fail:
+GxB_Monoid_define(PageRank_monoid, PageRank_add, {0,0}) ;
+\end{verbatim} }
 
 %-------------------------------------------------------------------------------
 \subsection{{\sf GxB\_Semiring\_define:}
@@ -8810,7 +8865,6 @@ SuiteSparse:GraphBLAS also adds a \verb'GxB_RANGE' mechanism that mimics
 the MATLAB colon notation.  This speeds up the method and simplifies the
 code the user needs to write to compute \verb"A=[0 C ; C' 0]":
 
-    \newpage
     {\footnotesize
     \begin{verbatim}
     int64_t n = nrows + ncols ;
@@ -8835,6 +8889,30 @@ improvement because in this particular case, SuiteSparse:GraphBLAS is able to
 detect that no sorting is required for the first build, and the second one is a
 simple concatenation.  In general, however, allowing GraphBLAS to postpone
 pending updates can lead to significant reductions in run time.
+
+%-------------------------------------------------------------------------------
+\subsection{PageRank}
+%-------------------------------------------------------------------------------
+\label{pagerank}
+
+The \verb'Demo' folder contains three methods for computing the PageRank of the
+nodes of a graph.  One uses floating-point arithmetic (\verb'GrB_FP64') and two
+user-defined unary operators (\verb'dpagerank.c').  The second
+(\verb'ipagerank.c') is very similar, relying on integer arithmetic instead
+(\verb'GrB_UINT64').  Neither method include a stopping condition.  They simply
+compute a fixed number of iterations.  The third example is more extensive
+(\verb'dpagerank2.c'), and serves as an example of the power and flexibility of
+user-defined types, operators, monoids, and semirings.  It creates a semiring
+for the entire PageRank computation.  It terminates if the 2-norm of the change
+in the rank vector \verb'r' is below a threshold.  This is computed in one of
+two ways.  If \verb'PAGERANK_UNSAFE' is defined at compile-time, the change in
+\verb'r' is computed during the accumulator step of \verb'GrB_vxm', as a
+side-effect of a user-defined operator.  This works in the current version of
+SuiteSparse:GraphBLAS, but is unsafe since it assumes the accumulator operator
+is computed sequentially.  If computed in parallel, a race condition would
+occur.  If \verb'my_pagerank.m4' is placed in \verb'GraphBLAS/User/', then
+the user objects are created at compile-time instead of at run-time, which
+leads to faster execution..
 
 \newpage
 %-------------------------------------------------------------------------------

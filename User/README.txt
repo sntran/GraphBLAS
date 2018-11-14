@@ -23,3 +23,5 @@ my_scale.m4             a unary operator, z=my_scalar*x for double x,z
 
 my_band.m4              a select operator for C=tril(triu(A,hi),lo)
 
+my_pagerank.m4          pagerank type, operators, and semiring for
+                        Demo/Source/dpagerank2.c

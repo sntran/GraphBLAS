@@ -67,6 +67,7 @@ logstat ('test85') ;  % GrB_transpose (1-by-n with typecasting)
 logstat ('test88') ;  % hypersparse matrices with heap-based method
 logstat ('test00') ;  % GB_mex_mis
 logstat ('test93') ;  % pagerank
+logstat ('test94') ;  % pagerank
 logstat ('test77') ;  % quick tests of GxB_kron
 logstat ('test76') ;  % GxB_resize
 logstat ('test27') ;  % quick test of GxB_select (band)

@@ -153,6 +153,7 @@
 %   test91   - test subref performance on dense vectors
 %   test92   - test GB_subref_symbolic
 %   test93   - test dpagerank and ipagerank
+%   test94   - test pagerank
 %   test97   - test GB_assign, scalar expansion and zombies
 %   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask

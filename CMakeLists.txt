@@ -6,14 +6,22 @@
 #
 # To compile the GraphBLAS library and demo programs:
 #
-#   cd build
-#   cmake ..
 #   make
 #
-# If that fails for any reason, make sure your compiler support ANSI C11.  You
-# could try changing your compiler, for example, use one of these commands:
+# To compile just the library
 #
+#   make library
+#
+# If that fails for any reason, make sure your compiler supports ANSI C11.  You
+# could try changing your compiler, for example:
+#
+#   cd build
 #   CC=icc cmake ..
+#   cd ..
+#   make
+#
+# Or, with other compilers:
+#
 #   CC=xlc cmake ..
 #   CC=gcc cmake ..
 #
@@ -24,13 +32,11 @@
 #
 # To install GraphBLAS in /usr/local/lib and /usr/local/include:
 #
-#   cd build
 #   sudo make install
 #
 # To remove all compiled files and libraries (except installed ones):
 #
-#   cd build
-#   rm -rf *
+#   make distclean
 
 # cmake 3.0 is preferred.
 cmake_minimum_required ( VERSION 2.8.12 )
@@ -41,7 +47,7 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Nov 2, 2018 (BETA1)" )
+set ( GraphBLAS_DATE "Nov 13, 2018 (BETA2)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
 set ( GraphBLAS_VERSION_MINOR 2 )
 set ( GraphBLAS_VERSION_SUB   0 )
