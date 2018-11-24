@@ -35,8 +35,8 @@ GrB_Info GrB_Matrix_assign_ ## T    /* C<Mask>(Rows,Cols) += x              */ \
         " (C, Mask, accum, x, Rows, nRows, Cols, nCols, desc)") ;              \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
     GB_RETURN_IF_FAULTY (Mask) ;                                               \
-    return (GB_assign_scalar (C, Mask, accum,                                  \
-        ampersand x, GB_## T ## _code, Rows, nRows, Cols, nCols, desc)) ;      \
+    return (GB_assign_scalar (C, Mask, accum, ampersand x, GB_## T ## _code,   \
+        Rows, nRows, Cols, nCols, desc, Context)) ;                            \
 }
 
 GB_ASSIGN (bool     , BOOL   , &) ;

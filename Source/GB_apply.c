@@ -21,7 +21,8 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_UnaryOp op,           // operator to apply to the entries
     const GrB_Matrix A,             // first input:  matrix A
-    bool A_transpose                // A matrix descriptor
+    bool A_transpose,               // A matrix descriptor
+    GB_Context Context
 )
 {
 
@@ -42,7 +43,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type T_type = op->ztype ;
-    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -95,16 +96,16 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
 
     if (A_transpose)
     { 
-        // T = op (A')
-        // transpose: shallow output ok, typecast to op->ztype, apply an op
-        info = GB_transpose (&T, T_type, C_is_csc, A, op) ;
+        // T = op (A'), typecastint to op->ztype
+        // transpose: typecast, apply an op, not in place
+        info = GB_transpose (&T, T_type, C_is_csc, A, op, Context) ;
     }
     else
     { 
         // T = op (A), pattern is a shallow copy of A, type is op->ztype.  If
         // op is the built-in IDENTITY and A->type is op->xtype == op->ztype,
         // then a pure shallow copy is made.
-        info = GB_shallow_op (&T, C_is_csc, op, A) ;
+        info = GB_shallow_op (&T, C_is_csc, op, A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
@@ -119,6 +120,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // C<M> = accum (C,T): accumulate the results into C via the M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

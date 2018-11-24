@@ -20,7 +20,8 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     const bool C_is_csc,            // desired format of C
     const GrB_BinaryOp op,          // multiply operator
     const GrB_Matrix A,             // input matrix
-    const GrB_Matrix B              // input matrix
+    const GrB_Matrix B,             // input matrix
+    GB_Context Context
 )
 {
 
@@ -142,7 +143,8 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
 
             // cannot fail since C->plen is the upper bound: the product of
             // number of non empty vectors of A and B
-            GrB_Info info = GB_jappend (C, cj, &cj_last, cnz, &cnz_last) ;
+            GrB_Info info = GB_jappend (C, cj, &cj_last, cnz, &cnz_last,
+                Context) ;
             ASSERT (info == GrB_SUCCESS) ;
             #if 0
             // if it could fail, do this:
@@ -160,6 +162,6 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     ASSERT (cnz == GB_NNZ (A) * GB_NNZ (B)) ;
     ASSERT_OK (GB_check (C, "C=kron(A,B)", GB0)) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

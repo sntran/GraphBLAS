@@ -54,6 +54,6 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     strncpy (op->name, name, GB_LEN-1) ;
     op->opcode = GB_USER_SELECT_R_opcode ;
     ASSERT_OK (GB_check (op, "new user-defined select op", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

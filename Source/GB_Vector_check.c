@@ -17,7 +17,8 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
     const char *name,       // name of the vector
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 )
 { 
 
@@ -25,7 +26,8 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
     // check GrB_Matrix conditions
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_matvec_check ((GrB_Matrix) v, name, pr, f, "vector") ;
+    GrB_Info info = GB_matvec_check ((GrB_Matrix) v, name, pr, f, "vector",
+        Context) ;
     if (! (info == GrB_INDEX_OUT_OF_BOUNDS || info == GrB_SUCCESS))
     { 
         // GrB_Matrix form is invalid already

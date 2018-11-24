@@ -131,12 +131,22 @@ void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y)
 // wildtype main program
 //------------------------------------------------------------------------------
 
+#define LINE \
+"----------------------------------------------------------------------------\n"
+#define LINE2 \
+"============================================================================\n"
+
 int main (void)
 {
 
     // start GraphBLAS
     GrB_init (GrB_NONBLOCKING) ;
-    fprintf (stderr, "wildtype_demo:\n") ;
+
+    fprintf (stderr, LINE2 "SuiteSparse:GraphBLAS Version %d.%d.%d, %s\n" LINE2
+        "%s" LINE "License: %s" LINE "GraphBLAS API Version %d.%d.%d, %s"
+        " (http://graphblas.org)\n%s" LINE2, GxB_IMPLEMENTATION_MAJOR,
+        GxB_IMPLEMENTATION_MINOR, GxB_IMPLEMENTATION_SUB, GxB_DATE, GxB_ABOUT,
+        GxB_LICENSE, GxB_MAJOR, GxB_MINOR, GxB_SUB, GxB_SPEC_DATE, GxB_SPEC) ;
 
     // create the WildType
     GrB_Type_new (&WildType, sizeof (wildtype)) ;

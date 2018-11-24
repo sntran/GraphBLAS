@@ -15,7 +15,8 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 (
     GrB_Matrix C,                   // destination matrix to transplant into
     GrB_Type ctype,                 // type to cast into
-    GrB_Matrix *Thandle             // source matrix
+    GrB_Matrix *Thandle,            // source matrix
+    GB_Context Context
 )
 {
 
@@ -32,7 +33,7 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
     // transplant and typecast T into C, and free T
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_transplant (C, ctype, Thandle) ;
+    GrB_Info info = GB_transplant (C, ctype, Thandle, Context) ;
 
     // T is always freed, even if the transplant runs out of memory
     ASSERT (*Thandle == NULL) ;
@@ -49,6 +50,6 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
     // conform C to its desired hypersparsity
     //--------------------------------------------------------------------------
 
-    return (GB_to_hyper_conform (C)) ;
+    return (GB_to_hyper_conform (C, Context)) ;
 }
 

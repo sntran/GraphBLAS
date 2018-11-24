@@ -45,8 +45,9 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     const bool is_csc,          // true if CSC, false if CSR
     const int hyper_option,     // 1:hyper, 0:nonhyper, -1:auto
     const double hyper_ratio,   // A->hyper_ratio, unless auto
-    const int64_t plen          // size of A->p and A->h, if A hypersparse.
+    const int64_t plen,         // size of A->p and A->h, if A hypersparse.
                                 // Ignored if A is not hypersparse.
+    GB_Context Context
 )
 {
 
@@ -83,6 +84,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     // basic information
     A->magic = GB_MAGIC2 ;                 // object is not yet valid
     A->type = type ;
+    A->type_size = type->size ; // save the type->size for safe GrB_free
 
     // CSR/CSC format
     A->is_csc = is_csc ;
@@ -105,8 +107,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         // if the global hyper_ratio is negative.  This is only used by
         // GrB_Matrix_new, and in a special case in GB_mask.
         ASSERT (hyper_option == GB_AUTO_HYPER) ;
-        double hyper_ratio ;
-        GB_global_option_get (&hyper_ratio, NULL, NULL) ;
+        double hyper_ratio = GB_Global.hyper_ratio ;
         A->hyper_ratio = hyper_ratio ;
         is_hyper = !(vdim <= 1 || 0 > hyper_ratio) ;
     }
@@ -152,11 +153,18 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     A->s_pending = NULL ;
     A->operator_pending = NULL ;
     A->type_pending = NULL ;
+    A->type_pending_size = 0 ;
 
     // content freed or reset by GB_queue_remove:
     A->queue_next = NULL ;
     A->queue_prev = NULL ;
     A->enqueued = false ;
+
+    // A has no Sauna yet
+    A->Sauna = NULL ;
+
+    // method used in GrB_mxm, vxm, and mxv
+    A->AxB_method_used = GxB_DEFAULT ;
 
     //--------------------------------------------------------------------------
     // Allocate A->p and A->h if requested
@@ -223,6 +231,6 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     { 
         ASSERT_OK (GB_check (A, "new matrix from GB_new", GB0)) ;
     }
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

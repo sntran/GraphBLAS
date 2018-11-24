@@ -61,30 +61,30 @@
 // mult-add operation (no mask)
 #define GB_MULTADD_NOMASK                               \
 {                                                       \
-    /* w [i] += A(i,k) * B(k,j) */                      \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
     GB_atype aik = Ax [pA] ;                            \
     GB_ztype t ;                                        \
     GB_MULTIPLY (t, aik, bkj) ;                         \
-    GB_ADD(w [i], t) ;                                  \
+    GB_ADD(Sauna_Work [i], t) ;                         \
 }
 
 // mult-add operation (with mask)
 #define GB_MULTADD_WITH_MASK                            \
 {                                                       \
-    /* w [i] += A(i,k) * B(k,j) */                      \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
     GB_atype aik = Ax [pA] ;                            \
     GB_ztype t ;                                        \
     GB_MULTIPLY (t, aik, bkj) ;                         \
-    if (flag > 0)                                       \
+    if (mark == hiwater)                                \
     {                                                   \
         /* first time C(i,j) seen */                    \
-        Flag [i] = -1 ;                                 \
-        w [i] = t ;                                     \
+        Sauna_Mark [i] = hiwater + 1 ;                  \
+        Sauna_Work [i] = t ;                            \
     }                                                   \
     else                                                \
     {                                                   \
         /* C(i,j) seen before, update it */             \
-        GB_ADD(w [i], t) ;                              \
+        GB_ADD(Sauna_Work [i], t) ;                     \
     }                                                   \
 }
 
@@ -94,11 +94,13 @@ GrB_Info GB_AgusB
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy                   // if true, A and B have been swapped
+    bool flipxy,                // if true, A and B have been swapped
+    GB_Sauna Sauna,             // sparse accumulator
+    GB_Context Context
 )
 { 
 
-    GB_ztype *restrict w = GB_thread_local.Work ;  // size C->vlen * zsize
+    GB_ztype *restrict Sauna_Work = Sauna->Sauna_Work ;  // size C->vlen*zsize
     GB_ztype *restrict Cx = C->x ;
     GrB_Info info = GrB_SUCCESS ;
 
@@ -158,7 +160,8 @@ GrB_Info GB_AdotB
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy                   // if true, A and B have been swapped
+    bool flipxy,                  // if true, A and B have been swapped
+    GB_Context Context
 )
 { 
 
@@ -218,7 +221,8 @@ GrB_Info GB_AheapB
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
     GB_Element *restrict Heap,
-    const int64_t bjnz_max
+    const int64_t bjnz_max,
+    GB_Context Context
 )
 { 
 

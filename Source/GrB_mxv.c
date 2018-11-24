@@ -58,6 +58,7 @@ GrB_Info GrB_mxv                    // w<Mask> = accum (w, A*u)
         A,                  A_transpose,    // allow A to be transposed
         (GrB_Matrix) u,     false,          // u is never transposed
         false,                              // fmult(x,y), flipxy false
-        AxB_method)) ;                      // algorithm selector
+        AxB_method,                         // algorithm selector
+        Context)) ;
 }
 

@@ -33,7 +33,7 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
     GB_RETURN_IF_NULL (p_nvals) ;                                             \
     ASSERT (GB_VECTOR_OK (v)) ;                                               \
     return (GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code,         \
-        (GrB_Matrix) v)) ;                                                    \
+        (GrB_Matrix) v, Context)) ;                                           \
 }
 
 GB_EXTRACT (bool     , BOOL   ) ;

@@ -70,7 +70,7 @@
     (((major)*1000ULL + (minor))*1000ULL + (sub))
 
 // The version of this implementation, and the GraphBLAS API version:
-#define GxB_DATE "Nov 13, 2018 (BETA2)"
+#define GxB_DATE "Nov 23, 2018 (BETA3)"
 #define GxB_IMPLEMENTATION_MAJOR 2
 #define GxB_IMPLEMENTATION_MINOR 2
 #define GxB_IMPLEMENTATION_SUB   0
@@ -163,8 +163,25 @@
 #include <math.h>
 #include <stdarg.h>
 
-#ifdef _OPENMP
+// select the user threading model:
+#if defined (USER_POSIX_THREADS)
+// POSIX pthreads
+#include <pthread.h>
+
+#elif defined (_OPENMP) || defined (USER_OPENMP_THREADS)
+// OpenMP threads: this is the default, if OpenMP is available
 #include <omp.h>
+
+#elif defined (USER_WINDOWS_THREADS)
+// Windows threads
+#include <windows.h>
+
+#elif defined (USER_ANSI_THREADS)
+// ANSI C11 threads
+#include <threads.h>
+
+#else // USER_NO_THREADS
+// no user threads
 #endif
 
 //------------------------------------------------------------------------------
@@ -2664,8 +2681,19 @@ GrB_Info GrB_Descriptor_free    // free a descriptor
 
 typedef enum            // for global options or matrix options
 {
+    // these are either global or matrix options:
     GxB_HYPER,          // defines switch to hypersparse format (a double value)
-    GxB_FORMAT          // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+    GxB_FORMAT,         // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+
+    // these are global options only:
+    GxB_MODE,           // mode passed to GrB_init (blocking or non-blocking)
+
+    GxB_THREAD_SAFETY,  // thread library that allows GraphBLAS to
+                        // be thread-safe for user threads: this provides a
+                        // critical section for user threads for GrB_wait
+                        // and thread-local storage for GrB_error.
+
+    GxB_THREADING       // thread library used for internal GraphBLAS threads
 
 } GxB_Option_Field ;
 
@@ -2676,6 +2704,17 @@ typedef enum
     GxB_BY_COL          // CSC: compressed sparse column format
 }
 GxB_Format_Value ;
+
+// GxB_THREAD_SAFETY and GxB_THREADING can be one of the following:
+typedef enum
+{
+    GxB_THREAD_NONE = 0,    // no threading
+    GxB_THREAD_OPENMP,      // OpenMP
+    GxB_THREAD_POSIX,       // POSIX pthreads
+    GxB_THREAD_WINDOWS,     // Windows threads
+    GxB_THREAD_ANSI         // ANSI C11 threads
+}
+GxB_Thread_Model ;
 
 // The default format is by column, just like MATLAB.  These constants are
 // defined as extern const, so that if SuiteSparse:GraphBLAS is recompiled with
@@ -2760,6 +2799,12 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
 //      GxB_set (GxB_FORMAT, GxB_BY_COL) ;
 //      GxB_get (GxB_FORMAT, GxB_Format_Value *s) ;
+
+// To get global options that can be queried but not modified:
+//
+//      GxB_get (GxB_MODE,          GrB_Mode *mode) ;
+//      GxB_get (GxB_THREAD_SAFETY, GxB_Thread_Model *thread_safety) ;
+//      GxB_get (GxB_THREADING,     GxB_Thread_Model *threading) ;
 
 // To set/get a matrix option:
 //
@@ -5207,30 +5252,6 @@ GxB_LOR_GT_BOOL        , GxB_LAND_GT_BOOL       , GxB_LXOR_GT_BOOL       , GxB_E
 GxB_LOR_LT_BOOL        , GxB_LAND_LT_BOOL       , GxB_LXOR_LT_BOOL       , GxB_EQ_LT_BOOL         , 
 GxB_LOR_GE_BOOL        , GxB_LAND_GE_BOOL       , GxB_LXOR_GE_BOOL       , GxB_EQ_GE_BOOL         , 
 GxB_LOR_LE_BOOL        , GxB_LAND_LE_BOOL       , GxB_LXOR_LE_BOOL       , GxB_EQ_LE_BOOL         ; 
-
-//------------------------------------------------------------------------------
-// GxB_stats: memory usage and other statistics
-//------------------------------------------------------------------------------
-
-// This function is still available, but deprecated.  It has never appeared in
-// any user guide, and will not appear.  It will be removed in future versions
-// and its use is not recommended.  Its functionality will be replaced by
-// GxB_get.
-
-typedef struct
-{
-    int64_t nmalloc ;       // # of objects malloc'ed but not yet freed
-    int64_t inuse ;         // memory in use (in bytes)
-    int64_t maxused ;       // max memory used since last call to GxB_stats
-    int64_t future [20] ;   // not used
-    double xfuture [20] ;   // not used
-}
-GxB_Statistics ;
-
-GrB_Info GxB_stats
-(
-    GxB_Statistics *stats
-) ;
 
 //------------------------------------------------------------------------------
 // GxB_resize:  change the size of a matrix or vector

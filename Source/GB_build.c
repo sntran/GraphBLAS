@@ -83,7 +83,8 @@ GrB_Info GB_build               // build matrix
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
     const GB_Type_code scode,   // GB_Type_code of S array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
-    const bool ijcheck          // true if I and J are to be checked
+    const bool ijcheck,         // true if I and J are to be checked
+    GB_Context Context
 )
 {
 
@@ -105,11 +106,11 @@ GrB_Info GB_build               // build matrix
     int64_t ncols = GB_NCOLS (C) ;
 
     //--------------------------------------------------------------------------
-    // free all content of C
+    // free all content of C, but keep the C->Sauna
     //--------------------------------------------------------------------------
 
-    // the type, dimensions, and hyper ratio are still preserved in C
-    GB_phix_free (C) ;
+    // the type, dimensions, and hyper ratio are still preserved in C.
+    GB_PHIX_FREE (C) ;
     ASSERT (GB_EMPTY (C)) ;
     ASSERT (!GB_ZOMBIES (C)) ;
     ASSERT (C->magic == GB_MAGIC2) ;
@@ -309,7 +310,7 @@ GrB_Info GB_build               // build matrix
 
     GrB_Matrix T ;
     GrB_Info info = GB_builder (&T, dup->ztype, vlen, vdim,
-        C_is_csc, &iwork, &jwork, sorted, S, len, len, dup, scode) ;
+        C_is_csc, &iwork, &jwork, sorted, S, len, len, dup, scode, Context) ;
     ASSERT (iwork == NULL) ;
     ASSERT (jwork == NULL) ;
     if (info != GrB_SUCCESS)
@@ -319,6 +320,6 @@ GrB_Info GB_build               // build matrix
     }
 
     // transplant and typecast T into C, conform C, and free T
-    return (GB_transplant_conform (C, ctype, &T)) ;
+    return (GB_transplant_conform (C, ctype, &T, Context)) ;
 }
 

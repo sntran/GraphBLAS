@@ -34,7 +34,8 @@ GrB_Info GB_builder
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
                                     // if NULL use the "SECOND" function to
                                     // keep the most recent duplicate.
-    const GB_Type_code scode        // GB_Type_code of S array
+    const GB_Type_code scode,       // GB_Type_code of S array
+    GB_Context Context
 )
 {
 
@@ -309,6 +310,6 @@ GrB_Info GB_builder
     // GB_build_factory.
 
     return (GB_build_factory (Thandle, tnz, iwork_handle, &kwork,
-        S, len, ijlen, dup, scode)) ;
+        S, len, ijlen, dup, scode, Context)) ;
 }
 

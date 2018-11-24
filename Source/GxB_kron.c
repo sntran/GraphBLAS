@@ -41,6 +41,7 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
         accum,                      // for accum (C,T)
         op,                         // operator that defines T=kron(A,B)
         A,          A_tran,         // A matrix and its descriptor
-        B,          B_tran)) ;      // B matrix and its descriptor
+        B,          B_tran,         // B matrix and its descriptor
+        Context)) ;
 }
 

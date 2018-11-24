@@ -52,6 +52,8 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     // check for empty matrix
     //--------------------------------------------------------------------------
 
+    GB_WHERE ("mxArray_to_Matrix") ;
+
     GrB_Matrix A = NULL ;
 
     if (A_matlab == NULL)
@@ -221,7 +223,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
 
         // A is a deep copy and can be modified by GraphBLAS
-        info = GB_ix_alloc (A, anz, true) ;
+        info = GB_ix_alloc (A, anz, true, Context) ;
         if (info != GrB_SUCCESS)
         {
             FREE_ALL ;
@@ -356,7 +358,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         // this might convert A to hypersparse
         GxB_set (A, GxB_FORMAT, GxB_BY_ROW) ;
         // so convert it back; hypersparsity is defined below
-        GB_to_nonhyper (A) ;
+        GB_to_nonhyper (A, Context) ;
         ASSERT (!A->is_csc) ;
     }
 

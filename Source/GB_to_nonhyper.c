@@ -23,7 +23,8 @@
 
 GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
 (
-    GrB_Matrix A            // matrix to convert to non-hypersparse
+    GrB_Matrix A,           // matrix to convert to non-hypersparse
+    GB_Context Context
 )
 {
 
@@ -53,8 +54,8 @@ GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
         if (Ap_new == NULL)
         { 
             // out of memory
-            GB_phix_free (A) ;
             A->is_hyper = false ;    // A is non-hypersparse, but invalid
+            GB_CONTENT_FREE (A) ;
             return (GB_OUT_OF_MEMORY (GBYTES (vdim+1, sizeof (int64_t)))) ;
         }
 
@@ -115,6 +116,6 @@ GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
 
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to nonhypersparse", GB0)) ;
     ASSERT (!(A->is_hyper)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

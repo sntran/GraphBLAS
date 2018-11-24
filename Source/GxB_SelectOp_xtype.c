@@ -30,6 +30,6 @@ GrB_Info GxB_SelectOp_xtype         // return the type of x or NULL if generic
     //--------------------------------------------------------------------------
 
     (*xtype) = selectop->xtype ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

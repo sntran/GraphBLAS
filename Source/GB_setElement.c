@@ -33,7 +33,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     const void *scalar,             // scalar to set
     const GrB_Index row,            // row index
     const GrB_Index col,            // column index
-    const GB_Type_code scalar_code  // type of the scalar
+    const GB_Type_code scalar_code, // type of the scalar
+    GB_Context Context
 )
 {
 
@@ -154,13 +155,13 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             if (C->nzombies == 0 && C->n_pending == 0)
             { 
                 // remove from queue if zombies goes to 0 and n_pending is zero
-                GB_queue_remove (C) ;
+                GB_CRITICAL (GB_queue_remove (C)) ;
             }
         }
 
         // the check is fine but just costly even when debugging
         // ASSERT_OK (GB_check (C, "did C for setElement (found)", GB0)) ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
     else
     {
@@ -221,7 +222,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             // tuples, so this recursion will only happen once.  The
             // pending operator will become the implicit SECOND_ctype,
             // and the type of the pending tuples will become ctype.
-            return (GB_setElement (C, scalar, row, col, scalar_code)) ;
+            return (GB_setElement (C, scalar, row, col, scalar_code, Context)) ;
         }
 
         // the new tuple is now compatible with prior tuples, if any
@@ -234,7 +235,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         // NULL, which is the implicit SECOND_ctype operator.
 
         GrB_Info info ;
-        info = GB_pending_add (C, scalar, stype, NULL, i, j) ;
+        info = GB_pending_add (C, scalar, stype, NULL, i, j, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory; C has been cleared
@@ -245,10 +246,11 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         // pending type have been defined
         ASSERT (GB_op_is_second (C->operator_pending, ctype)) ;
         ASSERT (C->type_pending == stype) ;
+        ASSERT (C->type_pending_size == stype->size) ;
 
         // this assert is fine, just costly even when debugging
         // ASSERT_OK (GB_check (C, "did C for setElement (not found)", GB0)) ;
-        return (GB_block (C)) ;
+        return (GB_block (C, Context)) ;
     }
 }
 

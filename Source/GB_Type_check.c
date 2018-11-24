@@ -20,7 +20,8 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     const char *name,       // name of the type from the caller; optional
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 )
 { 
 
@@ -76,6 +77,6 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
             "Type has an invalid size: %s [%s]", GB_NAME, type->name))) ;
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

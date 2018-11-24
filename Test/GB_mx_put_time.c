@@ -11,7 +11,10 @@
 
 double gbtime = 0, tic [2] = {0,0} ;
 
-void GB_mx_put_time ( )                 // return the time to MATLAB
+void GB_mx_put_time
+(
+    GrB_Desc_Value AxB_method_used
+)
 {
 
     // create a MATLAB array with the right size
@@ -22,9 +25,8 @@ void GB_mx_put_time ( )                 // return the time to MATLAB
     double *t = (double *) mxGetData (gbresults_matlab) ;
 
     t [0] = gbtime ;
-    t [1] = GB_thread_local.AxB_method ;
+    t [1] = AxB_method_used ;
 
-    GB_thread_local.AxB_method = -1 ;
     gbtime = 0 ;
 
     // put the MATLAB array into the global workspace, overwriting the

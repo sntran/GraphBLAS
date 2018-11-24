@@ -13,13 +13,19 @@
 
 #include "GB.h"
 
-void GB_phix_free               // free all content of a matrix
+GrB_Info GB_phix_free           // free all content of a matrix
 (
-    GrB_Matrix A                // handle of matrix with content to free
+    GrB_Matrix A,               // handle of matrix with content to free
+    bool free_sauna             // if true, also free the Sauna
 )
 { 
 
-    GB_ix_free (A) ;
     GB_ph_free (A) ;
+    if (free_sauna && A != NULL)
+    {
+        GB_Sauna_free (&(A->Sauna)) ;
+    }
+    GB_IX_FREE (A) ;
+    return (GrB_SUCCESS) ;
 }
 

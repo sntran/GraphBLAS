@@ -46,7 +46,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
-    const GrB_UnaryOp op        // operator to apply, NULL if no operator
+    const GrB_UnaryOp op,       // operator to apply, NULL if no operator
+    GB_Context Context
 )
 {
 
@@ -91,22 +92,15 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    // ensure Work is large enough
-    info = GB_Work_walloc (A->vlen + 1, sizeof (int64_t)) ;
-    if (info != GrB_SUCCESS)
+    int64_t *rowcount = NULL ;
+    GB_CALLOC_MEMORY (rowcount, A->vlen + 1, sizeof (int64_t)) ;
+    if (rowcount == NULL)
     { 
         // out of memory
+        double memory = GBYTES (A->vlen + 1, sizeof (int64_t)) ;
         GB_MATRIX_FREE (&C) ;
-        GB_wfree ( ) ;
-        return (info) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
-
-    //--------------------------------------------------------------------------
-    // clear rowcount
-    //--------------------------------------------------------------------------
-
-    int64_t *rowcount = (int64_t *) GB_thread_local.Work ;
-    memset (rowcount, 0, (A->vlen + 1) * sizeof (int64_t)) ;
 
     //--------------------------------------------------------------------------
     // symbolic analysis
@@ -140,12 +134,18 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     }
 
     //--------------------------------------------------------------------------
+    // free workspace
+    //--------------------------------------------------------------------------
+
+    GB_FREE_MEMORY (rowcount, A->vlen + 1, sizeof (int64_t)) ;
+
+    //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 
     ASSERT_OK (GB_check (C, "C transpose of A", GB0)) ;
     ASSERT (!C->is_hyper) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

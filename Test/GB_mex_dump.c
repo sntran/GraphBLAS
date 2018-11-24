@@ -15,7 +15,7 @@
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     Complex_finalize ( ) ;              \
-    GB_mx_put_global (false) ;          \
+    GB_mx_put_global (false, 0) ;       \
 }
 
 void mexFunction

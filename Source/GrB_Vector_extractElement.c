@@ -26,10 +26,8 @@ GrB_Info GrB_Vector_extractElement_ ## T     /* x = v(row) */                 \
     GB_WHERE ("GrB_Vector_extractElement_" GB_STR(T) " (x, v, row)") ;        \
     GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                         \
     ASSERT (GB_VECTOR_OK (v)) ;                                               \
-    GrB_Info info = GB_extractElement (x, GB_ ## T ## _code,                  \
-       (GrB_Matrix) v, row, 0) ;                                              \
-    GB_REPORT_VECTOR (info) ;                                                 \
-    return (info) ;                                                           \
+    return (GB_extractElement (x, GB_ ## T ## _code, (GrB_Matrix) v, row, 0,  \
+        Context)) ;                                                           \
 }
 
 GB_EXTRACT (bool     , BOOL) ;

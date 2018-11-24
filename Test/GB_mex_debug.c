@@ -77,6 +77,6 @@ void mexFunction
         printf ("-------------------------------------------------------\n\n") ;
     }
 
-    GB_mx_put_global (false) ;
+    GB_mx_put_global (false, 0) ;
 }
 

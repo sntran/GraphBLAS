@@ -26,7 +26,7 @@
     {                                   \
         GrB_free (&reduce) ;            \
     }                                   \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

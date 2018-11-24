@@ -28,12 +28,6 @@ GrB_Info GxB_Type_fprint            // print and check a GrB_Type
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_Type_check (type, name, pr, f) ;
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    return ((info == GrB_SUCCESS) ? GB_REPORT_SUCCESS : info) ;
+    return (GB_Type_check (type, name, pr, f, Context)) ;
 }
 

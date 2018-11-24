@@ -59,7 +59,8 @@ GrB_Info GB_build_factory           // build a matrix
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
                                     // if NULL use the "SECOND" function to
                                     // keep the most recent duplicate.
-    const GB_Type_code scode        // GB_Type_code of S array
+    const GB_Type_code scode,       // GB_Type_code of S array
+    GB_Context Context
 )
 {
 
@@ -441,6 +442,6 @@ GrB_Info GB_build_factory           // build a matrix
     // in the caller to NULL.
     (*iwork_handle) = NULL ;
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

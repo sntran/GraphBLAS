@@ -23,7 +23,8 @@ GrB_Info GrB_Matrix_setElement_ ## T    /* C (row,col) = x */               \
 {                                                                           \
     GB_WHERE ("GrB_Matrix_setElement_" GB_STR(T) " (C, row, col, x)") ;     \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                       \
-    return (GB_setElement (C, ampersand x, row, col, GB_ ## T ## _code)) ;  \
+    return (GB_setElement (C, ampersand x, row, col, GB_ ## T ## _code,     \
+        Context)) ;                                                         \
 }
 
 GB_SET (bool     , BOOL   , &) ;

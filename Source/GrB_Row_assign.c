@@ -54,8 +54,8 @@ GrB_Info GrB_Row_assign             // C<mask'>(row,Cols) += u'
         (GrB_Matrix) u,     true,           // u as a matrix; always transposed
         Rows, 1,                            // a single row index
         Cols, nCols,                        // column indices
-        false, NULL, 0                      // no scalar expansion
-        , false, true                       // GrB_Row_assign
-        )) ;
+        false, NULL, 0,                     // no scalar expansion
+        false, true,                        // GrB_Row_assign
+        Context)) ;
 }
 

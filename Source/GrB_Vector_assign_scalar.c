@@ -32,7 +32,8 @@ GrB_Info GrB_Vector_assign_ ## T    /* w<mask>(Rows) = accum (w(Rows),x)    */ \
     ASSERT (GB_VECTOR_OK (w)) ;                                                \
     ASSERT (GB_IMPLIES (mask != NULL, GB_VECTOR_OK (mask))) ;                  \
     return (GB_assign_scalar ((GrB_Matrix) w, (GrB_Matrix) mask, accum,        \
-        ampersand x, GB_## T ## _code, Rows, nRows, GrB_ALL, 1, desc)) ;       \
+        ampersand x, GB_## T ## _code, Rows, nRows, GrB_ALL, 1, desc,          \
+        Context)) ;                                                            \
 }
 
 GB_ASSIGN (bool     , BOOL   , &) ;

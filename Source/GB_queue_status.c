@@ -9,23 +9,47 @@
 
 #include "GB.h"
 
-void GB_queue_status
+bool GB_queue_status            // get the queue status of a matrix
 (
-    GrB_Matrix A,           // matrix to check
-    GrB_Matrix *head,       // head of the queue
-    GrB_Matrix *prev,       // prev from A
-    GrB_Matrix *next,       // next after A
-    bool *enqd              // true if A is in the queue
+    GrB_Matrix A,               // matrix to check
+    GrB_Matrix *p_head,         // head of the queue
+    GrB_Matrix *p_prev,         // prev from A
+    GrB_Matrix *p_next,         // next after A
+    bool *p_enqd                // true if A is in the queue
 )
 { 
 
-    #pragma omp critical (GB_queue)
-    {
-        // get the status of the queue for this matrix
-        (*head) = (GrB_Matrix) (GB_Global.queue_head) ;
-        (*prev) = (GrB_Matrix) (A->queue_prev) ;
-        (*next) = (GrB_Matrix) (A->queue_next) ;
-        (*enqd) = A->enqueued ;
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (p_head != NULL && p_prev != NULL) ;
+    ASSERT (p_next != NULL && p_enqd != NULL) ;
+
+    //--------------------------------------------------------------------------
+    // get the status of the global queue
+    //--------------------------------------------------------------------------
+
+    bool ok = true ;
+
+    (*p_head) = NULL ;
+    (*p_prev) = NULL ;
+    (*p_next) = NULL ;
+    (*p_enqd) = NULL ;
+
+    // define the work to do inside the critical section
+    #define GB_CRITICAL_SECTION                                             \
+    {                                                                       \
+        /* get the status of the queue for this matrix */                   \
+        (*p_head) = (GrB_Matrix) (GB_Global.queue_head) ;                   \
+        (*p_prev) = (GrB_Matrix) (A->queue_prev) ;                          \
+        (*p_next) = (GrB_Matrix) (A->queue_next) ;                          \
+        (*p_enqd) = A->enqueued ;                                           \
     }
+
+    // do the critical section, depending on user threading model
+    #include "GB_critical_section.c"
+
+    return (ok) ;
 }
 

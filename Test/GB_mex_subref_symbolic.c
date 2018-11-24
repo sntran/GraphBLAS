@@ -15,7 +15,7 @@
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -67,7 +67,7 @@ void mexFunction
     }
 
     // C = A(I,J) or A(J,I)', no need to check dimensions of C
-    METHOD (GB_subref_symbolic (&C, true /* CSC */, A, I, ni, J, nj)) ;
+    METHOD (GB_subref_symbolic (&C, true /* CSC */, A, I, ni, J, nj, Context)) ;
 
     // return C to MATLAB as a struct
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C subref_symbolic", true) ;

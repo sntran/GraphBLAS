@@ -15,9 +15,10 @@
 
 GrB_Info ack (int64_t *stuff, GrB_Matrix GunkIt)
 {
+    GB_WHERE ("ack") ;
     GB_RETURN_IF_NULL (stuff) ;
     GB_RETURN_IF_NULL_OR_FAULTY (GunkIt) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 
 void mexFunction
@@ -311,20 +312,49 @@ void mexFunction
     float    f32 = 3.14 ;
     double   f64 = 99.4 ;
 
-    GB_code_check (GB_BOOL_code,   &b  , stdout) ; printf ("\n");
-    GB_code_check (GB_INT8_code,   &i8 , stdout) ; printf ("\n");
-    GB_code_check (GB_UINT8_code,  &u8 , stdout) ; printf ("\n");
-    GB_code_check (GB_INT16_code,  &i16, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT16_code, &u16, stdout) ; printf ("\n");
-    GB_code_check (GB_INT32_code,  &i32, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT32_code, &u32, stdout) ; printf ("\n");
-    GB_code_check (GB_INT64_code,  &i64, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT64_code, &u64, stdout) ; printf ("\n");
-    GB_code_check (GB_FP32_code,   &f32, stdout) ; printf ("\n");
-    GB_code_check (GB_FP64_code,   &f64, stdout) ; printf ("\n");
-    GB_code_check (GB_UDT_code,    &f64, stdout) ; printf ("\n");
-    GB_code_check (GB_UCT_code,    &f64, stdout) ; printf ("\n");
+    GB_code_check (GB_BOOL_code,   &b  , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT8_code,   &i8 , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT8_code,  &u8 , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT16_code,  &i16, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT16_code, &u16, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT32_code,  &i32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT32_code, &u32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT64_code,  &i64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT64_code, &u64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_FP32_code,   &f32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_FP64_code,   &f64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UDT_code,    &f64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UCT_code,    &f64, stdout, Context) ; printf ("\n");
 
-    GB_mx_put_global (true) ;
+    for (int i = 0 ; i <= GrB_PANIC + 1 ; i++)
+    {
+        printf ("info: %2d %s\n", i, GB_status_code (i)) ;
+    }
+
+    #if defined (USER_POSIX_THREADS)
+    printf ("User threads: POSIX\n") ;
+    #elif defined (USER_WINDOWS_THREADS)
+    printf ("User threads: Windows\n") ;
+    #elif defined (USER_ANSI_THREADS)
+    printf ("User threads: ANSI\n") ;
+    #elif defined (USER_OPENMP_THREADS)
+    printf ("User threads: OpenMP\n") ;
+    #elif defined (USER_NO_THREADS)
+    printf ("User threads: none\n") ;
+    #else
+    printf ("User threads: not specific (none)\n") ;
+    #endif
+
+    GrB_Mode mode ;
+    GxB_get (GxB_MODE, &mode) ;
+    printf ("mode: %d\n", mode) ;
+
+    GxB_Thread_Model threading ;
+    GxB_get (GxB_THREAD_SAFETY, &threading) ;
+    printf ("thread safety: %d\n", threading) ;
+    GxB_get (GxB_THREADING, &threading) ;
+    printf ("threading: %d\n", threading) ;
+
+    GB_mx_put_global (true, 0) ;
 }
 

@@ -67,7 +67,9 @@ Tcov            test coverage, requires MATLAB
 
 build           build directory, intially empty
 
-Version         version-dependent files used by CMake
+Config          version-dependent files used by CMake
+
+User            user-defined objects at compile-time (*.m4 files)
 
 --------------------------------------------------------------------------------
 

@@ -16,7 +16,8 @@
 GrB_Info GB_ix_resize           // resize a matrix
 (
     GrB_Matrix A,
-    const int64_t anz_new       // required new nnz(A)
+    const int64_t anz_new,      // required new nnz(A)
+    GB_Context Context
 )
 {
 
@@ -51,7 +52,7 @@ GrB_Info GB_ix_resize           // resize a matrix
         ASSERT (anzmax_new <= anzmax_orig) ;
         ASSERT (anz_new <= anzmax_new) ;
 
-        info = GB_ix_realloc (A, anzmax_new, true) ;
+        info = GB_ix_realloc (A, anzmax_new, true, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
         ASSERT_OK (GB_check (A, "A trimmed in size", GB0)) ;
 
@@ -72,11 +73,11 @@ GrB_Info GB_ix_resize           // resize a matrix
         ASSERT (anzmax_new > anzmax_orig) ;
         ASSERT (anz_new <= anzmax_new) ;
 
-        info = GB_ix_realloc (A, anzmax_new, true) ;
+        info = GB_ix_realloc (A, anzmax_new, true, Context) ;
         if (info != GrB_SUCCESS)
         { 
-            // out of memory; free all content of A
-            GB_phix_free (A) ;
+            // out of memory
+            GB_CONTENT_FREE (A) ;
             return (info) ;
         }
         ASSERT_OK (GB_check (A, "A increased in size", GB0)) ;
@@ -100,6 +101,6 @@ GrB_Info GB_ix_resize           // resize a matrix
     //--------------------------------------------------------------------------
 
     ASSERT (anz_new <= A->nzmax) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

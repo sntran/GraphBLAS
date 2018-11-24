@@ -29,8 +29,9 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     bool A_transpose,               // if true, use A' instead of A
     const GrB_Matrix B,             // input matrix
     bool B_transpose,               // if true, use B' instead of B
-    const bool eWiseAdd             // if true, do set union (like A+B),
+    const bool eWiseAdd,            // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
+    GB_Context Context
 )
 {
 
@@ -53,14 +54,14 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     GrB_Type T_type = op->ztype ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
     }
 
     // T=op(A,B) via op operator, so A and B must be compatible with z=op(a,b)
-    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type, 0) ;
+    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type, 0, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -156,11 +157,11 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
             // T = A + B, with flipped CSR/CSC format so GB_accum_mask does C=T'
             if (eWiseAdd)
             { 
-                info = GB_add (&T, T_type, !is_csc, A, B, op) ;
+                info = GB_add (&T, T_type, !is_csc, A, B, op, Context) ;
             }
             else
             { 
-                info = GB_emult (&T, T_type, !is_csc, A, B, op) ;
+                info = GB_emult (&T, T_type, !is_csc, A, B, op, Context) ;
             }
 
         }
@@ -175,8 +176,8 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
 
             // AT = A'
             GrB_Matrix AT = NULL ;
-            // transpose: shallow output ok, no typecast, no op
-            info = GB_transpose (&AT, NULL, is_csc, A, NULL) ;
+            // transpose: no typecast, no op, not in place
+            info = GB_transpose (&AT, NULL, is_csc, A, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 return (info) ;
@@ -185,11 +186,11 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
             // T = AT + B
             if (eWiseAdd)
             { 
-                info = GB_add (&T, T_type, is_csc, AT, B, op) ;
+                info = GB_add (&T, T_type, is_csc, AT, B, op, Context) ;
             }
             else
             { 
-                info = GB_emult (&T, T_type, is_csc, AT, B, op) ;
+                info = GB_emult (&T, T_type, is_csc, AT, B, op, Context) ;
             }
             GB_MATRIX_FREE (&AT) ;
 
@@ -208,8 +209,8 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
 
             // BT = B'
             GrB_Matrix BT = NULL ;
-            // transpose: shallow output ok, no typecast, no op
-            info = GB_transpose (&BT, NULL, is_csc, B, NULL) ;
+            // transpose: no typecast, no op, not in place
+            info = GB_transpose (&BT, NULL, is_csc, B, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 return (info) ;
@@ -218,11 +219,11 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
             // T = A + BT
             if (eWiseAdd)
             { 
-                info = GB_add (&T, T_type, is_csc, A, BT, op) ;
+                info = GB_add (&T, T_type, is_csc, A, BT, op, Context) ;
             }
             else
             { 
-                info = GB_emult (&T, T_type, is_csc, A, BT, op) ;
+                info = GB_emult (&T, T_type, is_csc, A, BT, op, Context) ;
             }
             GB_MATRIX_FREE (&BT) ;
 
@@ -236,11 +237,11 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
 
             if (eWiseAdd)
             { 
-                info = GB_add (&T, T_type, is_csc, A, B, op) ;
+                info = GB_add (&T, T_type, is_csc, A, B, op, Context) ;
             }
             else
             { 
-                info = GB_emult (&T, T_type, is_csc, A, B, op) ;
+                info = GB_emult (&T, T_type, is_csc, A, B, op, Context) ;
             }
         }
     }
@@ -255,6 +256,7 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     // C<M> = accum (C,T): accumulate the results into C via the M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

@@ -82,10 +82,11 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     const GrB_Index *I,         // list of indices, duplicates OK
     int64_t ni,                 // length of the I array, or special
     const GrB_Index *J,         // list of vector indices, duplicates OK
-    int64_t nj                  // length of the J array, or special
+    int64_t nj,                 // length of the J array, or special
     #ifndef GB_SYMBOLIC
-    , const bool must_sort      // if true, must return C sorted
+    const bool must_sort,       // if true, must return C sorted
     #endif
+    GB_Context Context
 )
 {
 
@@ -142,7 +143,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     bool I_unsorted, I_contig, J_unsorted, J_contig ;
     int64_t imin, imax, jmin, jmax ;
     info = GB_ijproperties (I, ni, nI, avlen, Ikind, Icolon,
-        &I_unsorted, &I_contig, &imin, &imax, true) ;
+        &I_unsorted, &I_contig, &imin, &imax, true, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // I invalid
@@ -150,7 +151,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     }
 
     info = GB_ijproperties (J, nj, nJ, avdim, Jkind, Jcolon,
-        &J_unsorted, &J_contig, &jmin, &jmax, false) ;
+        &J_unsorted, &J_contig, &jmin, &jmax, false, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // J invalid
@@ -307,7 +308,6 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     if (info != GrB_SUCCESS)
     {
         // out of memory
-        GB_wfree ( ) ;
         return (info) ;
     }
 
@@ -317,6 +317,13 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     //--------------------------------------------------------------------------
     // GB_C_REALLIC: ensures C has enough space for new entries
     //--------------------------------------------------------------------------
+
+    #define GB_SUBREF_FREE_WORK                                         \
+    {                                                                   \
+        GB_FREE_MEMORY (Inext,  nI,    sizeof (int64_t)) ;              \
+        GB_FREE_MEMORY (Iwork1, nI,    sizeof (int64_t)) ;              \
+        GB_FREE_MEMORY (Mark,   avlen, sizeof (int64_t)) ;              \
+    }
 
     #define GB_C_REALLOC(cnz)                                           \
     {                                                                   \
@@ -328,12 +335,12 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {                                                           \
                 new_cnzmax = GB_IMIN (new_cnzmax, cnz_bound) ;          \
             }                                                           \
-            info = GB_ix_realloc (C, new_cnzmax, true) ;                \
+            info = GB_ix_realloc (C, new_cnzmax, true, Context) ;       \
             if (info != GrB_SUCCESS)                                    \
             {                                                           \
                 /* out of memory */                                     \
                 GB_MATRIX_FREE (&C) ;                                   \
-                GB_wfree ( ) ;                                          \
+                GB_SUBREF_FREE_WORK ;                                   \
                 return (info) ;                                         \
             }                                                           \
             Cx = C->x ;                                                 \
@@ -1195,12 +1202,12 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             if (!I_inverted)
             {
                 info = GB_I_inverse (I, nI, avlen, need_Iwork1,
-                    &Mark, &Inext, &Iwork1, &nduplicates, &flag) ;
+                    &Mark, &Inext, &Iwork1, &nduplicates, &flag, Context) ;
                 if (info != GrB_SUCCESS)
                 { 
                     // out of memory
                     GB_MATRIX_FREE (&C) ;
-                    GB_wfree ( ) ;
+                    GB_SUBREF_FREE_WORK ;
                     return (info) ;
                 }
                 I_inverted = true ;
@@ -1387,15 +1394,21 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
 
         // C->plen is not allocated up front at its upper bound, since no good
         // bound exists.  Thus, C->p and C->h may need to increase in size.
-        info = GB_jappend (C, jnew, &jlast, cnz, &cnz_last) ;
+        info = GB_jappend (C, jnew, &jlast, cnz, &cnz_last, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
             GB_MATRIX_FREE (&C) ;
-            GB_wfree ( ) ;
+            GB_SUBREF_FREE_WORK ;
             return (info) ;
         }
     }
+
+    //--------------------------------------------------------------------------
+    // free workspace
+    //--------------------------------------------------------------------------
+
+    GB_SUBREF_FREE_WORK ;
 
     //--------------------------------------------------------------------------
     // finalize the construction of C
@@ -1406,15 +1419,6 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     ASSERT_OK_OR_JUMBLED (GB_check (C, "subref C=A(I,J), almost done", GB0)) ;
 
     //--------------------------------------------------------------------------
-    // clear the Mark array
-    //--------------------------------------------------------------------------
-
-    if (I_inverted)
-    { 
-        GB_Mark_reset (nI + 1, 0) ;
-    }
-
-    //--------------------------------------------------------------------------
     // resize the output C
     //--------------------------------------------------------------------------
 
@@ -1422,25 +1426,24 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     ASSERT (cnz <= C->nzmax) ;
     if (cnz < C->nzmax)
     { 
-        info = GB_ix_realloc (C, cnz, true) ;
+        info = GB_ix_realloc (C, cnz, true, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
     }
 
     // conform C to its desired hypersparsity; note that C can have jumbled
     // columns, which is OK.  The GB_to_hyper* and GB_to_nonhyper do not access
     // the row indices so they tolerate jumbled matrices.
-    info = GB_to_hyper_conform (C) ;
+    info = GB_to_hyper_conform (C, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
         GB_MATRIX_FREE (&C) ;
-        GB_wfree ( ) ;
         return (info) ;
     }
 
     // C now has with sorted indices
     ASSERT_OK_OR_JUMBLED (GB_check (C, "C output for  C=A(I,J)", GB0)) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

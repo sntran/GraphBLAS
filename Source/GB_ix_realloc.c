@@ -17,7 +17,8 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
     GrB_Matrix A,           // matrix to allocate space for
     const GrB_Index nzmax,  // new number of entries the matrix can hold
-    const bool numeric      // if true, reallocate A->x, otherwise A->x is NULL
+    const bool numeric,     // if true, reallocate A->x, otherwise A->x is NULL
+    GB_Context Context
 )
 {
 
@@ -78,6 +79,6 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
         return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -30,6 +30,6 @@ GrB_Info GxB_Monoid_operator        // return the monoid operator
     //--------------------------------------------------------------------------
 
     (*op) = monoid->op ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

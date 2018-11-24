@@ -15,7 +15,7 @@
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -67,7 +67,8 @@ void mexFunction
     }
 
     // C = A(I,J)
-    METHOD (GB_subref_numeric (&C, true /* CSC */, A, I, ni, J, nj, true)) ;
+    METHOD (GB_subref_numeric (&C, true /* CSC */, A, I, ni, J, nj, true,
+        Context)) ;
 
     // return C to MATLAB
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C subref result", false) ;

@@ -51,9 +51,10 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     const GrB_Index nCols_in,       // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
-    , const bool col_assign         // true for GrB_Col_assign
-    , const bool row_assign         // true for GrB_Row_assign
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    const bool col_assign,          // true for GrB_Col_assign
+    const bool row_assign,          // true for GrB_Row_assign
+    GB_Context Context
 )
 {
 
@@ -122,7 +123,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // C<M>(Rows,Cols) = accum (C(Rows,Cols),A)
         info = GB_BinaryOp_compatible (accum, C->type, C->type,
             (scalar_expansion) ? NULL : A->type,
-            (scalar_expansion) ? scalar_code : 0) ;
+            (scalar_expansion) ? scalar_code : 0, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // domain(s) of accum are not compatible
@@ -294,18 +295,18 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 // Since C_replace is true, all of C is cleared.  This is the
                 // same as the GB_RETURN_IF_QUICK_MASK macro, except that C may
                 // have zombies and pending tuples.
-                return (GB_clear (C)) ;
+                return (GB_clear (C, Context)) ;
             }
         }
 
         if (C->nzombies > 0)
         { 
             // make sure C is in the queue
-            GB_queue_insert (C) ;
+            GB_CRITICAL (GB_queue_insert (C)) ;
         }
         // finalize C if blocking mode is enabled, and return result
         ASSERT_OK (GB_check (C, "Final C for assign, quick mask", GB0)) ;
-        return (GB_block (C)) ;
+        return (GB_block (C, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -432,7 +433,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // ni and nI are reduced if there are duplicates
             I2_size = ni ;
-            info = GB_ijsort (I, &ni, &I2) ;
+            info = GB_ijsort (I, &ni, &I2, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -448,7 +449,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // nj and nJ are reduced if there are duplicates
             J2_size = nj ;
-            info = GB_ijsort (J, &nj, &J2) ;
+            info = GB_ijsort (J, &nj, &J2, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -471,8 +472,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (!scalar_expansion && A_transpose)
     {
         // AT = A', with no typecasting
-        // transpose: shallow output ok, no typecast, no op
-        info = GB_transpose (&AT, NULL, C_is_csc, A, NULL) ;
+        // transpose: no typecast, no op, not in place
+        info = GB_transpose (&AT, NULL, C_is_csc, A, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
@@ -506,13 +507,13 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             { 
                 ASSERT (J == J2 || J == Cols) ;
                 info = GB_subref_numeric (&SubMask, true, M,
-                    J, nj, GrB_ALL, 1, true) ;
+                    J, nj, GrB_ALL, 1, true, Context) ;
             }
             else
             { 
                 ASSERT (I == I2 || I == Cols) ;
                 info = GB_subref_numeric (&SubMask, true, M,
-                    I, ni, GrB_ALL, 1, true) ;
+                    I, ni, GrB_ALL, 1, true, Context) ;
             }
             ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
         }
@@ -525,13 +526,13 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             { 
                 ASSERT (I == I2 || I == Rows) ;
                 info = GB_subref_numeric (&SubMask, true, M,
-                    I, ni, GrB_ALL, 1, true) ;
+                    I, ni, GrB_ALL, 1, true, Context) ;
             }
             else
             { 
                 ASSERT (J == J2 || J == Rows) ;
                 info = GB_subref_numeric (&SubMask, true, M,
-                    J, nj, GrB_ALL, 1, true) ;
+                    J, nj, GrB_ALL, 1, true, Context) ;
             }
             ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
         }
@@ -541,12 +542,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (M->is_csc == C_is_csc)
             { 
                 info = GB_subref_numeric (&SubMask, M->is_csc,
-                    M, I, ni, J, nj, true) ;
+                    M, I, ni, J, nj, true, Context) ;
             }
             else
             { 
                 info = GB_subref_numeric (&SubMask, M->is_csc,
-                    M, J, nj, I, ni, true) ;
+                    M, J, nj, I, ni, true, Context) ;
             }
         }
         if (info != GrB_SUCCESS)
@@ -581,8 +582,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // MT = M' to conform M to the same CSR/CSC format as C.
             // typecast to boolean, if a full matrix transpose is done.
-            // transpose: shallow ok, typecast, no op
-            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL) ;
+            // transpose: typecast, no op, not in place
+            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -617,7 +618,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // Z = duplicate of C
         ASSERT (!GB_ZOMBIES (C)) ;
         ASSERT (!GB_PENDING (C)) ;
-        info = GB_dup (&Z, C) ;
+        info = GB_dup (&Z, C, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
@@ -645,7 +646,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         J, nj,                      // vectors
         scalar_expansion,           // if true, expand scalar to A
         scalar,                     // scalar to expand, NULL if A not NULL
-        scalar_code) ;              // type code of scalar to expand
+        scalar_code,                // type code of scalar to expand
+        Context) ;
 
     // return if GB_subassign_kernel failed
     if (info != GrB_SUCCESS)
@@ -699,7 +701,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
         if (GB_PENDING (Z))
         {
-            info = GB_wait (Z) ;
+            info = GB_wait (Z, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -721,8 +723,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // MT = M' to conform M to the same CSR/CSC format as C.
             // typecast to boolean, if a full matrix transpose is done.
-            // transpose: shallow ok, typecast, no op
-            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL) ;
+            // transpose: typecast, no op, not in place
+            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -749,7 +751,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // ni and nI are reduced if there are duplicates
             I2_size = ni ;
-            info = GB_ijsort (I, &ni, &I2) ;
+            info = GB_ijsort (I, &ni, &I2, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -765,7 +767,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         {
             // nj and nJ are reduced if there are duplicates
             J2_size = nj ;
-            info = GB_ijsort (J, &nj, &J2) ;
+            info = GB_ijsort (J, &nj, &J2, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -1009,12 +1011,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         if (GB_PENDING (Z))
         { 
             // assemble all pending tuples, and delete all zombies too
-            info = GB_wait (Z) ;
+            info = GB_wait (Z, Context) ;
         }
         if (info == GrB_SUCCESS)
         { 
             // transplants the content of Z into C and frees Z
-            info = GB_transplant (C, C->type, &Z) ;
+            info = GB_transplant (C, C->type, &Z, Context) ;
         }
         if (info != GrB_SUCCESS)
         { 
@@ -1036,11 +1038,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (C->nzombies > 0)
     { 
         // make sure C is in the queue
-        GB_queue_insert (C) ;
+        GB_CRITICAL (GB_queue_insert (C)) ;
     }
 
     // finalize C if blocking mode is enabled, and return result
     ASSERT_OK (GB_check (C, "Final C for assign", GB0)) ;
-    return (GB_block (C)) ;
+    return (GB_block (C, Context)) ;
 }
 

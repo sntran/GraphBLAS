@@ -26,7 +26,7 @@
         GrB_free (&semiring) ;              \
     }                                       \
     GrB_free (&desc) ;                      \
-    GB_mx_put_global (true) ;               \
+    GB_mx_put_global (true, AxB_method_used) ; \
 }
 
 void mexFunction
@@ -45,6 +45,7 @@ void mexFunction
     GrB_Matrix Mask = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -80,10 +81,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
-
-    // int s ;
-    // GxB_get (A, GxB_FORMAT, &s) ;
-    // printf ("format %d\n", s) ;
 
     // get B (shallow copy)
     B = GB_mx_mxArray_to_Matrix (pargin [5], "B input", false, true) ;
@@ -129,8 +126,10 @@ void mexFunction
     // C<Mask> = accum(C,A*B)
     METHOD (GrB_mxm (C, Mask, accum, semiring, A, B, desc)) ;
 
+    if (C != NULL) AxB_method_used = C->AxB_method_used ;
+
     // return C to MATLAB as a struct and free the GraphBLAS C
-    pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
+    pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output from GrB_mxm", true) ;
 
     FREE_ALL ;
 }

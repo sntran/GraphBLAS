@@ -24,7 +24,7 @@ GrB_Info GrB_Vector_setElement_ ## T    /* w(row) = x    */                 \
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                       \
     ASSERT (GB_VECTOR_OK (w)) ;                                             \
     return (GB_setElement ((GrB_Matrix) w, ampersand x, row, 0,             \
-        GB_ ## T ## _code)) ;                                               \
+        GB_ ## T ## _code, Context)) ;                                      \
 }
 
 GB_SET (bool     , BOOL   , &) ;

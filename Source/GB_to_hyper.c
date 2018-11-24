@@ -23,7 +23,8 @@
 
 GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 (
-    GrB_Matrix A            // matrix to convert to hypersparse
+    GrB_Matrix A,           // matrix to convert to hypersparse
+    GB_Context Context
 )
 {
 
@@ -70,11 +71,11 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         GB_MALLOC_MEMORY (Ah_new, nvec_new,   sizeof (int64_t)) ;
         if (Ap_new == NULL || Ah_new == NULL)
         { 
-            // out of memory; free all content of A
-            GB_phix_free (A) ;
+            // out of memory
             A->is_hyper = true ;    // A is hypersparse, but otherwise invalid
             GB_FREE_MEMORY (Ap_new, nvec_new+1, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ah_new, nvec_new,   sizeof (int64_t)) ;
+            GB_CONTENT_FREE (A) ;
             return (GB_OUT_OF_MEMORY (GBYTES (2*nvec_new+1, sizeof (int64_t))));
         }
 
@@ -104,7 +105,7 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         { 
             anz = Ap_old [j+1] ;
             ASSERT (A->nvec <= A->plen) ;
-            info = GB_jappend (A, j, &jlast, anz, &anz_last) ;
+            info = GB_jappend (A, j, &jlast, anz, &anz_last, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
             ASSERT (A->nvec <= A->plen) ;
         }
@@ -131,6 +132,6 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to hypersparse", GB0)) ;
     ASSERT (A->is_hyper) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -39,7 +39,8 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
-    const bool flipxy               // if true, do z=fmult(b,a) vs fmult(a,b)
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    GB_Context Context
 )
 {
 
@@ -82,7 +83,7 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     int64_t cvdim = B->vdim ;
 
     info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
-        15 + GB_NNZ (A) + GB_NNZ (B)) ;
+        15 + GB_NNZ (A) + GB_NNZ (B), Context) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -106,11 +107,11 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
 
     #define GB_AdotB(add,mult,xyname) GB_AdotB_ ## add ## mult ## xyname
 
-    #define GB_AxB_WORKER(add,mult,xyname)                              \
-    {                                                                   \
-        info = GB_AdotB (add,mult,xyname) (Chandle, M, A, B, flipxy) ;  \
-        done = true ;                                                   \
-    }                                                                   \
+    #define GB_AxB_WORKER(add,mult,xyname)                                     \
+    {                                                                          \
+        info = GB_AdotB (add,mult,xyname) (Chandle, M, A, B, flipxy, Context) ;\
+        done = true ;                                                          \
+    }                                                                          \
     break ;
 
     //--------------------------------------------------------------------------
@@ -160,7 +161,7 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         if (A->type == atype_required && B->type == btype_required)
         {
             info = GB_AxB_user (GxB_AxB_DOT, semiring, Chandle, M, A, B,
-                flipxy, NULL, NULL, NULL, 0) ;
+                flipxy, NULL, NULL, NULL, 0, NULL, Context) ;
             done = true ;
             if (info != GrB_SUCCESS)
             { 
@@ -281,10 +282,10 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
         #define GB_DOT_WORK(k) (Work +((k)*bkj_size))
 
         // Work [k] = (btype) B (k,j)
-        #define GB_DOT_SCATTER                                             \
+        #define GB_DOT_SCATTER                                          \
         {                                                               \
             /* Work [k] = B(k,j), located in Bx [p] */                  \
-            cast_B (GB_DOT_WORK (k), Bx +((pB)*bsize), bsize) ;            \
+            cast_B (GB_DOT_WORK (k), Bx +((pB)*bsize), bsize) ;         \
         }
 
         #define GB_HANDLE_FLIPXY true
@@ -297,10 +298,10 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     // trim the size of C: this cannot fail
     //--------------------------------------------------------------------------
 
-    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
     ASSERT_OK (GB_check (C, "dot: C = A'*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

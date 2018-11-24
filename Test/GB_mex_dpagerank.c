@@ -18,7 +18,7 @@
 {                                       \
     if (P != NULL) free (P) ;           \
     GB_MATRIX_FREE (&A) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

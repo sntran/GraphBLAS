@@ -19,7 +19,7 @@
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 
@@ -73,7 +73,7 @@ void mexFunction
     // simple_tic (tic2) ;
 
     // C = A+B using the op
-    METHOD (GB_add (&C, A->type, true, A, B, op)) ;
+    METHOD (GB_add (&C, A->type, true, A, B, op, Context)) ;
 
     // GrB_wait ( ) ;
     // TOC ;

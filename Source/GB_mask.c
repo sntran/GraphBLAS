@@ -134,7 +134,8 @@ GrB_Info GB_mask                // C<M> = Z
                                 // or can even be NULL if M is empty and
                                 // complemented.  Z is freed when done.
     const bool C_replace,       // true if clear(C) to be done first
-    const bool Mask_complement  // true if M is to be complemented
+    const bool Mask_complement, // true if M is to be complemented
+    GB_Context Context
 )
 {
 
@@ -168,7 +169,7 @@ GrB_Info GB_mask                // C<M> = Z
     }
 
     // M must be compatible with C_result
-    ASSERT_OK (GB_Mask_compatible (M, C_result, 0, GB0)) ;
+    ASSERT_OK (GB_Mask_compatible (M, C_result, 0, 0, Context)) ;
 
     GrB_Info info = GrB_SUCCESS ;
 
@@ -198,7 +199,8 @@ GrB_Info GB_mask                // C<M> = Z
             ASSERT (!C_result->h_shallow) ;
 
             // transplant Z into C_result and conform to desired hypersparsity
-            return (GB_transplant_conform (C_result, C_result->type, Zhandle)) ;
+            return (GB_transplant_conform (C_result, C_result->type, Zhandle,
+                Context)) ;
         }
         else
         {
@@ -217,13 +219,13 @@ GrB_Info GB_mask                // C<M> = Z
 
             if (C_replace)
             { 
-                // C_result = 0
-                return (GB_clear (C_result)) ;
+                // C_result = 0, but keep C->Sauna
+                return (GB_clear (C_result, Context)) ;
             }
             else
             { 
                 // nothing happens
-                return (GB_REPORT_SUCCESS) ;
+                return (GrB_SUCCESS) ;
             }
         }
 
@@ -265,8 +267,8 @@ GrB_Info GB_mask                // C<M> = Z
             }
             else
             { 
-                // Clear all entries from C_result
-                info = GB_clear (C_result) ;
+                // Clear all entries from C_result, but keep C->Sauna
+                info = GB_clear (C_result, Context) ;
                 C = C_result ;
             }
         }
@@ -693,7 +695,7 @@ GrB_Info GB_mask                // C<M> = Z
             //------------------------------------------------------------------
 
             // cannot fail since C->plen is at the upper bound
-            info = GB_jappend (R, j, &jlast, rnz, &rnz_last) ;
+            info = GB_jappend (R, j, &jlast, rnz, &rnz_last, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
 
             #if 0
@@ -729,7 +731,7 @@ GrB_Info GB_mask                // C<M> = Z
         // finished using the mask M, so it is now safe to modify C_result,
         // even if C_result and M are aliased
 
-        return (GB_transplant_conform (C_result, R->type, &R)) ;
+        return (GB_transplant_conform (C_result, R->type, &R, Context)) ;
     }
 }
 

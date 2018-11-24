@@ -15,7 +15,8 @@ GrB_Info GB_code_check          // print an entry using a type code
 (
     const GB_Type_code code,    // type code of value to print
     const void *x,              // entry to print
-    FILE *f                     // file to print to
+    FILE *f,                    // file to print to
+    GB_Context Context
 )
 {
 
@@ -49,6 +50,6 @@ GrB_Info GB_code_check          // print an entry using a type code
         default: ;
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

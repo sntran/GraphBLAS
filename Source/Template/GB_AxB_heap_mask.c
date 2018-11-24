@@ -11,6 +11,10 @@
 // if GB_MASK_CASE is defined, then the mask matrix M is present.  Otherwise it
 // is not present.
 
+#ifndef GB_HEAP_FREE_WORK
+#define GB_HEAP_FREE_WORK
+#endif
+
 {
 
     //--------------------------------------------------------------------------
@@ -233,12 +237,13 @@
                 // ensure enough space exists in C
                 if (cnz == C->nzmax)
                 {
-                    GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true) ;
+                    GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true,
+                        Context) ;
                     if (info != GrB_SUCCESS)
                     { 
                         // out of memory
                         GB_MATRIX_FREE (Chandle) ;
-                        GB_wfree ( ) ;
+                        GB_HEAP_FREE_WORK ;
                         return (info) ;
                     }
                     Ci = C->i ;
@@ -435,12 +440,13 @@
             // ensure enough space exists in C
             if (cnz + aknz > C->nzmax)
             {
-                GrB_Info info = GB_ix_realloc (C, 2*(cnz + aknz), true) ;
+                GrB_Info info = GB_ix_realloc (C, 2*(cnz + aknz), true,
+                    Context) ;
                 if (info != GrB_SUCCESS)
                 { 
                     // out of memory
                     GB_MATRIX_FREE (Chandle) ;
-                    GB_wfree ( ) ;
+                    GB_HEAP_FREE_WORK ;
                     return (info) ;
                 }
                 Ci = C->i ;
@@ -475,7 +481,7 @@
 
         // this cannot fail since C->plen is the upper bound: the number
         // of non-empty vectors of B.
-        info = (GB_jappend (C, j, &jlast, cnz, &cnz_last)) ;
+        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
     }
 

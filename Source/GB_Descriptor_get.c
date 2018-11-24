@@ -69,7 +69,8 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     bool *Mask_comp,            // if true use logical negation of Mask
     bool *In0_transpose,        // if true transpose first input
     bool *In1_transpose,        // if true transpose second input
-    GrB_Desc_Value *AxB_method  // method for C=A*B
+    GrB_Desc_Value *AxB_method, // method for C=A*B
+    GB_Context Context
 )
 { 
 
@@ -134,6 +135,6 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         *AxB_method = AxB_desc ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

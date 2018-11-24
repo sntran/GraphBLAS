@@ -28,6 +28,8 @@
 
 int64_t magic ;         // for detecting uninitialized objects
 GrB_Type type ;         // the type of each numerical entry
+size_t type_size ;      // type->size, copied here since the type could be
+                        //user-defined, and freed before the matrix or vector
 
 //------------------------------------------------------------------------------
 // compressed sparse vector data structure
@@ -276,6 +278,7 @@ int64_t *i_pending ;        // row indices of pending tuples
 int64_t *j_pending ;        // col indices of pending tuples; NULL if vdim <= 1
 void *s_pending ;           // values of pending tuples
 GrB_Type type_pending ;     // the type of s_pending
+size_t type_pending_size ;  // type_pending->size
 GrB_BinaryOp operator_pending ; // operator to assemble pending tuples
 
 //-----------------------------------------------------------------------------
@@ -307,6 +310,24 @@ GrB_BinaryOp operator_pending ; // operator to assemble pending tuples
 // GB_wait.
 
 int64_t nzombies ;      // number of zombies marked for deletion
+
+//------------------------------------------------------------------------------
+// Sauna: the sparse accumulator
+//------------------------------------------------------------------------------
+
+// The Sauna is an initialized workspace of size O(vlen) used for sparse matrix
+// multiplication.  Each matrix/vector can have its own Sauna, so that user
+// threads can independently compute C=A*B on different matrices C, where each
+// output matrix C has its own Sauna.  For most matrices, the Sauna is NULL.
+// The Sauna is built only when C=A*B is computed using Gustavson's method.
+
+GB_Sauna Sauna ;
+
+//------------------------------------------------------------------------------
+// statistics
+//------------------------------------------------------------------------------
+
+GrB_Desc_Value AxB_method_used ;    // last method used for C=A*B (this is C)
 
 //------------------------------------------------------------------------------
 // queue of matrices with work to do
@@ -361,4 +382,3 @@ bool x_shallow ;        // true if x is a shallow copy
 bool is_hyper ;         // true if the matrix is hypersparse
 bool is_csc ;           // true if stored by column (CSC or hypersparse CSC)
 bool sorted_pending ;   // true if pending tuples are in sorted order
-

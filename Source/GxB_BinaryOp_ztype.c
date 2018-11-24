@@ -30,6 +30,6 @@ GrB_Info GxB_BinaryOp_ztype         // return the type of z
     //--------------------------------------------------------------------------
 
     (*ztype) = binaryop->ztype ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -49,7 +49,7 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
             A->hyper_ratio = hyper_ratio ;
 
             // conform the matrix to its new desired hypersparsity
-            info = GB_to_hyper_conform (A) ;
+            info = GB_to_hyper_conform (A, Context) ;
             break ;
 
         case GxB_FORMAT : 
@@ -66,8 +66,8 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
             if (A->is_csc != new_csc)
             { 
                 // A = A', done in place, and change to the new format.
-                // transpose: output not shallow, in place of A, no cast, no op
-                info = GB_transpose (NULL, NULL, new_csc, A, NULL) ;
+                // transpose: no typecast, no op, in place of A
+                info = GB_transpose (NULL, NULL, new_csc, A, NULL, Context) ;
                 ASSERT (GB_IMPLIES (info == GrB_SUCCESS,
                     A->is_csc == new_csc)) ;
             }

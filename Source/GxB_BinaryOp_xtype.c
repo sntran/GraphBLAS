@@ -30,6 +30,6 @@ GrB_Info GxB_BinaryOp_xtype         // return the type of x
     //--------------------------------------------------------------------------
 
     (*xtype) = binaryop->xtype ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

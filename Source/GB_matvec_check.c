@@ -7,6 +7,9 @@
 
 //------------------------------------------------------------------------------
 
+// uncomment this line to add extra diagnostics (for the developer only)
+// #define GB_DEVELOPER
+
 #include "GB.h"
 
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
@@ -18,7 +21,8 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
                             // if negative, ignore queue conditions
                             // and use GB_FLIP(pr) for diagnostic printing.
     FILE *f,                // file for output
-    const char *kind        // "matrix" or "vector"
+    const char *kind,       // "matrix" or "vector"
+    GB_Context Context
 )
 {
 
@@ -107,15 +111,35 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         (A->s_pending != NULL) ;                // A->s_pending if tuples
 
     #ifdef GB_DEVELOPER
+    if (pr > 1) GBPR ("A %p magic "GBd"\n", A, A->magic) ;
     if (pr > 1) GBPR ("number of memory blocks: "GBd"\n", nallocs) ;
     #endif
 
-    GrB_Info info = GB_Type_check (A->type, "", pr, f) ;
-    if (info != GrB_SUCCESS)
+    GrB_Info info = GB_Type_check (A->type, "", pr, f, Context) ;
+    if (info != GrB_SUCCESS || (A->type->size != A->type_size))
     { 
         if (pr > 0) GBPR ("%s has an invalid type\n", kind) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s has an invalid type: [%s]", kind, GB_NAME))) ;
+    }
+
+    if (A->Sauna != NULL)
+    {
+        if (pr > 1) GBPR ("Sauna: n: "GBd" entry size: %zu\n",
+            A->Sauna->Sauna_n, A->Sauna->Sauna_size) ;
+    }
+
+    if (pr > 1 && A->AxB_method_used != GxB_DEFAULT)
+    {
+        GBPR ("last method used for GrB_mxm, vxm, or mxv: ") ;
+        switch (A->AxB_method_used)
+        {
+            case GxB_AxB_GUSTAVSON: GBPR ("Gustavson") ;
+            case GxB_AxB_HEAP     : GBPR ("heap") ;
+            case GxB_AxB_DOT      : GBPR ("dot") ;
+            default               : ;
+        }
+        GBPR ("\n") ;
     }
 
     #ifdef GB_DEVELOPER
@@ -322,7 +346,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
                 else if (A->x != NULL)
                 { 
                     info = GB_entry_check (A->type,
-                        A->x + (p * (A->type->size)), f) ;
+                        A->x + (p * (A->type->size)), f, Context) ;
                     if (info != GrB_SUCCESS) return (info) ;
                 }
             }
@@ -370,7 +394,6 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     }
 
     #ifdef GB_DEVELOPER
-    if (pr > 1) GBPR ("A %p\n", A) ;
     if (pr > 1) GBPR ("->i_pending %p\n", A->i_pending) ;
     if (pr > 1) GBPR ("->j_pending %p\n", A->j_pending) ;
     if (pr > 1) GBPR ("->s_pending %p\n", A->s_pending) ;
@@ -411,8 +434,9 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
         if (pr > 0) GBPR ("pending tuples:\n") ;
 
-        info = GB_Type_check (A->type_pending, "", pr, f) ;
-        if (info != GrB_SUCCESS)
+        info = GB_Type_check (A->type_pending, "", pr, f, Context) ;
+        if (info != GrB_SUCCESS ||
+            (A->type_pending->size != A->type_pending_size))
         { 
             if (pr > 0) GBPR ("%s has an invalid type_pending\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
@@ -435,7 +459,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             { 
                 GBPR ("row: "GBd" col: "GBd" ", row, col) ;
                 info = GB_entry_check (A->type_pending,
-                    A->s_pending +(k * A->type_pending->size), f) ;
+                    A->s_pending +(k * A->type_pending->size), f, Context) ;
                 if (info != GrB_SUCCESS) return (info) ;
                 GBPR ("\n") ;
             }
@@ -469,7 +493,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         else
         {
             info = GB_BinaryOp_check (A->operator_pending, "pending operator:",
-                pr, f) ;
+                pr, f, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 if (pr > 0) GBPR ("invalid pending operator\n") ;
@@ -488,7 +512,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         GrB_Matrix head, prev, next ;
         bool enqd ;
 
-        GB_queue_status (A, &head, &prev, &next, &enqd) ;
+        GB_CRITICAL (GB_queue_status (A, &head, &prev, &next, &enqd)) ;
 
         #ifdef GB_DEVELOPER
         if (pr > 1) GBPR ("queue head  %p\n", head) ;
@@ -567,7 +591,6 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // cases (it would require workspace to do so).  See the
     // ASSERT_OK_OR_JUMBLED macro.
 
-    // do not log error with GB_REPORT_SUCCESS; may mask an error in the caller
     return (jumbled ? GrB_INDEX_OUT_OF_BOUNDS : GrB_SUCCESS) ;
 }
 

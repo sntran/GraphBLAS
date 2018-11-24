@@ -21,7 +21,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const int64_t bjnz_max          // max # entries in any vector of B
+    const int64_t bjnz_max,         // max # entries in any vector of B
+    GB_Context Context
 )
 {
 
@@ -58,29 +59,35 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
-
-    // allocate the following arrays, all have size bjnz_max
-    // (the +1 is for the mask M)
     // int64_t List [0..bjnz_max-1] ;
-    // GB_pointer_pair pA_pair [0..bjnz_max1] ;
-    // GB_Element Heap [1..bjnz_max] ;
+    // GB_pointer_pair pA_pair [0..bjnz_max-1] ;
+    // GB_Element Heap [0..bjnz_max] ;              // Heap [0] unused
 
-    info = GB_Work_walloc (bjnz_max,
-        sizeof (int64_t) + sizeof (GB_pointer_pair) + sizeof (GB_Element)) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        return (info) ;
+    int64_t *List = NULL ;
+    GB_MALLOC_MEMORY (List, bjnz_max, sizeof (int64_t)) ;
+
+    GB_pointer_pair *pA_pair = NULL ;
+    GB_MALLOC_MEMORY (pA_pair, bjnz_max, sizeof (GB_pointer_pair)) ;
+
+    GB_Element *Heap = NULL ;
+    GB_MALLOC_MEMORY (Heap, bjnz_max + 1, sizeof (GB_Element)) ;
+
+    #define GB_HEAP_FREE_WORK                                           \
+    {                                                                   \
+        GB_FREE_MEMORY (List, bjnz_max, sizeof (int64_t)) ;             \
+        GB_FREE_MEMORY (pA_pair, bjnz_max, sizeof (GB_pointer_pair)) ;  \
+        GB_FREE_MEMORY (Heap, bjnz_max + 1, sizeof (GB_Element)) ;      \
     }
 
-    char *w = GB_thread_local.Work ;
-    int64_t *List = (int64_t *) w ;
-    w += bjnz_max * sizeof (int64_t) ;
-    GB_pointer_pair *pA_pair = (GB_pointer_pair *) w ;
-    w += bjnz_max * sizeof (GB_pointer_pair) ;
-    GB_Element *Heap = (GB_Element *) w ;
-    Heap-- ; // Heap [0] is not used, only Heap [1..bjnz_max]
+    if (List == NULL || pA_pair == NULL || Heap == NULL)
+    { 
+        // out of memory
+        double memory = GBYTES (bjnz_max, sizeof (int64_t)) +
+                        GBYTES (bjnz_max, sizeof (GB_pointer_pair)) +
+                        GBYTES (bjnz_max + 1, sizeof (GB_Element)) ;
+        GB_HEAP_FREE_WORK ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
+    }
 
     //--------------------------------------------------------------------------
     // esimate nnz(C) and allocate C
@@ -90,13 +97,13 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     int64_t cvdim = B->vdim ;
     GrB_Type ctype = semiring->add->op->ztype ;
 
-    info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
-        15 + GB_NNZ (A) + GB_NNZ (B)) ;
+    GrB_Info info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
+        15 + GB_NNZ (A) + GB_NNZ (B), Context) ;
 
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_wfree ( ) ;
+        GB_HEAP_FREE_WORK ;
         return (info) ;
     }
 
@@ -119,7 +126,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     #define GB_AxB_WORKER(add,mult,xyname)                          \
     {                                                               \
         info = GB_AheapB (add,mult,xyname) (Chandle, M, A, B,       \
-            flipxy, List, pA_pair, Heap, bjnz_max) ;                \
+            flipxy, List, pA_pair, Heap, bjnz_max, Context) ;       \
         done = true ;                                               \
     }                                                               \
     break ;
@@ -140,6 +147,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     if (info != GrB_SUCCESS)
     { 
         // out of memory
+        GB_HEAP_FREE_WORK ;
         return (info) ;
     }
 
@@ -171,11 +179,12 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         if (A->type == atype_required && B->type == btype_required)
         {
             info = GB_AxB_user (GxB_AxB_HEAP, semiring, Chandle, M, A, B,
-                flipxy, List, pA_pair, Heap, bjnz_max) ;
+                flipxy, List, pA_pair, Heap, bjnz_max, NULL, Context) ;
             done = true ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory or invalid semiring
+                GB_HEAP_FREE_WORK ;
                 return (info) ;
             }
         }
@@ -290,10 +299,11 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     // trim the size of C: this cannot fail
     //--------------------------------------------------------------------------
 
-    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
+    GB_HEAP_FREE_WORK ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
     ASSERT_OK (GB_check (C, "heap: C = A*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

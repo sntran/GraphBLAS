@@ -20,7 +20,8 @@ static GrB_Info dcheck
     const GrB_Desc_Value v,
     const GrB_Desc_Value nondefault,
     int pr,
-    FILE *f
+    FILE *f,
+    GB_Context Context
 )
 {
 
@@ -86,7 +87,8 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     const char *name,           // name of the descriptor, optional
     int pr,                     // 0: print nothing, 1: print header and
                                 // errors, 2: print brief, 3: print all
-    FILE *f                     // file for output
+    FILE *f,                    // file for output
+    GB_Context Context
 )
 { 
 
@@ -112,11 +114,11 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     if (pr > 0) GBPR ("\n") ;
 
     GrB_Info info [5] ;
-    info [0] = dcheck (true,  "output    ", D->out,  GrB_REPLACE, pr, f) ;
-    info [1] = dcheck (true,  "mask      ", D->mask, GrB_SCMP,    pr, f) ;
-    info [2] = dcheck (true,  "input0    ", D->in0,  GrB_TRAN,    pr, f) ;
-    info [3] = dcheck (true,  "input1    ", D->in1,  GrB_TRAN,    pr, f) ;
-    info [4] = dcheck (false, "AxB_method", D->axb,  0,           pr, f) ;
+    info [0] = dcheck (true,  "output    ", D->out,  GrB_REPLACE, pr,f,Context);
+    info [1] = dcheck (true,  "mask      ", D->mask, GrB_SCMP,    pr,f,Context);
+    info [2] = dcheck (true,  "input0    ", D->in0,  GrB_TRAN,    pr,f,Context);
+    info [3] = dcheck (true,  "input1    ", D->in1,  GrB_TRAN,    pr,f,Context);
+    info [4] = dcheck (false, "AxB_method", D->axb,  0,           pr,f,Context);
 
     for (int i = 0 ; i < 5 ; i++)
     { 
@@ -128,6 +130,6 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
         }
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

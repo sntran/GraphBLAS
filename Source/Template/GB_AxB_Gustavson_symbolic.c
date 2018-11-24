@@ -61,7 +61,7 @@
         int64_t cmax = cnz + cvlen ;
         if (cmax > C->nzmax)
         { 
-            GB_OK (GB_ix_realloc (C, 4*(C->nzmax + cvlen), false)) ;
+            GB_OK (GB_ix_realloc (C, 4*(C->nzmax + cvlen), false, Context)) ;
             Ci = C->i ;
         }
 
@@ -176,8 +176,8 @@
             // general case, nnz (B (:,j)) > 2
             //------------------------------------------------------------------
 
-            // flag++
-            int64_t flag = GB_Mark_reset (1, 0) ;
+            // hiwater++
+            int64_t hiwater = GB_Sauna_reset (Sauna, 1, 0) ;
 
             #ifdef GB_HYPER_CASE
             // trim on right
@@ -211,12 +211,12 @@
                 {
                     int64_t i = Ai [pA] ;
                     // C(i,j) is nonzero
-                    if (Mark [i] < flag)
+                    if (Sauna_Mark [i] < hiwater)
                     { 
-                        // C(i,j) is nonzero, and this is the 1st time row
-                        // i has been added to the pattern in C(:,j).  Mark
-                        // it so row i is not added again.
-                        Mark [i] = flag ;
+                        // C(i,j) is nonzero, and this is the 1st time row i
+                        // has been added to the pattern in C(:,j).  Mark it so
+                        // row i is not added again.
+                        Sauna_Mark [i] = hiwater ;
                         // add to the column pattern of A*B
                         Ci [cnz++] = i ;
                     }
@@ -247,7 +247,7 @@
         #ifdef GB_HYPER_CASE
         // this cannot fail since C->plen is the upper bound: the number
         // of non-empty columns of B.
-        info = (GB_jappend (C, j, &jlast, cnz, &cnz_last)) ;
+        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
         // if it could fail:
         // GB_OK (info) ;              // check result and return on error
@@ -262,7 +262,7 @@
     }
 
     //--------------------------------------------------------------------------
-    // finalize C and clear the Mark
+    // finalize C and clear the Sauna
     //--------------------------------------------------------------------------
 
     #ifdef GB_HYPER_CASE
@@ -271,14 +271,14 @@
     C->magic = GB_MAGIC ;
     #endif
 
-    // clear the Mark array
-    GB_Mark_reset (1, 0) ;
+    // clear the Sauna_Mark array
+    GB_Sauna_reset (Sauna, 1, 0) ;
 
     //--------------------------------------------------------------------------
     // reduce the size of C->i to hold just the required space
     //--------------------------------------------------------------------------
 
-    info = GB_ix_realloc (C, cnz, false) ;
+    info = GB_ix_realloc (C, cnz, false, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
     ASSERT_OK (GB_check (C, "C symbolic Gustavson C=A*B", GB0)) ;
 }

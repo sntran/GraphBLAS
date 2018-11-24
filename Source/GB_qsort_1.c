@@ -47,6 +47,7 @@ void GB_qsort_1         // sort array A of size 1-by-n
     const int64_t n
 )
 { 
-    GB_quicksort (GB_arg (A), n) ;
+    uint64_t seed = n ;
+    GB_quicksort (GB_arg (A), n, &seed) ;
 }
 

@@ -27,7 +27,8 @@ GrB_Info GB_mxm                     // C<M> = A*B
     const GrB_Matrix B,             // input matrix
     const bool B_transpose,         // if true, use B' instead of B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const GrB_Desc_Value AxB_method // for auto vs user selection of methods
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    GB_Context Context
 )
 {
 
@@ -49,7 +50,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type T_type = semiring->add->op->ztype ;
-    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -60,13 +61,13 @@ GrB_Info GB_mxm                     // C<M> = A*B
     { 
         // z=fmult(b,a), for entries a from A, and b from B
         info = GB_BinaryOp_compatible (semiring->multiply,
-                                        NULL, B->type, A->type, 0) ;
+                                        NULL, B->type, A->type, 0, Context) ;
     }
     else
     { 
         // z=fmult(a,b), for entries a from A, and b from B
         info = GB_BinaryOp_compatible (semiring->multiply,
-                                        NULL, A->type, B->type, 0) ;
+                                        NULL, A->type, B->type, 0, Context) ;
     }
     if (info != GrB_SUCCESS)
     { 
@@ -109,7 +110,11 @@ GrB_Info GB_mxm                     // C<M> = A*B
     bool C_is_csc = C->is_csc ;
     GrB_Matrix T, MT = NULL ;
     info = GB_AxB_meta (&T, C_is_csc, &MT, ((Mask_comp) ? NULL : M), A, B,
-        semiring, A_transpose, B_transpose, flipxy, &mask_applied, AxB_method) ;
+        semiring, A_transpose, B_transpose, flipxy, &mask_applied, AxB_method,
+        &(C->AxB_method_used), &(C->Sauna), Context) ;
+
+    ASSERT_OK (GB_check (C, "C with Sauna", GB0)) ;
+
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -139,13 +144,14 @@ GrB_Info GB_mxm                     // C<M> = A*B
         // no time at all and is a pure transplant.  Also conform C to its
         // desired hypersparsity.
         GB_MATRIX_FREE (&MT) ;
-        return (GB_transplant_conform (C, C->type, &T)) ;
+        return (GB_transplant_conform (C, C->type, &T, Context)) ;
     }
     else
     { 
         // C<M> = accum (C,T)
         // GB_accum_mask also conforms C to its desired hypersparsity
-        info = GB_accum_mask (C, M, MT, accum, &T, C_replace, Mask_comp) ;
+        info = GB_accum_mask (C, M, MT, accum, &T, C_replace, Mask_comp,
+            Context) ;
         GB_MATRIX_FREE (&MT) ;
         return (info) ;
     }

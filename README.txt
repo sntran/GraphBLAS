@@ -1,7 +1,7 @@
 SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-VERSION 2.2.0, Nov 13, 2018 (BETA2)
+VERSION 2.2.0, Nov 23, 2018 (BETA3)
 
 SuiteSparse:GraphBLAS is an full implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -67,7 +67,9 @@ Tcov            test coverage, requires MATLAB
 
 build           build directory, intially empty
 
-Version         version-dependent files used by CMake
+Config          version-dependent files used by CMake
+
+User            user-defined objects at compile-time (*.m4 files)
 
 --------------------------------------------------------------------------------
 

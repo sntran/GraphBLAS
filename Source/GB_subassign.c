@@ -44,7 +44,8 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     const GrB_Index nCols_in,       // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    GB_Context Context
 )
 {
 
@@ -102,7 +103,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         // C(Rows,Cols)<M> = accum (C(Rows,Cols),A)
         info = GB_BinaryOp_compatible (accum, C->type, C->type,
             (scalar_expansion) ? NULL : A->type,
-            (scalar_expansion) ? scalar_code : 0) ;
+            (scalar_expansion) ? scalar_code : 0, Context) ;
         if (info != GrB_SUCCESS)
         { 
             return (info) ;
@@ -222,8 +223,8 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     if (!scalar_expansion && A_transpose)
     {
         // AT = A', with no typecasting
-        // transpose: shallow output ok, no typecast, no op
-        info = GB_transpose (&AT, NULL, C_is_csc, A, NULL) ;
+        // transpose: no typecast, no op, not in place
+        info = GB_transpose (&AT, NULL, C_is_csc, A, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             GB_FREE_ALL ;
@@ -254,8 +255,8 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         {
             // MT = M' to conform M to the same CSR/CSC format as C.
             // typecast to boolean, if a full matrix transpose is done.
-            // transpose: shallow output ok, typecast, no op
-            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL) ;
+            // transpose: no typecast, no op, not in place
+            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 GB_FREE_ALL ;
@@ -284,7 +285,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         // Z = duplicate of C
         ASSERT (!GB_ZOMBIES (C)) ;
         ASSERT (!GB_PENDING (C)) ;
-        info = GB_dup (&Z, C) ;
+        info = GB_dup (&Z, C, Context) ;
         if (info != GrB_SUCCESS)
         { 
             GB_FREE_ALL ;
@@ -310,7 +311,8 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         J, nj,                      // vectors
         scalar_expansion,           // if true, expand scalar to A
         scalar,                     // scalar to expand, NULL if A not NULL
-        scalar_code) ;              // type code of scalar to expand
+        scalar_code,                // type code of scalar to expand
+        Context) ;
 
     GB_FREE_ALL ;
 
@@ -331,12 +333,12 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         if (GB_PENDING (Z))
         { 
             // assemble all pending tuples, and delete all zombies too
-            info = GB_wait (Z) ;
+            info = GB_wait (Z, Context) ;
         }
         if (info == GrB_SUCCESS)
         { 
             // transplants the content of Z into C and frees Z
-            info = GB_transplant (C, C->type, &Z) ;
+            info = GB_transplant (C, C->type, &Z, Context) ;
         }
     }
 

@@ -14,12 +14,6 @@
 // Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
 // Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
 
-// The method used is a binary search of the vector containing A(row,col),
-// which is very fast.  Logging the GrB_NO_VALUE status with the GB_ERROR (...)
-// macro is likely much slower than searching for the entry.  Thus, a
-// specialized macro, GB_REPORT_NO_VALUE, is used, which simply logs the status
-// and the row and column indices.
-
 #include "GB.h"
 
 GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
@@ -28,7 +22,8 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     const GB_Type_code xcode,   // type of the scalar x
     const GrB_Matrix A,         // matrix to extract a scalar from
     const GrB_Index row,        // row index
-    const GrB_Index col         // column index
+    const GrB_Index col,        // column index
+    GB_Context Context
 )
 {
 
@@ -69,7 +64,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     if (GB_NNZ (A) == 0)
     { 
         // quick return
-        return (GB_REPORT_NO_VALUE (row, col)) ;
+        return (GrB_NO_VALUE) ;
     }
 
     //--------------------------------------------------------------------------
@@ -106,7 +101,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
         if (!found)
         { 
             // vector j is empty
-            return (GB_REPORT_NO_VALUE (row, col)) ;
+            return (GrB_NO_VALUE) ;
         }
         ASSERT (j == Ah [pleft]) ;
         k = pleft ;
@@ -127,7 +122,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
     if (pleft > pright)
     { 
         // no entries in vector j
-        return (GB_REPORT_NO_VALUE (row, col)) ;
+        return (GrB_NO_VALUE) ;
     }
 
     // Time taken for this step is at most O(log(nnz(A(:,j))).
@@ -152,7 +147,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
             // typecast the value from A into x
             GB_cast_array (x, xcode, A->x +(pleft*asize), A->type->code, 1) ;
         }
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
     else
     { 
@@ -161,7 +156,7 @@ GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
         // not keep track of its identity value; that depends on the semiring.
         // So the user would need to interpret this status of 'no value' and
         // take whatever action is appropriate.
-        return (GB_REPORT_NO_VALUE (row, col)) ;
+        return (GrB_NO_VALUE) ;
     }
 }
 

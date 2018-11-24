@@ -26,7 +26,7 @@
     if (op_ztype == Complex) GB_FREE_MEMORY (Z, nx+1, sizeof (double complex));\
     if (X_type   == Complex) GB_FREE_MEMORY (X, nx+1, sizeof (double complex));\
     if (Y_type   == Complex) GB_FREE_MEMORY (Y, ny+1, sizeof (double complex));\
-    GB_mx_put_global (do_cover) ;       \
+    GB_mx_put_global (do_cover, 0) ;    \
 }
 
 void mexFunction

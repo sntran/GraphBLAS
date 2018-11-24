@@ -11,7 +11,8 @@
 
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
-    GrB_Matrix A
+    GrB_Matrix A,
+    GB_Context Context
 )
 {
 
@@ -33,6 +34,6 @@ GrB_Info GB_block   // apply all pending computations if blocking mode enabled
         // delete any lingering zombies and assemble any pending tuples
         GB_WAIT (A) ;
     }
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

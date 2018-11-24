@@ -28,7 +28,8 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     void *X,                    // array for returning values of tuples
     GrB_Index *p_nvals,         // I,J,X size on input; # tuples on output
     const GB_Type_code xcode,   // type of array X
-    const GrB_Matrix A          // matrix to extract tuples from
+    const GrB_Matrix A,         // matrix to extract tuples from
+    GB_Context Context
 )
 {
 
@@ -59,7 +60,7 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     if (anz == 0)
     { 
         // no work to do
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     int64_t nvals = *p_nvals ;          // size of I,J,X on input
@@ -140,6 +141,6 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     *p_nvals = anz ;            // number of tuples extracted
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

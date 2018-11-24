@@ -13,7 +13,8 @@ GrB_Info GB_resize              // change the size of a matrix
 (
     GrB_Matrix A,               // matrix to modify
     const GrB_Index nrows_new,  // new number of rows in matrix
-    const GrB_Index ncols_new   // new number of columns in matrix
+    const GrB_Index ncols_new,  // new number of columns in matrix
+    GB_Context Context
 )
 {
 
@@ -23,7 +24,26 @@ GrB_Info GB_resize              // change the size of a matrix
 
     ASSERT_OK (GB_check (A, "A to resize", GB0)) ;
 
+    //--------------------------------------------------------------------------
+    // free the Sauna
+    //--------------------------------------------------------------------------
+
+    // It would be possible to keep the Sauna if the vector length is not
+    // changing (# of rows of a CSC matrix, or # of columns of a CSR matrix).
+    // However, resizing a matrix is a user-accessible way to free the Sauna.
+    // The user can free the Sauna and force completion of a matrix A by
+    // "resizing" it to its same size:
+    //
+    //      GrB_Matrix_nrows (&nrows, A) ;
+    //      GrB_Matrix_ncols (&ncols, A) ;
+    //      GxB_Matrix_resize (A, nrows, ncols) ;
+
+    GB_Sauna_free (&(A->Sauna)) ;
+
+    //--------------------------------------------------------------------------
     // delete any lingering zombies and assemble any pending tuples
+    //--------------------------------------------------------------------------
+
     GB_WAIT (A) ;
     ASSERT_OK (GB_check (A, "A to resize, wait", GB0)) ;
 
@@ -57,7 +77,7 @@ GrB_Info GB_resize              // change the size of a matrix
 
     if (GB_to_hyper_test (A, A->nvec_nonempty, vdim_new))
     { 
-        info = GB_to_hyper (A) ;
+        info = GB_to_hyper (A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
@@ -87,7 +107,7 @@ GrB_Info GB_resize              // change the size of a matrix
         if (vdim_new < A->plen)
         { 
             // reduce the size of A->p and A->h; this cannot fail
-            info = GB_hyper_realloc (A, vdim_new) ;
+            info = GB_hyper_realloc (A, vdim_new, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
             Ap = A->p ;
             Ah = A->h ;
@@ -117,7 +137,7 @@ GrB_Info GB_resize              // change the size of a matrix
             if (!ok)
             { 
                 // out of memory
-                GB_phix_free (A) ;
+                GB_CONTENT_FREE (A) ;
                 double memory = GBYTES (vdim_new+1, sizeof (int64_t)) ;
                 return (GB_OUT_OF_MEMORY (memory)) ;
             }
@@ -177,6 +197,6 @@ GrB_Info GB_resize              // change the size of a matrix
     // check for conversion to hypersparse or to non-hypersparse
     //--------------------------------------------------------------------------
 
-    return (GB_to_hyper_conform (A)) ;
+    return (GB_to_hyper_conform (A, Context)) ;
 }
 

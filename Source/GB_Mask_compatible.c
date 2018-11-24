@@ -16,7 +16,8 @@ GrB_Info GB_Mask_compatible     // check type and dimensions of mask
     const GrB_Matrix Mask,      // mask to check
     const GrB_Matrix C,         // C<Mask>= ...
     const GrB_Index nrows,      // size of output if C is NULL (see GB*assign)
-    const GrB_Index ncols
+    const GrB_Index ncols,
+    GB_Context Context
 )
 { 
 
@@ -45,6 +46,6 @@ GrB_Info GB_Mask_compatible     // check type and dimensions of mask
         }
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

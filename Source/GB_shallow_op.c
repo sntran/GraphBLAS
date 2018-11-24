@@ -31,7 +31,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     GrB_Matrix *Chandle,    // output matrix C, of type op->ztype
     const bool C_is_csc,    // desired CSR/CSC format of C
     const GrB_UnaryOp op,   // operator to apply
-    const GrB_Matrix A      // input matrix to typecast
+    const GrB_Matrix A,     // input matrix to typecast
+    GB_Context Context
 )
 {
 
@@ -92,7 +93,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->x_shallow = false ;
         ASSERT_OK (GB_check (C, "C = quick copy of empty A", GB0)) ;
         (*Chandle) = C ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -118,7 +119,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->x_shallow = true ;       // C->x will not be freed when freeing C
         ASSERT_OK (GB_check (C, "C = pure shallow (A)", GB0)) ;
         (*Chandle) = C ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     // allocate new space for the numerical values of C
@@ -146,6 +147,6 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
 
     ASSERT_OK (GB_check (C, "C = shallow (op (A))", GB0)) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

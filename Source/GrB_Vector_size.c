@@ -30,6 +30,6 @@ GrB_Info GrB_Vector_size    // get the dimension of a vector
     //--------------------------------------------------------------------------
 
     (*n) = v->vlen ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

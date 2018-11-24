@@ -42,7 +42,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
     // check domains and dimensions for C<M> = accum (C,T)
-    info = GB_compatible (C->type, C, M, accum, A->type) ;
+    info = GB_compatible (C->type, C, M, accum, A->type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -92,8 +92,8 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
         { 
             // If there is no accum operator, T is transplanted into Z and
             // typecasted into the C->type during the transpose.
-            // transpose: shallow output ok, typecast, no op
-            info = GB_transpose (&T, C->type, C_is_csc, A, NULL) ;
+            // transpose: typecast, no op, not in place
+            info = GB_transpose (&T, C->type, C_is_csc, A, NULL, Context) ;
         }
         else
         { 
@@ -102,8 +102,8 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
             // but not C are typecasted directly into C->type.  Thus, the
             // typecast of T (if any) must wait, and be done in call to
             // GB_add in GB_accum_mask.
-            // transpose: shallow output ok, no typecast, no op
-            info = GB_transpose (&T, A->type, C_is_csc, A, NULL) ;
+            // transpose: no typecast, no op, not in place
+            info = GB_transpose (&T, A->type, C_is_csc, A, NULL, Context) ;
         }
 
         // no operator; typecasting done if accum is NULL
@@ -118,7 +118,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
         // typecasted eventually, into the type of C if the types of T and C
         // differ.  That can be postponed at no cost since the following step
         // is free.
-        info = GB_shallow_cast (&T, A->type, C_is_csc, A) ;
+        info = GB_shallow_cast (&T, A->type, C_is_csc, A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
@@ -134,6 +134,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     //--------------------------------------------------------------------------
 
     ASSERT_OK (GB_check (T, "T for GrB_transpose", GB0)) ;
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

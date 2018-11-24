@@ -27,12 +27,13 @@
 static inline int64_t GB_partition
 (
     GB_args (int64_t, A),
-    const int64_t n
+    const int64_t n,
+    uint64_t *seed          // random number seed
 )
 {
 
     // select a pivot at random
-    int64_t pivot = ((n < GB_RAND_MAX) ? GB_rand15 ( ) : GB_rand ( )) % n ;
+    int64_t pivot = ((n < GB_RAND_MAX) ? GB_rand15 (seed) : GB_rand (seed)) % n;
 
     // get the pivot entry
     int64_t Pivot_0 [1] ; Pivot_0 [0] = A_0 [pivot] ;
@@ -89,7 +90,8 @@ static inline int64_t GB_partition
 static void GB_quicksort    // sort A [0:n-1]
 (
     GB_args (int64_t, A),   // array(s) to sort
-    const int64_t n         // size of A
+    const int64_t n,        // size of A
+    uint64_t *seed          // random number seed
 )
 {
 
@@ -108,11 +110,11 @@ static void GB_quicksort    // sort A [0:n-1]
     else
     { 
         // partition A [0:n-1] into A [0:k-1] and A [k:n-1]
-        int64_t k = GB_partition (GB_arg (A), n) ;
+        int64_t k = GB_partition (GB_arg (A), n, seed) ;
 
         // sort each partition
-        GB_quicksort (GB_arg (A), k) ;                // sort A [0:k-1]
-        GB_quicksort (GB_arg_offset (A, k), n-k) ;    // sort A [k+1:n-1]
+        GB_quicksort (GB_arg (A), k, seed) ;                // sort A [0:k-1]
+        GB_quicksort (GB_arg_offset (A, k), n-k, seed) ;    // sort A [k+1:n-1]
     }
 }
 

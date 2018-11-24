@@ -44,6 +44,6 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     desc->in0  = GxB_DEFAULT ;     // descriptor for the first input
     desc->in1  = GxB_DEFAULT ;     // descriptor for the second input
     desc->axb  = GxB_DEFAULT ;     // descriptor for C=A*B
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

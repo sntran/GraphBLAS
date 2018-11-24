@@ -27,8 +27,6 @@ GrB_Info GxB_Global_Option_set      // set a global default option
     //--------------------------------------------------------------------------
 
     va_list ap ;
-    double hyper_ratio ;
-    GxB_Format_Value format ;
 
     switch (field)
     {
@@ -36,17 +34,15 @@ GrB_Info GxB_Global_Option_set      // set a global default option
         case GxB_HYPER : 
 
             va_start (ap, field) ;
-            hyper_ratio = va_arg (ap, double) ;
+            GB_Global.hyper_ratio = va_arg (ap, double) ;
             va_end (ap) ;
-            GB_global_option_set (true, hyper_ratio, false, 0) ;
             break ;
 
         case GxB_FORMAT : 
 
             va_start (ap, field) ;
-            format = va_arg (ap, GxB_Format_Value) ;
+            GB_Global.is_csc = (va_arg (ap, GxB_Format_Value) != GxB_BY_ROW) ; 
             va_end (ap) ;
-            GB_global_option_set (false, 0, true, format) ;
             break ;
 
         default : 
@@ -58,6 +54,6 @@ GrB_Info GxB_Global_Option_set      // set a global default option
 
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

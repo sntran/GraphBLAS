@@ -14,7 +14,8 @@ GrB_Info GB_Monoid_new          // create a monoid
     GrB_Monoid *monoid,         // handle of monoid to create
     const GrB_BinaryOp op,      // binary operator of the monoid
     const void *identity,       // identity value
-    const GB_Type_code idcode   // identity code
+    const GB_Type_code idcode,  // identity code
+    GB_Context Context
 )
 { 
 
@@ -70,6 +71,7 @@ GrB_Info GB_Monoid_new          // create a monoid
     mon->magic = GB_MAGIC ;
     mon->op = op ;
     mon->object_kind = GB_USER_RUNTIME ;
+    mon->op_ztype_size = op->ztype->size ;
     GB_CALLOC_MEMORY (mon->identity, 1, op->ztype->size) ;
     if (mon->identity == NULL)
     { 
@@ -81,6 +83,6 @@ GrB_Info GB_Monoid_new          // create a monoid
     memcpy (mon->identity, identity, op->ztype->size) ;
 
     ASSERT_OK (GB_check (mon, "new monoid", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

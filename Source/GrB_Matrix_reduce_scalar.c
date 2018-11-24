@@ -30,7 +30,7 @@ GrB_Info GrB_Matrix_reduce_ ## T    /* c = accum (c, reduce_to_scalar (A))  */ \
 {                                                                              \
     GB_WHERE ("GrB_Matrix_reduce_" GB_STR(T) " (&c, accum, reduce, A, desc)") ;\
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                          \
-    return (GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, A)) ;            \
+    return (GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, A, Context)) ;   \
 }
 
 GB_REDUCE (bool     , BOOL   ) ;
@@ -64,6 +64,7 @@ GrB_Info GrB_Matrix_reduce_UDT      // c = accum (c, reduce_to_scalar (A))
     GB_WHERE ("GrB_Matrix_reduce_UDT (&c, accum, reduce, A, desc)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
-    return (GB_reduce_to_scalar (c, reduce->op->ztype, accum, reduce, A)) ;
+    return (GB_reduce_to_scalar (c, reduce->op->ztype, accum, reduce, A,
+        Context)) ;
 }
 

@@ -47,13 +47,14 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A->sorted_pending   != B->sorted_pending   ) return (false) ;
     if (A->operator_pending != B->operator_pending ) return (false) ;
     if (A->type_pending     != B->type_pending     ) return (false) ;
+    if (A->type_pending_size!= B->type_pending_size) return (false) ;
     if (A->nzombies         != B->nzombies         ) return (false) ;
 
     int64_t n = A->nvec ;
     int64_t nnz = GB_NNZ (A) ;
     size_t s = sizeof (int64_t) ;
     size_t asize = A->type->size ;
-    size_t psize = (A->type_pending == NULL) ? 0 : A->type_pending->size ;
+    size_t psize = A->type_pending_size ;
 
     int64_t np = A->n_pending ;
 

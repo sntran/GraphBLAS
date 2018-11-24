@@ -72,7 +72,7 @@
 
         // cannot fail since C->plen is at the upper bound: # of non-empty
         // columns of B
-        info = GB_jappend (C, j, &jlast, cnz, &cnz_last) ;
+        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
     }
 

@@ -34,7 +34,8 @@
 
 GrB_Info GB_wait                // finish all pending computations
 (
-    GrB_Matrix A                // matrix with pending computations
+    GrB_Matrix A,               // matrix with pending computations
+    GB_Context Context
 )
 {
 
@@ -118,7 +119,7 @@ GrB_Info GB_wait                // finish all pending computations
     { 
         // nothing more to do; remove the matrix from the queue
         ASSERT (!GB_PENDING (A)) ;
-        GB_queue_remove (A) ;
+        GB_CRITICAL (GB_queue_remove (A)) ;
         ASSERT (!(A->enqueued)) ;
 
         // trim any significant extra space from the matrix, but allow for some
@@ -126,11 +127,11 @@ GrB_Info GB_wait                // finish all pending computations
         // zombies have been deleted but no pending tuples added.  This is
         // guaranteed not to fail.
         ASSERT (anz <= anz_orig) ;
-        info = GB_ix_resize (A, anz) ;
+        info = GB_ix_resize (A, anz, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
 
         // conform A to its desired hypersparsity
-        return (GB_to_hyper_conform (A)) ;
+        return (GB_to_hyper_conform (A, Context)) ;
     }
 
     // There are pending tuples that will now be assembled.
@@ -154,7 +155,7 @@ GrB_Info GB_wait                // finish all pending computations
     info = GB_builder (&T, A->type, A->vlen, A->vdim, A->is_csc,
         &(A->i_pending), &(A->j_pending), A->sorted_pending, A->s_pending,
         A->n_pending, A->max_n_pending, A->operator_pending,
-        A->type_pending->code) ;
+        A->type_pending->code, Context) ;
 
     //--------------------------------------------------------------------------
     // free pending tuples
@@ -180,7 +181,7 @@ GrB_Info GB_wait                // finish all pending computations
 
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;
-    GB_queue_remove (A) ;
+    GB_CRITICAL (GB_queue_remove (A)) ;
 
     // No pending operations on A, and A is not in the queue, so GB_check can
     // now see the conditions it expects.
@@ -195,9 +196,9 @@ GrB_Info GB_wait                // finish all pending computations
     // above, must be freed whether or not the builder is succesful.
     if (info != GrB_SUCCESS)
     { 
-        // out of memory; free all content of A
+        // out of memory
+        GB_CONTENT_FREE (A) ;
         ASSERT (T == NULL) ;
-        GB_phix_free (A) ;
         return (info) ;
     }
 
@@ -216,7 +217,7 @@ GrB_Info GB_wait                // finish all pending computations
     { 
         // A has no entries so just transplant T into A, then free T and
         // conform A to its desired hypersparsity.
-        return (GB_transplant_conform (A, A->type, &T)) ;
+        return (GB_transplant_conform (A, A->type, &T, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -228,7 +229,7 @@ GrB_Info GB_wait                // finish all pending computations
 
     int64_t anz_new = anz + GB_NNZ (T) ;  // must have at least this space
 
-    info = GB_ix_resize (A, anz_new) ;
+    info = GB_ix_resize (A, anz_new, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -299,7 +300,7 @@ GrB_Info GB_wait                // finish all pending computations
             if (GB_to_nonhyper_test (A, anvec_new, A->vdim))
             { 
                 // convert to non-hypersparse if anvec_new will become too large
-                info = GB_to_nonhyper (A) ;
+                info = GB_to_nonhyper (A, Context) ;
             }
             else
             { 
@@ -307,7 +308,7 @@ GrB_Info GB_wait                // finish all pending computations
                 // least anvec_new, but add some slack for future growth.
                 int64_t aplen_new = 2 * (anvec_new + 1) ;
                 aplen_new = GB_IMIN (aplen_new, A->vdim) ;
-                info = GB_hyper_realloc (A, aplen_new) ;
+                info = GB_hyper_realloc (A, aplen_new, Context) ;
             }
             if (info != GrB_SUCCESS)
             { 
@@ -600,6 +601,6 @@ GrB_Info GB_wait                // finish all pending computations
     ASSERT_OK (GB_check (A, "A after assembling pending tuples", GB0)) ;
 
     // conform A to its desired hypersparsity
-    return (GB_to_hyper_conform (A)) ;
+    return (GB_to_hyper_conform (A, Context)) ;
 }
 

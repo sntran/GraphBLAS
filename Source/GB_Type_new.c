@@ -80,6 +80,6 @@ GrB_Info GB_Type_new
         strncpy (t->name, p, GB_LEN-1) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

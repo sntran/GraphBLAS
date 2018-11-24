@@ -133,6 +133,6 @@ GrB_Info GxB_Desc_set           // set a parameter in a descriptor
                 GrB_OUTP, GrB_MASK, GrB_INP0, GrB_INP1, GxB_AxB_METHOD))) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

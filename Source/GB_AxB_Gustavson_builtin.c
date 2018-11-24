@@ -207,7 +207,9 @@ GrB_Info GB_AxB_Gustavson_builtin
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *done                      // true if C=A*B has been computed
+    bool *done,                     // true if C=A*B has been computed
+    GB_Sauna Sauna,                 // sparse accumulator
+    GB_Context Context
 )
 { 
 
@@ -241,7 +243,7 @@ GrB_Info GB_AxB_Gustavson_builtin
         &mult_opcode, &add_opcode, &xycode, &zcode))
     { 
         // no error condition, just not a built-in semiring.  done is false.
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -250,11 +252,11 @@ GrB_Info GB_AxB_Gustavson_builtin
 
     #define GB_AXB(add,mult,xyname) GB_AgusB_ ## add ## mult ## xyname
 
-    #define GB_AxB_WORKER(add,mult,xyname)                      \
-    {                                                           \
-        info = GB_AXB (add,mult,xyname) (C, M, A, B, flipxy) ;  \
-        (*done) = true ;                                        \
-    }                                                           \
+    #define GB_AxB_WORKER(add,mult,xyname)                                     \
+    {                                                                          \
+        info = GB_AXB (add,mult,xyname) (C, M, A, B, flipxy, Sauna, Context) ; \
+        (*done) = true ;                                                       \
+    }                                                                          \
     break ;
 
     //--------------------------------------------------------------------------

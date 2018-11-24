@@ -30,7 +30,7 @@
     GB_MATRIX_FREE (&Mask) ;            \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #define GET_DEEP_COPY \

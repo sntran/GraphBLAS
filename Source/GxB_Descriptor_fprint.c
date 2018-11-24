@@ -28,12 +28,6 @@ GrB_Info GxB_Descriptor_fprint      // print and check a GrB_Descriptor
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_Descriptor_check (descriptor, name, pr, f) ;
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    return ((info == GrB_SUCCESS) ? GB_REPORT_SUCCESS : info) ;
+    return (GB_Descriptor_check (descriptor, name, pr, f, Context)) ;
 }
 

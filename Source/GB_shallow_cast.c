@@ -31,7 +31,8 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
     GrB_Matrix *Chandle,    // output matrix C, of type op->ztype
     const GrB_Type ctype,   // type of the output matrix C
     const bool C_is_csc,    // desired CSR/CSC format of C
-    const GrB_Matrix A      // input matrix to typecast
+    const GrB_Matrix A,     // input matrix to typecast
+    GB_Context Context
 )
 {
 
@@ -92,7 +93,7 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
         C->x_shallow = false ;
         ASSERT_OK (GB_check (C, "C = quick copy of empty A", GB0)) ;
         (*Chandle) = C ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -117,7 +118,7 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
         C->x_shallow = true ;       // C->x will not be freed when freeing C
         ASSERT_OK (GB_check (C, "C = pure shallow (A)", GB0)) ;
         (*Chandle) = C ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     // allocate new space for the numerical values of C
@@ -150,6 +151,6 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
 
     ASSERT_OK (GB_check (C, "C = shallow cast (A)", GB0)) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

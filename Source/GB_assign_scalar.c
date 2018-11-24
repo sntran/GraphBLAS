@@ -28,7 +28,8 @@ GrB_Info GB_assign_scalar           // C<Mask>(Rows,Cols) += x
     const GrB_Index nRows,          // number of row indices
     const GrB_Index *Cols,          // column indices
     const GrB_Index nCols,          // number of column indices
-    const GrB_Descriptor desc       // descriptor for C and Mask
+    const GrB_Descriptor desc,      // descriptor for C and Mask
+    GB_Context Context
 )
 { 
 
@@ -58,8 +59,8 @@ GrB_Info GB_assign_scalar           // C<Mask>(Rows,Cols) += x
         Cols, nCols,                // column indices
         true,                       // do scalar expansion
         scalar,                     // scalar to assign, expands to become A
-        scalar_code                 // type code of scalar to expand
-        , false, false              // not GrB_Col_assign nor GrB_row_assign
-        )) ;
+        scalar_code,                // type code of scalar to expand
+        false, false,               // not GrB_Col_assign nor GrB_row_assign
+        Context)) ;
 }
 

@@ -64,30 +64,30 @@
 // mult-add operation (no mask)
 #define GB_MULTADD_NOMASK                               \
 {                                                       \
-    /* w [i] += A(i,k) * B(k,j) */                      \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
     GB_atype aik = Ax [pA] ;                            \
     uint32_t t ;                                        \
     GB_MULTIPLY (t, aik, bkj) ;                         \
-    w [i] *= t ;                                  \
+    Sauna_Work [i] *= t ;                         \
 }
 
 // mult-add operation (with mask)
 #define GB_MULTADD_WITH_MASK                            \
 {                                                       \
-    /* w [i] += A(i,k) * B(k,j) */                      \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
     GB_atype aik = Ax [pA] ;                            \
     uint32_t t ;                                        \
     GB_MULTIPLY (t, aik, bkj) ;                         \
-    if (flag > 0)                                       \
+    if (mark == hiwater)                                \
     {                                                   \
         /* first time C(i,j) seen */                    \
-        Flag [i] = -1 ;                                 \
-        w [i] = t ;                                     \
+        Sauna_Mark [i] = hiwater + 1 ;                  \
+        Sauna_Work [i] = t ;                            \
     }                                                   \
     else                                                \
     {                                                   \
         /* C(i,j) seen before, update it */             \
-        w [i] *= t ;                              \
+        Sauna_Work [i] *= t ;                     \
     }                                                   \
 }
 
@@ -97,11 +97,13 @@ GrB_Info GB_AgusB__times_max_uint32
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy                   // if true, A and B have been swapped
+    bool flipxy,                // if true, A and B have been swapped
+    GB_Sauna Sauna,             // sparse accumulator
+    GB_Context Context
 )
 { 
 
-    uint32_t *restrict w = GB_thread_local.Work ;  // size C->vlen * zsize
+    uint32_t *restrict Sauna_Work = Sauna->Sauna_Work ;  // size C->vlen*zsize
     uint32_t *restrict Cx = C->x ;
     GrB_Info info = GrB_SUCCESS ;
 
@@ -161,7 +163,8 @@ GrB_Info GB_AdotB__times_max_uint32
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy                   // if true, A and B have been swapped
+    bool flipxy,                  // if true, A and B have been swapped
+    GB_Context Context
 )
 { 
 
@@ -221,7 +224,8 @@ GrB_Info GB_AheapB__times_max_uint32
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
     GB_Element *restrict Heap,
-    const int64_t bjnz_max
+    const int64_t bjnz_max,
+    GB_Context Context
 )
 { 
 

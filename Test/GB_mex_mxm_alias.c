@@ -23,7 +23,7 @@
         GrB_free (&semiring) ;              \
     }                                       \
     GrB_free (&desc) ;                      \
-    GB_mx_put_global (true) ;               \
+    GB_mx_put_global (true, AxB_method_used) ; \
 }
 
 void mexFunction
@@ -39,6 +39,7 @@ void mexFunction
     GrB_Matrix C = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -94,6 +95,8 @@ void mexFunction
 
     // C<C> = accum(C,C*C)
     METHOD (GrB_mxm (C, C, accum, semiring, C, C, desc)) ;
+
+    if (C != NULL) AxB_method_used = C->AxB_method_used ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

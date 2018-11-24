@@ -67,12 +67,12 @@
 
     if (cnz == C->nzmax)
     {
-        GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true) ;
+        GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
             GB_MATRIX_FREE (Chandle) ;
-            GB_wfree ( ) ;
+            GB_DOT_FREE_WORK ;
             return (info) ;
         }
         Ci = C->i ;
@@ -196,27 +196,17 @@
         if (Flag == NULL)
         {
             // allocate Flag and Work space of size bvlen
-
-            info = GB_Flag_walloc (bvlen) ;
-            if (info != GrB_SUCCESS)
+            GB_CALLOC_MEMORY (Flag, bvlen, sizeof (int8_t)) ;
+            GB_MALLOC_MEMORY (Work, bvlen, bkj_size) ;
+            if (Flag == NULL || Work == NULL)
             { 
                 // out of memory
+                double memory = GBYTES (bvlen, sizeof (int8_t)) +
+                                GBYTES (bvlen, bkj_size) ;
                 GB_MATRIX_FREE (Chandle) ;
-                GB_wfree ( ) ;
-                return (info) ;
+                GB_DOT_FREE_WORK ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
-
-            info = GB_Work_walloc (bvlen, bkj_size) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_MATRIX_FREE (Chandle) ;
-                GB_wfree ( ) ;
-                return (info) ;
-            }
-
-            Flag = GB_thread_local.Flag ;
-            Work = (GB_DOT_WORK_TYPE *) GB_thread_local.Work ;
         }
 
         if (!B_scattered)

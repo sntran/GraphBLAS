@@ -28,11 +28,12 @@
     ASSERT (C->vlen == M->vlen) ;
 
     //--------------------------------------------------------------------------
-    // get workspace
+    // get the Sauna
     //--------------------------------------------------------------------------
 
-    // get the Flag workspace (already allocated and cleared)
-    int8_t *restrict Flag = GB_thread_local.Flag ;
+    // clear Sauna_Mark and ensure hiwater+1 does not cause integer overflow
+    int64_t *restrict Sauna_Mark = Sauna->Sauna_Mark ;
+    int64_t hiwater = GB_Sauna_reset (Sauna, 1, 1) ;
 
     //--------------------------------------------------------------------------
     // get the mask
@@ -123,7 +124,7 @@
         }
         #endif
 
-        // M(:,j) is not yet scattered into Flag.  Flag is all zero
+        // M(:,j) is not yet scattered into Sauna_Mark
         bool marked = false ;
 
         //----------------------------------------------------------------------
@@ -160,7 +161,7 @@
             if (Ai [pA_end-1] < im_first || Ai [pA_start] > im_last) continue ;
 
             //------------------------------------------------------------------
-            // scatter M(:,j) into Flag if not yet done
+            // scatter M(:,j) into Sauna_Mark if not yet done
             //------------------------------------------------------------------
 
             if (!marked)
@@ -173,15 +174,15 @@
                     if (mij)
                     { 
                         // M(i,j) is true
-                        Flag [Mi [pM]] = 1 ;
+                        Sauna_Mark [Mi [pM]] = hiwater ;
                     }
                 }
-                // M(:,j) has been scattered into Flag; must clear it when done
+                // M(:,j) has been scattered into Sauna_Mark
                 marked = true ;
 
-                // status of Flag [0..cvlen-1]:
-                // Flag [i] = 0:  M(i,j) = 0, or entry not present in M(:,j)
-                // Flag [i] = 1:  M(i,j) = 1,
+                // status of Sauna_Mark [0..cvlen-1]:
+                // Sauna_Mark [i] < hiwater: M(i,j)=0, or not present in M(:,j)
+                // Sauna_Mark [i] = hiwater: M(i,j) = 1
             }
 
             //------------------------------------------------------------------
@@ -191,42 +192,44 @@
             GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
 
             //------------------------------------------------------------------
-            // w += (A(:,k) * B(k,j)) .* M(:,j)
+            // Sauna += (A(:,k) * B(k,j)) .* M(:,j)
             //------------------------------------------------------------------
 
             for (int64_t pA = pA_start ; pA < pA_end ; pA++)
             { 
-                // w [i] += (A(i,k) * B(k,j)) .* M(i,j)
+                // Sauna_Work [i] += (A(i,k) * B(k,j)) .* M(i,j)
                 int64_t i = Ai [pA] ;
-                int8_t flag = Flag [i] ;
-                if (flag == 0) continue ;
+                int64_t mark = Sauna_Mark [i] ;
+                if (mark < hiwater) continue ;
                 // M(i,j) == 1 so do the work
                 GB_MULTADD_WITH_MASK ;
             }
 
             //------------------------------------------------------------------
-            // status of Flag [0..cvlen-1] and w [0..cvlen-1]
+            // status of Sauna_Mark [0..cvlen-1] and Sauna_Work [0..cvlen-1]
             //------------------------------------------------------------------
 
-            // Flag [i] = 0:  M(i,j)=0, or entry not present in M(:,j)
-            // Flag [i] = 1:  M(i,j)=1, C(i,j) not present; w [i] uninitialized
-            // Flag [i] = -1: M(i,j)=1, and C(i,j) is present; value is w [i]
+            // Sauna_Mark [i] < hiwater:   M(i,j)=0, or not present in M(:,j)
+            // Sauna_Mark [i] = hiwater:   M(i,j)=1, C(i,j) not present;
+            //                             Sauna_Work [i] uninitialized
+            // Sauna_Mark [i] = hiwater+1: M(i,j)=1, and C(i,j) is present;
+            //                             value is Sauna_Work [i]
         }
 
         //----------------------------------------------------------------------
         // check if C(:,j) is empty
         //----------------------------------------------------------------------
 
-        // if M(:,j) has not been scattered into Flag, then C(:,j) must be
+        // if M(:,j) has not been scattered into Sauna_Mark, then C(:,j) must be
         // empty.  C(:,j) can still be empty if marked is false, but in that
-        // case the Flag must still be cleared.
+        // case the Sauna_Mark must still be cleared.
 
         #ifdef GB_HYPER_CASE
         if (!marked) continue ;
         #endif
 
         //----------------------------------------------------------------------
-        // gather C(:,j), both values and pattern, from pattern of M(:,j) and w
+        // gather C(:,j), from pattern of M(:,j) and values in Sauna_Work
         //----------------------------------------------------------------------
 
         if (marked)
@@ -234,16 +237,18 @@
             for (int64_t pM = pM_start ; pM < pM_end ; pM++)
             {
                 int64_t i = Mi [pM] ;
-                if (Flag [i] < 0)
+                if (Sauna_Mark [i] == hiwater+1)
                 { 
                     // C(i,j) is a live entry, gather its row and value
-                    // Cx [cnz] = w [i] ;
-                    GB_COPY_ARRAY_TO_ARRAY (Cx, cnz, w, i, zsize) ;
+                    // Cx [cnz] = Sauna_Work [i] ;
+                    GB_COPY_ARRAY_TO_ARRAY (Cx, cnz, Sauna_Work, i, zsize) ;
                     Ci [cnz++] = i ;
                 }
-                // clear the Flag
-                Flag [i] = 0 ;
             }
+
+            // clear the Sauna_Mark by incrementing hiwater by 2, and ensuring
+            // that the resulting hiwater+1 does not cause integer overflow
+            hiwater = GB_Sauna_reset (Sauna, 2, 1) ;
         }
 
         //----------------------------------------------------------------------
@@ -253,7 +258,7 @@
         #ifdef GB_HYPER_CASE
         // cannot fail since C->plen is the upper bound: number of non-empty
         // columns of B
-        info = GB_jappend (C, j, &jlast, cnz, &cnz_last) ;
+        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
         #else
         Cp [j+1] = cnz ;

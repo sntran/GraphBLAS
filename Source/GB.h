@@ -13,6 +13,24 @@
 #ifndef GB_H
 #define GB_H
 
+//------------------------------------------------------------------------------
+// the method for multithreading in the user application must be known:
+//------------------------------------------------------------------------------
+
+// set these via cmake, or uncomment to select the user-thread model:
+
+// #define USER_POSIX_THREADS
+// #define USER_OPENMP_THREADS
+// #define USER_NO_THREADS
+
+// These are in draft status, and not yet implemented:
+// #define USER_WINDOWS_THREADS         not yet supported
+// #define USER_ANSI_THREADS            not yet supported
+
+//------------------------------------------------------------------------------
+// include GraphBLAS.h (depends on user threading model)
+//------------------------------------------------------------------------------
+
 #include "GraphBLAS.h"
 
 //------------------------------------------------------------------------------
@@ -28,6 +46,9 @@
 
 // to turn on debugging, uncomment this line:
 // #undef NDEBUG
+
+// to turn on malloc tracking (for testing only), uncomment this line:
+// #define GB_MALLOC_TRACKING
 
 // to turn on malloc debug printing, uncomment this line:
 // #define GB_PRINT_MALLOC
@@ -46,11 +67,30 @@ extern int64_t GB_cov [GBCOVER_MAX] ;
 extern int GB_cover_max ;
 #endif
 
+// always turn on malloc tracking when testing GraphBLAS via MATLAB
+#if defined(MATLAB_MEX_FILE) || defined(GB_PRINT_MALLOC)
+#ifndef GB_MALLOC_TRACKING
+#define GB_MALLOC_TRACKING
+#endif
+#endif
+
 //------------------------------------------------------------------------------
 // opaque content of GraphBLAS objects
 //------------------------------------------------------------------------------
 
 #define GB_LEN 128
+
+struct GB_Sauna_opaque      // sparse accumulator (matrix and vector component)
+{
+    int64_t Sauna_hiwater ; // Sauna_Mark [0..Sauna_n-1] < hiwater holds when
+                            // the Sauna_Mark is clear.
+    int64_t Sauna_n ;       // size of Sauna_Mark and Sauna_Work
+    int64_t *Sauna_Mark ;   // array of size Sauna_n
+    void *Sauna_Work ;      // array of size Sauna_n, each entry Sauna_size
+    size_t Sauna_size ;     // size of each entry in Sauna_Work
+} ;
+
+typedef struct GB_Sauna_opaque *GB_Sauna ;
 
 struct GB_Type_opaque       // content of GrB_Type
 {
@@ -103,7 +143,8 @@ struct GB_Monoid_opaque     // content of GrB_Monoid
 {
     int64_t magic ;         // for detecting uninitialized objects
     GrB_BinaryOp op ;       // binary operator of the monoid
-    void *identity ;        // identity of the monoid; size is op->ztype->size
+    void *identity ;        // identity of the monoid
+    size_t op_ztype_size ;  // size of the type (also is op->ztype->size)
     GB_object_code object_kind ;   // built-in, user pre-compiled, or run-time
 } ;
 
@@ -245,6 +286,7 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 // compiling GraphBLAS in a MATLAB mexFunction.  Use mxMalloc, mxFree, etc.
 #include "mex.h"
 #include "matrix.h"
+
 #undef GB_MALLOC
 #undef GB_FREE
 #undef GB_CALLOC
@@ -587,6 +629,83 @@ extern struct GB_SelectOp_opaque
     GB_opaque_GxB_NONZERO ;
 
 //------------------------------------------------------------------------------
+// error logging
+//------------------------------------------------------------------------------
+
+#define GB_RLEN 384
+#define GB_DLEN 256
+
+typedef struct
+{
+    const char *where ;         // GraphBLAS function where error occurred
+    char details [GB_DLEN] ;    // error report
+}
+GB_Context_struct ;
+
+typedef GB_Context_struct *GB_Context ;
+
+// GB_WHERE keeps track of the currently running user-callable function.
+// User-callable functions in this implementation are written so that they do
+// not call other unrelated user-callable functions (except for GrB_*free).
+// Related user-callable functions can call each other since they all report
+// the same type-generic name.  Internal functions can be called by many
+// different user-callable functions, directly or indirectly.  It would not be
+// helpful to report the name of an internal function that flagged an error
+// condition.  Thus, each time a user-callable function is entered (except
+// GrB_*free), it logs the name of the function with the GB_WHERE macro.
+// GrB_*free does not encounter error conditions so it doesn't need to be
+// logged by the GB_WHERE macro.
+
+#define GB_WHERE(where_string)                      \
+    GB_Context_struct Context_struct ;              \
+    GB_Context Context = &Context_struct ;          \
+    Context->where = where_string ;
+
+// The GB_ERROR and GB_LOG macros work together.  If an error occurs, the
+// GB_ERROR macro records the details in the Context.details, and returns the
+// GrB_info to its 'caller'.  This value can then be returned, or set to an
+// info variable of type GrB_Info.  For example:
+//
+//  if (i >= nrows)
+//  {
+//      return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
+//          "Row index %d out of bounds; must be < %d", i, nrows))) ;
+//  }
+//
+// The user can then do:
+//
+//  printf ("%s", GrB_error ( )) ;
+//
+// To print details of the error, which includes: which user-callable function
+// encountered the error, the error status (GrB_INDEX_OUT_OF_BOUNDS), the
+// details ("Row index 102 out of bounds, must be < 100").
+
+const char *GB_status_code (GrB_Info info) ;
+
+GrB_Info GB_error           // log an error in thread-local-storage
+(
+    GrB_Info info,          // error return code from a GraphBLAS function
+    GB_Context Context      // pointer to a Context struct, on the stack
+) ;
+
+#define GB_LOG Context->details, GB_DLEN
+
+#define GB_ERROR(info,snprintf_args)                                \
+(                                                                   \
+    snprintf snprintf_args,                                         \
+    GB_error (info, Context)                                        \
+)
+
+// return (GB_OUT_OF_MEMORY (mem)) ; reports an out-of-memory error, including
+// the amount of memory needed for this phase of computation
+#define GB_OUT_OF_MEMORY(mem) GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG,  \
+    "out of memory, %g GBytes required", (double) (mem)))
+
+// return (GB_NO_MEMORY) ; reports an out-of-memory error, but does not print
+// the memory needed (normally very small)
+#define GB_NO_MEMORY GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG, "out of memory"))
+
+//------------------------------------------------------------------------------
 // GraphBLAS check functions: check and optionally print an object
 //------------------------------------------------------------------------------
 
@@ -642,27 +761,30 @@ extern struct GB_SelectOp_opaque
     }                                                                   \
 }
 
-GrB_Info GB_entry_check     // print and check a single value
+GrB_Info GB_entry_check     // print a single value
 (
     const GrB_Type type,    // type of value to print
     const void *x,          // value to print
-    FILE *f                 // file to print to
+    FILE *f,                // file to print to
+    GB_Context Context
 ) ;
 
 GrB_Info GB_code_check          // print and check an entry using a type code
 (
     const GB_Type_code code,    // type code of value to print
     const void *x,              // entry to print
-    FILE *f                     // file to print to
+    FILE *f,                    // file to print to
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
     const GrB_Type type,    // GraphBLAS type to print and check
-    const char *name,       // name of the type
+    const char *name,       // name of the type from the caller; optional
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
@@ -671,7 +793,8 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     const char *name,       // name of the operator
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
@@ -680,7 +803,8 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     const char *name,       // name of the operator
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
@@ -689,44 +813,51 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     const char *name,       // name of the operator
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
 (
     const GrB_Monoid monoid,    // GraphBLAS monoid to print and check
-    const char *name,           // name of the monoid
+    const char *name,           // name of the monoid, optional
     int pr,                     // 0: print nothing, 1: print header and errors,
                                 // 2: print brief, 3: print all
-    FILE *f                     // file for output
+    FILE *f,                    // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
 (
     const GrB_Semiring semiring,    // GraphBLAS semiring to print and check
-    const char *name,               // name of the semiring
+    const char *name,               // name of the semiring, optional
     int pr,                         // 0: print nothing, 1: print header and
                                     // errors, 2: print brief, 3: print all
-    FILE *f                         // file for output
+    FILE *f,                        // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
 (
     const GrB_Descriptor D,     // GraphBLAS descriptor to print and check
-    const char *name,           // name of the descriptor
+    const char *name,           // name of the descriptor, optional
     int pr,                     // 0: print nothing, 1: print header and
                                 // errors, 2: print brief, 3: print all
-    FILE *f                     // file for output
+    FILE *f,                    // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 (
     const GrB_Matrix A,     // GraphBLAS matrix to print and check
-    const char *name,       // name of the matrix
+    const char *name,       // name of the matrix, optional
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
+                            // if negative, ignore queue conditions
+                            // and use GB_FLIP(pr) for diagnostic printing.
     FILE *f,                // file for output
-    const char *kind        // "matrix" or "vector"
+    const char *kind,       // "matrix" or "vector"
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
@@ -735,16 +866,18 @@ GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
     const char *name,       // name of the matrix
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Vector_check    // check a GraphBLAS vector
 (
-    const GrB_Vector A,     // GraphBLAS vector to print and check
+    const GrB_Vector v,     // GraphBLAS vector to print and check
     const char *name,       // name of the vector
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 ) ;
 
 #define GB_check(x,name,pr)                             \
@@ -769,7 +902,7 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
               GrB_Vector     : GB_Vector_check     ,    \
         const GrB_Descriptor : GB_Descriptor_check ,    \
               GrB_Descriptor : GB_Descriptor_check      \
-    ) (x, name, pr, stdout)
+    ) (x, name, pr, stdout, Context)
 
 //------------------------------------------------------------------------------
 // internal GraphBLAS functions
@@ -785,7 +918,7 @@ GB_Ap_code ;
 
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
-    GrB_Matrix *matrix_handle,  // handle of matrix to create
+    GrB_Matrix *Ahandle,        // handle of matrix to create
     const GrB_Type type,        // matrix type
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -793,12 +926,14 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     const bool is_csc,          // true if CSC, false if CSR
     const int hyper_option,     // 1:hyper, 0:nonhyper, -1:auto
     const double hyper_ratio,   // A->hyper_ratio, unless auto
-    const int64_t plen          // size of A->p and A->h, if hypersparse
+    const int64_t plen,         // size of A->p and A->h, if A hypersparse.
+                                // Ignored if A is not hypersparse.
+    GB_Context Context
 ) ;
 
 GrB_Info GB_create              // create a new matrix, including A->i and A->x
 (
-    GrB_Matrix *matrix_handle,  // output matrix to create
+    GrB_Matrix *Ahandle,        // output matrix to create
     const GrB_Type type,        // type of output matrix
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -808,59 +943,74 @@ GrB_Info GB_create              // create a new matrix, including A->i and A->x
     const double hyper_ratio,   // A->hyper_ratio, unless auto
     const int64_t plen,         // size of A->p and A->h, if hypersparse
     const int64_t anz,          // number of nonzeros the matrix must hold
-    const bool numeric          // if true, allocate A->x, else A->x is NULL
+    const bool numeric,         // if true, allocate A->x, else A->x is NULL
+    GB_Context Context
 ) ;
 
 GrB_Info GB_hyper_realloc
 (
     GrB_Matrix A,               // matrix with hyperlist to reallocate
-    int64_t plen_new            // new size of A->p and A->h
+    int64_t plen_new,           // new size of A->p and A->h
+    GB_Context Context
 ) ;
 
 GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
 (
-    GrB_Matrix A            // matrix to clear
+    GrB_Matrix A,           // matrix to clear
+    GB_Context Context
 ) ;
 
 GrB_Info GB_dup             // make an exact copy of a matrix
 (
-    GrB_Matrix *handle,     // handle of output matrix to create
-    const GrB_Matrix A      // input matrix to copy
+    GrB_Matrix *Chandle,    // handle of output matrix to create
+    const GrB_Matrix A,     // input matrix to copy
+    GB_Context Context
 ) ;
 
 GrB_Info GB_nvals           // get the number of entries in a matrix
 (
     GrB_Index *nvals,       // matrix has nvals entries
-    const GrB_Matrix A      // matrix to query
+    const GrB_Matrix A,     // matrix to query
+    GB_Context Context
 ) ;
 
 GrB_Info GB_type            // get the type of a matrix
 (
-    GrB_Type *type_handle,  // returns the type of the matrix
-    const GrB_Matrix A      // matrix to query
+    GrB_Type *type,         // returns the type of the matrix
+    const GrB_Matrix A,     // matrix to query
+    GB_Context Context
 ) ;
 
 GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
 (
     GrB_Matrix A,           // matrix to allocate space for
     const GrB_Index nzmax,  // number of entries the matrix can hold
-    const bool numeric      // if true, allocate A->x, otherwise A->x is NULL
+    const bool numeric,     // if true, allocate A->x, otherwise A->x is NULL
+    GB_Context Context
 ) ;
 
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
-    GrB_Matrix A,           // object to allocate space for
-    const GrB_Index nzmax,  // new number of entries the object can hold
-    const bool numeric      // if true, reallocate A->x, otherwise A->x is NULL
+    GrB_Matrix A,           // matrix to allocate space for
+    const GrB_Index nzmax,  // new number of entries the matrix can hold
+    const bool numeric,     // if true, reallocate A->x, otherwise A->x is NULL
+    GB_Context Context
 ) ;
 
 GrB_Info GB_ix_resize           // resize a matrix
 (
     GrB_Matrix A,
-    const int64_t anz_new       // required new nnz of A
+    const int64_t anz_new,      // required new nnz(A)
+    GB_Context Context
 ) ;
 
-void GB_ix_free                 // free A->i and A->x of a matrix
+// free A->i and A->x and return if critical section fails
+#define GB_IX_FREE(A)                                                       \
+{                                                                           \
+    if (GB_ix_free (A) == GrB_PANIC) return (GrB_PANIC) ;                   \
+}
+
+GrB_Info GB_ix_free             // free A->i and A->x of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 ) ;
@@ -870,12 +1020,25 @@ void GB_ph_free                 // free A->p and A->h of a matrix
     GrB_Matrix A                // matrix with content to free
 ) ;
 
-void GB_phix_free               // free all content of a matrix
+// free all content, including the Sauna, and return if critical section fails
+#define GB_CONTENT_FREE(A)                                                  \
+{                                                                           \
+    if (GB_phix_free (A, true) == GrB_PANIC) return (GrB_PANIC) ;           \
+}
+
+// free all content, but not the Sauna, and return if critical section fails
+#define GB_PHIX_FREE(A)                                                     \
+{                                                                           \
+    if (GB_phix_free (A, false) == GrB_PANIC) return (GrB_PANIC) ;          \
+}
+
+GrB_Info GB_phix_free           // free all content of a matrix
 (
-    GrB_Matrix A                // matrix with content to free
+    GrB_Matrix A,               // matrix with content to free
+    bool free_sauna             // if true, also free the Sauna
 ) ;
 
-void GB_free                    // free a matrix
+GrB_Info GB_free                // free a matrix
 (
     GrB_Matrix *matrix_handle   // handle of matrix to free
 ) ;
@@ -898,7 +1061,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
-    const GrB_UnaryOp op        // operator to apply, NULL if no operator
+    const GrB_UnaryOp op,       // operator to apply, NULL if no operator
+    GB_Context Context
 ) ;
 
 void GB_transpose_ix        // transpose the pattern and values of a matrix
@@ -928,20 +1092,22 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_UnaryOp op,           // operator to apply to the entries
     const GrB_Matrix A,             // first input:  matrix A
-    bool A_transpose                // A matrix descriptor
+    bool A_transpose,               // A matrix descriptor
+    GB_Context Context
 ) ;
 
-GrB_Info GB_select          // C<Mask> = accum (C, select(A,k)) or select(A',k)
+GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // C descriptor
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const bool Mask_comp,           // Mask descriptor
+    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const bool Mask_comp,           // descriptor for M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GxB_SelectOp op,          // operator to select the entries
     const GrB_Matrix A,             // input matrix
     const void *k,                  // optional input for select operator
-    bool A_transpose                // A matrix descriptor
+    const bool A_transpose,         // A matrix descriptor
+    GB_Context Context
 ) ;
 
 GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
@@ -949,7 +1115,8 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
     GrB_Matrix *Chandle,    // output matrix C, of type op->ztype
     const GrB_Type ctype,   // type of the output matrix C
     const bool C_is_csc,    // desired CSR/CSC format of C
-    const GrB_Matrix A      // input matrix to typecast
+    const GrB_Matrix A,     // input matrix to typecast
+    GB_Context Context
 ) ;
 
 GrB_Info GB_shallow_op      // create shallow matrix and apply operator
@@ -957,7 +1124,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     GrB_Matrix *Chandle,    // output matrix C, of type op->ztype
     const bool C_is_csc,    // desired CSR/CSC format of C
     const GrB_UnaryOp op,   // operator to apply
-    const GrB_Matrix A      // input matrix to typecast
+    const GrB_Matrix A,     // input matrix to typecast
+    GB_Context Context
 ) ;
 
 void GB_cast_array              // typecast an array
@@ -998,7 +1166,8 @@ GrB_Info GB_add             // C = A+B
     const bool C_is_csc,    // format of output matrix C
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
-    const GrB_BinaryOp op   // op to perform C = op (A,B)
+    const GrB_BinaryOp op,  // op to perform C = op (A,B)
+    GB_Context Context
 ) ;
 
 GrB_Info GB_emult           // C = A.*B
@@ -1008,21 +1177,24 @@ GrB_Info GB_emult           // C = A.*B
     const bool C_is_csc,    // format of output matrix C
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
-    const GrB_BinaryOp op   // op to perform C = op (A,B)
+    const GrB_BinaryOp op,  // op to perform C = op (A,B)
+    GB_Context Context
 ) ;
 
 GrB_Info GB_transplant          // transplant one matrix into another
 (
-    GrB_Matrix C,               // matrix to overwrite with A
+    GrB_Matrix C,               // output matrix to overwrite with A
     const GrB_Type ctype,       // new type of C
-    GrB_Matrix *Ahandle         // matrix to copy from and free
+    GrB_Matrix *Ahandle,        // input matrix to copy from and free
+    GB_Context Context
 ) ;
 
 GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 (
     GrB_Matrix C,                   // destination matrix to transplant into
     GrB_Type ctype,                 // type to cast into
-    GrB_Matrix *Thandle             // source matrix
+    GrB_Matrix *Thandle,            // source matrix
+    GB_Context Context
 ) ;
 
 size_t GB_code_size             // return the size of a type, given its code
@@ -1055,9 +1227,11 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
 
 void GB_free_memory
 (
-    void *p,                // pointer to allocated block of memory to free
-    size_t nitems,          // number of items to free
-    size_t size_of_item     // sizeof each item
+    void *p                 // pointer to allocated block of memory to free
+    #ifdef GB_MALLOC_TRACKING
+    , size_t nitems         // number of items to free
+    , size_t size_of_item   // sizeof each item
+    #endif
 ) ;
 
 //------------------------------------------------------------------------------
@@ -1066,6 +1240,10 @@ void GB_free_memory
 
 // if GB_PRINT_MALLOC is define above, these macros print diagnostic
 // information, meant for development of SuiteSparse:GraphBLAS only
+
+#ifndef GB_PANIC
+#define GB_PANIC return (GrB_PANIC)
+#endif
 
 #ifdef GB_PRINT_MALLOC
 
@@ -1076,7 +1254,8 @@ void GB_free_memory
         " line %d file %s\n", GB_STR(A), GB_STR(type),                        \
         (int64_t) vlen, (int64_t) vdim, Ap_option, is_csc, hopt, h,           \
         (int64_t) plen, __LINE__, __FILE__) ;                                 \
-    info = GB_new (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen) ;   \
+    info = GB_new (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,     \
+        Context) ;                                                            \
 }
 
 #define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric)  \
@@ -1084,10 +1263,10 @@ void GB_free_memory
     printf ("\nmatrix create:                %s = new (%s, vlen = "GBd        \
         ", vdim = "GBd", Ap:%d, csc:%d, hyper:%d %g, plen:"GBd", anz:"GBd     \
         " numeric:%d) line %d file %s\n", GB_STR(A), GB_STR(type),            \
-        (int64_t) vlen, (int64_t) vdim, Ap_option, is_csc, hopt,              \
+        (int64_t) vlen, (int64_t) vdim, Ap_option, is_csc, hopt, h,           \
         (int64_t) plen, (int64_t) anz, numeric, __LINE__, __FILE__) ;         \
     info = GB_create (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,  \
-        anz, numeric) ;                                                       \
+        anz, numeric, Context) ;                                              \
 }
 
 #define GB_MATRIX_FREE(A)                                                     \
@@ -1095,7 +1274,7 @@ void GB_free_memory
     if (A != NULL && *(A) != NULL)                                            \
         printf ("\nmatrix free:                  "                            \
         "matrix_free (%s) line %d file %s\n", GB_STR(A), __LINE__, __FILE__) ;\
-    GB_free (A) ;                                                             \
+    if (GB_free (A) == GrB_PANIC) GB_PANIC ;                                  \
 }
 
 #define GB_VECTOR_FREE(v)                                                     \
@@ -1103,7 +1282,7 @@ void GB_free_memory
     if (v != NULL && *(v) != NULL)                                            \
         printf ("\nvector free:                  "                            \
         "vector_free (%s) line %d file %s\n", GB_STR(v), __LINE__, __FILE__) ;\
-    GB_free ((GrB_Matrix *) v) ;                                              \
+    if (GB_free ((GrB_Matrix *) v) == GrB_PANIC) GB_PANIC ;                   \
 }
 
 #define GB_CALLOC_MEMORY(p,n,s)                                               \
@@ -1144,24 +1323,22 @@ void GB_free_memory
 
 #define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen)                 \
 {                                                                             \
-    info = GB_new (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen) ;   \
+    info = GB_new (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,     \
+        Context) ;                                                            \
 }
 
 #define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric)  \
 {                                                                             \
     info = GB_create (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,  \
-        anz, numeric) ;                                                       \
+        anz, numeric, Context) ;                                              \
 }
 
 #define GB_MATRIX_FREE(A)                                                     \
 {                                                                             \
-    GB_free (A) ;                                                             \
+    if (GB_free (A) == GrB_PANIC) GB_PANIC ;                                  \
 }
 
-#define GB_VECTOR_FREE(v)                                                     \
-{                                                                             \
-    GB_free ((GrB_Matrix *) v) ;                                              \
-}
+#define GB_VECTOR_FREE(v) GB_MATRIX_FREE ((GrB_Matrix *) v)
 
 #define GB_CALLOC_MEMORY(p,n,s)                                               \
     p = GB_calloc_memory (n, s) ;
@@ -1174,11 +1351,21 @@ void GB_free_memory
     p = GB_realloc_memory (nnew, nold, s, p, ok) ;                            \
 }
 
-#define GB_FREE_MEMORY(p,n,s)                                                 \
-{                                                                             \
-    GB_free_memory (p, n, s) ;                                                \
-    (p) = NULL ;                                                              \
-}
+#ifdef GB_MALLOC_TRACKING
+    // free memory, with malloc tracking
+    #define GB_FREE_MEMORY(p,n,s)                                             \
+    {                                                                         \
+        GB_free_memory (p, n, s) ;                                            \
+        (p) = NULL ;                                                          \
+    }
+#else
+    // free memory, no malloc tracking
+    #define GB_FREE_MEMORY(p,n,s)                                             \
+    {                                                                         \
+        GB_free_memory (p) ;                                                  \
+        (p) = NULL ;                                                          \
+    }
+#endif
 
 #endif
 
@@ -1200,7 +1387,8 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess   // rough estimate of nnz(C)
+    const int64_t rough_guess,  // rough estimate of nnz(C)
+    GB_Context Context
 ) ;
 
 GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
@@ -1210,8 +1398,9 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     const GrB_Matrix A_in,          // input matrix A
     const GrB_Matrix B_in,          // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
-    const bool flipxy               // if true, do z=fmult(b,a) vs fmult(a,b)
-//  const bool flops_are_low        // true if flop count is very low
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
+    GB_Context Context
 ) ;
 
 // used in GB_AxB_heap for temporary workspace
@@ -1239,7 +1428,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const int64_t bjnz_max          // max # entries in any vector of B
+    const int64_t bjnz_max,         // max # entries in any vector of B
+    GB_Context Context
 ) ;
 
 GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
@@ -1250,7 +1440,10 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const GrB_Desc_Value AxB_method // for auto vs user selection of methods
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    GrB_Desc_Value *AxB_method_used,// method selected
+    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
+    GB_Context Context
 ) ;
 
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
@@ -1266,7 +1459,10 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     bool B_transpose,               // if true, use B', else B
     bool flipxy,                    // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *mask_applied,             // if true, mask was applied
-    const GrB_Desc_Value AxB_method // for auto vs user selection of methods
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    GrB_Desc_Value *AxB_method_used,// method selected
+    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
+    GB_Context Context
 ) ;
 
 bool GB_semiring_builtin            // true if semiring is builtin
@@ -1291,7 +1487,9 @@ GrB_Info GB_AxB_Gustavson_builtin
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *done                      // true if C=A*B has been computed
+    bool *done,                     // true if C=A*B has been computed
+    GB_Sauna Sauna,                 // sparse accumulator
+    GB_Context Context
 ) ;
 
 GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
@@ -1301,15 +1499,16 @@ GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
-    const bool flipxy               // if true, do z=fmult(b,a) vs fmult(a,b)
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    GB_Context Context
 ) ;
 
-GrB_Info GB_mxm                     // C<Mask> = A*B
+GrB_Info GB_mxm                     // C<M> = A*B
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // if true, clear C before writing to it
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const bool Mask_comp,           // if true, use ~Mask
+    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const bool Mask_comp,           // if true, use ~M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Semiring semiring,    // defines '+' and '*' for C=A*B
     const GrB_Matrix A,             // input matrix
@@ -1317,7 +1516,8 @@ GrB_Info GB_mxm                     // C<Mask> = A*B
     const GrB_Matrix B,             // input matrix
     const bool B_transpose,         // if true, use B' instead of B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const GrB_Desc_Value AxB_method // for auto vs user selection of methods
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    GB_Context Context
 ) ;
 
 int64_t GB_cumsum               // compute the cumulative sum of an array
@@ -1327,15 +1527,16 @@ int64_t GB_cumsum               // compute the cumulative sum of an array
     const int64_t n
 ) ;
 
-GrB_Info GB_mask                // C<Mask> = Z
+GrB_Info GB_mask                // C<M> = Z
 (
-    GrB_Matrix C,               // both output C and result matrix Cresult
-    const GrB_Matrix Mask,      // optional Mask matrix, can be NULL
+    GrB_Matrix C_result,        // both input C and result matrix
+    const GrB_Matrix M,         // optional Mask matrix, can be NULL
     GrB_Matrix *Zhandle,        // Z = results of computation, might be shallow
-                                // or can even be NULL if Mask is empty and
+                                // or can even be NULL if M is empty and
                                 // complemented.  Z is freed when done.
     const bool C_replace,       // true if clear(C) to be done first
-    const bool Mask_complement  // true if Mask is to be complemented
+    const bool Mask_complement, // true if M is to be complemented
+    GB_Context Context
 ) ;
 
 GrB_Info GB_accum_mask          // C<M> = accum (C,T)
@@ -1346,7 +1547,8 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     const GrB_BinaryOp accum,   // optional accum for Z=accum(C,results)
     GrB_Matrix *Thandle,        // results of computation, freed when done
     const bool C_replace,       // if true, clear C first
-    const bool Mask_complement  // if true, complement the mask
+    const bool Mask_complement, // if true, complement the mask
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Descriptor_get      // get the contents of a descriptor
@@ -1356,7 +1558,8 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     bool *Mask_comp,            // if true use logical negation of Mask
     bool *In0_transpose,        // if true transpose first input
     bool *In1_transpose,        // if true transpose second input
-    GrB_Desc_Value *AxB_method  // method for C=A*B
+    GrB_Desc_Value *AxB_method, // method for C=A*B
+    GB_Context Context
 ) ;
 
 GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
@@ -1365,15 +1568,17 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     const GrB_Matrix C,         // the output matrix C; NULL if C is a scalar
     const GrB_Matrix Mask,      // optional Mask, NULL if no mask
     const GrB_BinaryOp accum,   // C<Mask> = accum(C,T) is computed
-    const GrB_Type ttype        // type of T
+    const GrB_Type ttype,       // type of T
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Mask_compatible     // check type and dimensions of mask
 (
     const GrB_Matrix Mask,      // mask to check
     const GrB_Matrix C,         // C<Mask>= ...
-    const GrB_Index nrows,      // size of output if C is NULL
-    const GrB_Index ncols
+    const GrB_Index nrows,      // size of output if C is NULL (see GB*assign)
+    const GrB_Index ncols,
+    GB_Context Context
 ) ;
 
 GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
@@ -1382,7 +1587,8 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     const GrB_Type ctype,           // C must be compatible with op->ztype
     const GrB_Type atype,           // A must be compatible with op->xtype
     const GrB_Type btype,           // B must be compatible with op->ytype
-    const GB_Type_code bcode        // B may not have a type, just a code
+    const GB_Type_code bcode,       // B may not have a type, just a code
+    GB_Context Context
 ) ;
 
 void GB_qsort_1         // sort array A of size 1-by-n
@@ -1419,10 +1625,11 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     const bool C_is_csc,        // requested format of C
     const GrB_Matrix A,         // input matrix
     const GrB_Index *I,         // list of indices, duplicates OK
-    int64_t ni,                 // length of I
+    int64_t ni,                 // length of the I array, or special
     const GrB_Index *J,         // list of vector indices, duplicates OK
-    int64_t nj                  // length of J
-    , const bool must_sort      // if true, must return C sorted
+    int64_t nj,                 // length of the J array, or special
+    const bool must_sort,       // if true, must return C sorted
+    GB_Context Context
 ) ;
 
 GrB_Info GB_subref_symbolic     // C = A (I,J), extract the pattern
@@ -1431,38 +1638,41 @@ GrB_Info GB_subref_symbolic     // C = A (I,J), extract the pattern
     const bool C_is_csc,        // requested format of C
     const GrB_Matrix A,         // input matrix
     const GrB_Index *I,         // list of indices, duplicates OK
-    int64_t ni,                 // length of I
+    int64_t ni,                 // length of the I array, or special
     const GrB_Index *J,         // list of vector indices, duplicates OK
-    int64_t nj                  // length of J
+    int64_t nj,                 // length of the J array, or special
+    GB_Context Context
 ) ;
 
-GrB_Info GB_I_inverse
+GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
 (
     const GrB_Index *I,         // list of indices, duplicates OK
     int64_t nI,                 // length of I
     int64_t avlen,              // length of the vectors of A
     bool need_Iwork1,           // true if Iwork1 of size nI needed for sorting
     // outputs:
-    int64_t **p_Mark,
-    int64_t **p_Inext,
-    int64_t **p_Iwork1,
-    int64_t *p_nduplicates,     // number of duplicate entires in I
-    int64_t *p_flag
+    int64_t **p_Mark,           // head pointers for buckets, size avlen
+    int64_t **p_Inext,          // next pointers for buckets, size nI
+    int64_t **p_Iwork1,         // workspace of size nI, if needed
+    int64_t *p_nduplicates,     // number of duplicate entries in I
+    int64_t *p_flag,            // Mark [0:avlen-1] < flag
+    GB_Context Context
 ) ;
 
-GrB_Info GB_extract                 // C<Mask> = accum (C, A(I,J))
+GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // C matrix descriptor
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const bool Mask_comp,           // Mask descriptor
+    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const bool Mask_comp,           // mask descriptor
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Matrix A,             // input matrix
     const bool A_transpose,         // A matrix descriptor
     const GrB_Index *Rows,          // row indices
     const GrB_Index nRows_in,       // number of row indices
     const GrB_Index *Cols,          // column indices
-    const GrB_Index nCols_in        // number of column indices
+    const GrB_Index nCols_in,       // number of column indices
+    GB_Context Context
 ) ;
 
 GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
@@ -1477,8 +1687,9 @@ GrB_Info GB_eWise                   // C<M> = accum (C, A+B) or A.*B
     bool A_transpose,               // if true, use A' instead of A
     const GrB_Matrix B,             // input matrix
     bool B_transpose,               // if true, use B' instead of B
-    const bool eWiseAdd             // if true, do set union (like A+B),
+    const bool eWiseAdd,            // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
+    GB_Context Context
 ) ;
 
 GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
@@ -1488,16 +1699,18 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_BinaryOp reduce,      // reduce operator for t=reduce(A)
     const GrB_Matrix A,             // first input:  matrix A
-    const GrB_Descriptor desc       // descriptor for w, mask, and A
+    const GrB_Descriptor desc,      // descriptor for w, mask, and A
+    GB_Context Context
 ) ;
 
-GrB_Info GB_reduce_to_scalar    // t = reduce_to_scalar (A)
+GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
 (
     void *c,                    // result scalar
-    const GrB_Type ctype,       // the type of the scalar c
-    const GrB_BinaryOp accum,   // optional accum for c = accum(c,t)
+    const GrB_Type ctype,       // the type of scalar, c
+    const GrB_BinaryOp accum,   // for c = accum(c,twork)
     const GrB_Monoid reduce,    // monoid to do the reduction
-    const GrB_Matrix A          // matrix to reduce
+    const GrB_Matrix A,         // matrix to reduce
+    GB_Context Context
 ) ;
 
 GB_Opcode GB_boolean_rename     // renamed opcode
@@ -1521,29 +1734,32 @@ bool GB_size_t_multiply     // true if ok, false if overflow
 
 GrB_Info GB_extractTuples       // extract all tuples from a matrix
 (
-    GrB_Index *I,               // array for returning row indices of tuples
-    GrB_Index *J,               // array for returning col indices of tuples
+    GrB_Index *I_out,           // array for returning row indices of tuples
+    GrB_Index *J_out,           // array for returning col indices of tuples
     void *X,                    // array for returning values of tuples
-    GrB_Index *nvals,           // I,J,X size on input; # tuples on output
+    GrB_Index *p_nvals,         // I,J,X size on input; # tuples on output
     const GB_Type_code xcode,   // type of array X
-    const GrB_Matrix A          // matrix to extract tuples from
+    const GrB_Matrix A,         // matrix to extract tuples from
+    GB_Context Context
 ) ;
 
-GrB_Info GB_extractElement      // extract a single entry, x = A(i,j)
+GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)
 (
     void *x,                    // scalar to extract, not modified if not found
     const GB_Type_code xcode,   // type of the scalar x
     const GrB_Matrix A,         // matrix to extract a scalar from
-    const GrB_Index i,          // row index
-    const GrB_Index j           // column index
+    const GrB_Index row,        // row index
+    const GrB_Index col,        // column index
+    GB_Context Context
 ) ;
 
 GrB_Info GB_Monoid_new          // create a monoid
 (
-    GrB_Monoid *monoid_handle,  // handle of monoid to create
+    GrB_Monoid *monoid,         // handle of monoid to create
     const GrB_BinaryOp op,      // binary operator of the monoid
-    const void *id,             // identity value
-    const GB_Type_code idcode   // identity code
+    const void *identity,       // identity value
+    const GB_Type_code idcode,  // identity code
+    GB_Context Context
 ) ;
 
 GrB_Info GB_user_build          // check inputs then build matrix
@@ -1555,7 +1771,8 @@ GrB_Info GB_user_build          // check inputs then build matrix
     const GrB_Index nvals,      // number of tuples
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
     const GB_Type_code scode,   // GB_Type_code of S array
-    const bool is_matrix        // true if C is a matrix, false if GrB_Vector
+    const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
+    GB_Context Context
 ) ;
 
 GrB_Info GB_build               // build matrix
@@ -1563,12 +1780,13 @@ GrB_Info GB_build               // build matrix
     GrB_Matrix C,               // matrix to build
     const GrB_Index *I_in,      // row indices of tuples
     const GrB_Index *J_in,      // col indices of tuples
-    const void *X,              // array of values of tuples
+    const void *S,              // array of values of tuples
     const GrB_Index nvals,      // number of tuples
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
-    const GB_Type_code X_code,  // GB_Type_code of X array
+    const GB_Type_code scode,   // GB_Type_code of S array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
-    const bool ijcheck          // true if I and J are to be checked
+    const bool ijcheck,         // true if I and J are to be checked
+    GB_Context Context
 ) ;
 
 GrB_Info GB_builder
@@ -1587,7 +1805,8 @@ GrB_Info GB_builder
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
                                     // if NULL use the "SECOND" function to
                                     // keep the most recent duplicate.
-    const GB_Type_code scode        // GB_Type_code of S array
+    const GB_Type_code scode,       // GB_Type_code of S array
+    GB_Context Context
 ) ;
 
 GrB_Info GB_build_factory           // build a matrix
@@ -1602,12 +1821,14 @@ GrB_Info GB_build_factory           // build a matrix
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
                                     // if NULL use the "SECOND" function to
                                     // keep the most recent duplicate.
-    const GB_Type_code scode        // GB_Type_code of S array
+    const GB_Type_code scode,       // GB_Type_code of S array
+    GB_Context Context
 ) ;
 
 GrB_Info GB_wait                // finish all pending computations
 (
-    GrB_Matrix A                // matrix with pending computations
+    GrB_Matrix A,               // matrix with pending computations
+    GB_Context Context
 ) ;
 
 GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
@@ -1617,7 +1838,8 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     const GrB_Type stype,           // scalar type
     const GrB_BinaryOp pop,         // new A->operator_pending, if 1st pending
     const int64_t i,                // index into vector
-    const int64_t j                 // vector index
+    const int64_t j,                // vector index
+    GB_Context Context
 ) ;
 
 void GB_pending_free            // free all pending tuples
@@ -1625,39 +1847,67 @@ void GB_pending_free            // free all pending tuples
     GrB_Matrix A                // matrix with pending tuples to free
 ) ;
 
-void GB_queue_remove            // remove matrix from queue
+//------------------------------------------------------------------------------
+// GB_queue operations
+//------------------------------------------------------------------------------
+
+// GB_queue_* can fail if the critical section fails.  This is an unrecoverable
+// error, so return a panic if it fails.  All GB_queue_* operations are used
+// via the GB_CRITICAL macro.  GrB_init uses GB_CRITICAL as well.
+
+// GB_CRITICAL: GB_queue_* inside a critical section, which 'cannot' fail
+#define GB_CRITICAL(op) if (!(op)) return (GrB_PANIC) ;
+
+bool GB_queue_create ( ) ;      // create the queue and thread-local storage
+
+bool GB_queue_init              // initialize the queue
+(
+    const GrB_Mode mode,        // blocking or non-blocking mode
+    bool *I_was_first           // true if this is the first time
+) ;
+
+bool GB_queue_remove            // remove matrix from queue
 (
     GrB_Matrix A                // matrix to remove
 ) ;
 
-void GB_queue_insert            // insert matrix at the head of queue
+bool GB_queue_insert            // insert matrix at the head of queue
 (
     GrB_Matrix A                // matrix to insert
 ) ;
 
-GrB_Matrix GB_queue_remove_head ( ) ; // return matrix or NULL if queue empty
-
-void GB_queue_status
+bool GB_queue_remove_head       // remove matrix at the head of queue
 (
-    GrB_Matrix A,           // matrix to check
-    GrB_Matrix *head,       // head of the queue
-    GrB_Matrix *prev,       // prev from A
-    GrB_Matrix *next,       // next after A
-    bool *enqd              // true if A is in the queue
+    GrB_Matrix *Ahandle         // return matrix or NULL if queue empty
 ) ;
 
-GrB_Info GB_setElement          // set a single entry, C(i,j) = x
+bool GB_queue_status            // get the queue status of a matrix
 (
-    GrB_Matrix C,               // matrix to modify
-    const void *x,              // scalar to set
-    const GrB_Index i_in,       // row index
-    const GrB_Index j_in,       // column index
-    const GB_Type_code xcode    // type of the scalar x
+    GrB_Matrix A,               // matrix to check
+    GrB_Matrix *p_head,         // head of the queue
+    GrB_Matrix *p_prev,         // prev from A
+    GrB_Matrix *p_next,         // next after A
+    bool *p_enqd                // true if A is in the queue
+) ;
+
+bool GB_queue_destroy ( ) ;     // destroy the queue
+
+//------------------------------------------------------------------------------
+
+GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
+(
+    GrB_Matrix C,                   // matrix to modify
+    const void *scalar,             // scalar to set
+    const GrB_Index row,            // row index
+    const GrB_Index col,            // column index
+    const GB_Type_code scalar_code, // type of the scalar
+    GB_Context Context
 ) ;
 
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
-    GrB_Matrix A
+    GrB_Matrix A,
+    GB_Context Context
 ) ;
 
 GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
@@ -1676,7 +1926,8 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     const GrB_Index nCols_in,       // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    GB_Context Context
 ) ;
 
 GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
@@ -1695,9 +1946,10 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     const GrB_Index nCols_in,       // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
-    , const bool col_assign         // true for GrB_Col_assign
-    , const bool row_assign         // true for GrB_Row_assign
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    const bool col_assign,          // true for GrB_Col_assign
+    const bool row_assign,          // true for GrB_Row_assign
+    GB_Context Context
 ) ;
 
 GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
@@ -1714,35 +1966,38 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     const int64_t   nj,             // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    GB_Context Context
 ) ;
 
-GrB_Info GB_subassign_scalar        // C(I,J)<Mask> = accum (C(I,J),x)
+GrB_Info GB_subassign_scalar        // C(Rows,Cols)<Mask> += x
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix Mask,          // optional mask for C(I,J), unused if NULL
-    const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),T)
-    const void *scalar,             // scalar to assign to C(I,J)
+    const GrB_Matrix Mask,          // mask for C(Rows,Cols), unused if NULL
+    const GrB_BinaryOp accum,       // accum for Z=accum(C(Rows,Cols),T)
+    const void *scalar,             // scalar to assign to C(Rows,Cols)
     const GB_Type_code scalar_code, // type code of scalar to assign
-    const GrB_Index *I,             // row indices
-    const GrB_Index ni,             // number of row indices
-    const GrB_Index *J,             // column indices
-    const GrB_Index nj,             // number of column indices
-    const GrB_Descriptor desc       // descriptor for C(I,J) and Mask
+    const GrB_Index *Rows,          // row indices
+    const GrB_Index nRows,          // number of row indices
+    const GrB_Index *Cols,          // column indices
+    const GrB_Index nCols,          // number of column indices
+    const GrB_Descriptor desc,      // descriptor for C(Rows,Cols) and Mask
+    GB_Context Context
 ) ;
 
-GrB_Info GB_assign_scalar           // C<Mask>(I,J) = accum (C(I,J),x)
+GrB_Info GB_assign_scalar           // C<Mask>(Rows,Cols) += x
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),T)
-    const void *scalar,             // scalar to assign to C(I,J)
+    const GrB_Matrix Mask,          // mask for C(Rows,Cols), unused if NULL
+    const GrB_BinaryOp accum,       // accum for Z=accum(C(Rows,Cols),T)
+    const void *scalar,             // scalar to assign to C(Rows,Cols)
     const GB_Type_code scalar_code, // type code of scalar to assign
-    const GrB_Index *I,             // row indices
-    const GrB_Index ni,             // number of row indices
-    const GrB_Index *J,             // column indices
-    const GrB_Index nj,             // number of column indices
-    const GrB_Descriptor desc       // descriptor for C and Mask
+    const GrB_Index *Rows,          // row indices
+    const GrB_Index nRows,          // number of row indices
+    const GrB_Index *Cols,          // column indices
+    const GrB_Index nCols,          // number of column indices
+    const GrB_Descriptor desc,      // descriptor for C and Mask
+    GB_Context Context
 ) ;
 
 bool GB_op_is_second    // return true if op is SECOND, of the right type
@@ -1763,21 +2018,23 @@ GrB_Info GB_resize              // change the size of a matrix
 (
     GrB_Matrix A,               // matrix to modify
     const GrB_Index nrows_new,  // new number of rows in matrix
-    const GrB_Index ncols_new   // new number of columns in matrix
+    const GrB_Index ncols_new,  // new number of columns in matrix
+    GB_Context Context
 ) ;
 
-GrB_Info GB_kron                    // C<Mask> = accum (C, kron(A,B))
+GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // if true, clear C before writing to it
-    const GrB_Matrix Mask,          // optional mask for C, unused if NULL
-    const bool Mask_comp,           // if true, use ~Mask
+    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const bool Mask_comp,           // if true, use ~M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_BinaryOp op,          // defines '*' for kron(A,B)
     const GrB_Matrix A,             // input matrix
     bool A_transpose,               // if true, use A' instead of A
     const GrB_Matrix B,             // input matrix
-    bool B_transpose                // if true, use B' instead of B
+    bool B_transpose,               // if true, use B' instead of B
+    GB_Context Context
 ) ;
 
 GrB_Info GB_kron_kernel             // C = kron (A,B)
@@ -1786,12 +2043,8 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     const bool C_is_csc,            // desired format of C
     const GrB_BinaryOp op,          // multiply operator
     const GrB_Matrix A,             // input matrix
-    const GrB_Matrix B              // input matrix
-) ;
-
-void GB_stats
-(
-    GxB_Statistics *stats           // return statistics
+    const GrB_Matrix B,             // input matrix
+    GB_Context Context
 ) ;
 
 void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
@@ -1809,8 +2062,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     GrB_Type ctype,             // desired type of C; if NULL use A->type.
                                 // ignored if op is present (cast to op->ztype)
     const bool C_is_csc,        // desired CSR/CSC format of C
-    const GrB_Matrix A_in,      // input matrix, NULL if C is modified in place
-    const GrB_UnaryOp op_in     // optional operator to apply to the values
+    const GrB_Matrix A_in,      // input matrix
+    const GrB_UnaryOp op_in,    // optional operator to apply to the values
+    GB_Context Context
 ) ;
 
 int64_t GB_nvec_nonempty        // return # of non-empty vectors
@@ -1820,12 +2074,14 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
 
 GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
 (
-    GrB_Matrix A            // matrix to convert to non-hypersparse
+    GrB_Matrix A,           // matrix to convert to non-hypersparse
+    GB_Context Context
 ) ;
 
 GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 (
-    GrB_Matrix A            // matrix to convert to hypersparse
+    GrB_Matrix A,           // matrix to convert to hypersparse
+    GB_Context Context
 ) ;
 
 bool GB_to_nonhyper_test    // test for conversion to hypersparse
@@ -1846,22 +2102,8 @@ bool GB_to_hyper_test       // test for conversion to hypersparse
 
 GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
 (
-    GrB_Matrix A                // matrix to conform
-) ;
-
-void GB_global_option_set       // set one or more global options
-(
-    bool set_hyper_ratio,       // if true, set the hyper_ratio
-    double hyper_ratio,
-    bool set_format,            // if true, set the format
-    GxB_Format_Value format
-) ;
-
-void GB_global_option_get       // get one or more global options
-(
-    double *hyper_ratio,
-    GxB_Format_Value *format,
-    bool *is_csc
+    GrB_Matrix A,               // matrix to conform
+    GB_Context Context
 ) ;
 
 //------------------------------------------------------------------------------
@@ -1899,6 +2141,9 @@ typedef struct
     // be done in O(1) time, except for GrB_wait which needs to traverse the
     // whole list once and then the list is empty afterwards.
 
+    // The access of these variables must be protected in a critical section,
+    // if the user application is multithreaded.
+
     void *queue_head ;          // head pointer to matrix queue
 
     GrB_Mode mode ;             // GrB_NONBLOCKING or GrB_BLOCKING
@@ -1906,17 +2151,44 @@ typedef struct
     bool GrB_init_called ;      // true if GrB_init already called
 
     //--------------------------------------------------------------------------
-    // hypersparsity control
+    // critical section for user threads
     //--------------------------------------------------------------------------
 
-    // See GB_matrix.h and GraphBLAS.h for a description.
+    // User-level threads may call GraphBLAS in parallel, so the access to
+    // the global queue for GrB_wait must be protected by a critical section.
+    // The critical section method should match the user threading model.
+
+    #if defined (USER_POSIX_THREADS)
+    // for user applications that use POSIX pthreads
+    pthread_mutex_t sync ;
+    #elif defined (USER_WINDOWS_THREADS)
+    // for user applications that use Windows threads (not yet supported)
+    CRITICAL_SECTION sync ; 
+    #elif defined (USER_ANSI_THREADS)
+    // for user applications that use ANSI C11 threads (not yet supported)
+    mtx_t sync ;
+    #else // USER_OPENMP_THREADS, or USER_NO_THREADS
+    // nothing to do for OpenMP, or for no user threading
+    #endif
+
+    //--------------------------------------------------------------------------
+    // hypersparsity and CSR/CSC format control
+    //--------------------------------------------------------------------------
+
+    // See GB_matrix.h and GraphBLAS.h for a description.  It is safe for
+    // a multi-threaded application to modify these in parallel, and thus
+    // they do not need to be protected by a critical section.
 
     double hyper_ratio ;        // default hyper_ratio for new matrices
     bool is_csc ;               // default CSR/CSC format for new matrices
 
     //--------------------------------------------------------------------------
-    // malloc tracking
+    // malloc tracking: for testing and debugging only
     //--------------------------------------------------------------------------
+
+    #ifdef GB_MALLOC_TRACKING
+
+    // NOTE: these statistics are not thread-safe, and used only for testing.
 
     // nmalloc:  To aid in searching for memory leaks, GraphBLAS keeps track of
     // the number of blocks of allocated by malloc, calloc, or realloc that
@@ -1942,6 +2214,8 @@ typedef struct
     int64_t inuse ;                 // memory space current in use
     int64_t maxused ;               // high water memory usage
 
+    #endif
+
 }
 GB_Global_struct ;
 
@@ -1954,232 +2228,30 @@ extern GB_Global_struct GB_Global ;
 // Thread local storage is used to to record the details of the last error
 // encountered (for GrB_error).  If the user application is multi-threaded,
 // each thread that calls GraphBLAS needs its own private copy of these
-// variables.
+// variables.  Thus, this method must match the user-thread model.
 
-#define GB_RLEN 3000
-#define GB_DLEN 2048
+#if defined (USER_POSIX_THREADS)
+// thread-local storage for POSIX THREADS
+extern pthread_key_t GB_thread_local_report ;
 
-typedef struct
-{
+#elif defined (USER_WINDOWS_THREADS)
+// for user applications that use Windows threads:
+#error "Windows threads not yet supported"
 
-    //--------------------------------------------------------------------------
-    // Error status
-    //--------------------------------------------------------------------------
+#elif defined (USER_ANSI_THREADS)
+// for user applications that use ANSI C11 threads:
+// (this should work per the ANSI C11 specification but is not yet supported)
+_Thread_local extern char GB_thread_local_report [GB_RLEN+1] ;
 
-    GrB_Info info ;             // last error code
-    GrB_Index row, col ;        // last A(row,col) searched for but not found
-    bool is_matrix ;            // last search matrix (true) or vector (false)
-    const char *where ;         // GraphBLAS function where error occurred
-    const char *file ;          // GraphBLAS filename where error occured
-    int line ;                  // line in the GraphBLAS file of error
-    char details [GB_DLEN+1] ;  // string with details of the error
-    char report [GB_RLEN+1] ;   // string returned by GrB_error
-
-    //--------------------------------------------------------------------------
-    // workspace
-    //--------------------------------------------------------------------------
-
-    // Initialized space: Mark is an array of size Mark_size.  When cleared,
-    // Mark [0..Mark_size-1] < Mark_flag holds.
-
-    int64_t *Mark ;                 // initialized space
-    int64_t Mark_flag ;             // current watermark in Mark [...]
-    int64_t Mark_size ;             // current size of Mark array
-
-    // Uninitialized space:
-    void *Work ;                    // uninitialized space
-    size_t Work_size ;              // current size of Work array
-
-    // Initialized space: Flag is an array of size Flag_size.  When cleared,
-    // it is all equal to zero.
-
-    int8_t *Flag ;                  // initialized space
-    int64_t Flag_size ;             // current size of Flag array
-
-    //--------------------------------------------------------------------------
-    // random seed for GB_rand
-    //--------------------------------------------------------------------------
-
-    uint64_t seed ;
-
-    //--------------------------------------------------------------------------
-    // algorithm selector
-    //--------------------------------------------------------------------------
-
-    GrB_Desc_Value AxB_method ;     // last method used in C=A*B
-
-}
-GB_thread_local_struct ;
-
-_Thread_local extern GB_thread_local_struct GB_thread_local ;
-
-//------------------------------------------------------------------------------
-// random number generator
-//------------------------------------------------------------------------------
-
-// return a random GrB_Index, in range 0 to 2^60
-#define GB_RAND_MAX 32767
-
-// return a random number between 0 and GB_RAND_MAX
-static inline GrB_Index GB_rand15 ( )
-{ 
-   GB_thread_local.seed = GB_thread_local.seed * 1103515245 + 12345 ;
-   return ((GB_thread_local.seed / 65536) % (GB_RAND_MAX + 1)) ;
-}
-
-// return a random GrB_Index, in range 0 to 2^60
-static inline GrB_Index GB_rand ( )
-{ 
-    GrB_Index i = GB_rand15 ( ) ;
-    i = GB_RAND_MAX * i + GB_rand15 ( ) ;
-    i = GB_RAND_MAX * i + GB_rand15 ( ) ;
-    i = GB_RAND_MAX * i + GB_rand15 ( ) ;
-    return (i) ;
-}
-
-//------------------------------------------------------------------------------
-// error logging
-//------------------------------------------------------------------------------
-
-// The GB_ERROR and GB_LOG macros work together.  If an error occurs, the
-// GB_ERROR macro records the details in thread local storage
-// (GB_thread_local), and returns the GrB_info to its 'caller'.  This value can
-// then be returned, or set to an info variable of type GrB_Info.  For example:
-//
-//
-//  if (i >= nrows)
-//  {
-//      return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
-//          "Row index %d out of bounds; must be < %d", i, nrows))) ;
-//  }
-//
-// The user can then do:
-//
-//  printf ("%s", GrB_error ( )) ;
-//
-// To print details of the error, which includes: which user-callable function
-// encountered the error, the error status (GrB_INDEX_OUT_OF_BOUNDS), the
-// details ("Row index 102 out of bounds, must be < 100"), and finally the
-// exact GraphBLAS filename and line number where the error was caught.
-
-#define GB_LOG GB_thread_local.details, GB_DLEN
-#define GB_ERROR(f,s)                       \
-(                                           \
-        snprintf s ,                        \
-        (GB_thread_local.file = __FILE__ ), \
-        (GB_thread_local.line = __LINE__ ), \
-        (GB_thread_local.info = f)          \
-)
-
-// return (GB_OUT_OF_MEMORY (mem)) ; reports an out-of-memory error, including
-// the amount of memory needed for this phase of computation
-#define GB_OUT_OF_MEMORY(mem) GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG,  \
-    "out of memory, %g GBytes required", (double) (mem)))
-
-// return (GB_NO_MEMORY) ; reports an out-of-memory error, but does not print
-// the memory needed (normally very small)
-#define GB_NO_MEMORY GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG, "out of memory"))
-
-// GB_WHERE keeps track of the currently running user-callable function.
-// User-callable functions in this implementation are written so that they do
-// not call other unrelated user-callable functions (except for GrB_*free).
-// Related user-callable functions can call each other since they all report
-// the same type-generic name.  Internal functions can be called by many
-// different user-callable functions, directly or indirectly.  It would not be
-// helpful to report the name of an internal function that flagged an error
-// condition.  Thus, each time a user-callable function is entered (except
-// GrB_*free), it logs the name of the function with the GB_WHERE macro.
-// GrB_*free does not encounter error conditions so it doesn't need to be
-// logged by the GB_WHERE macro.
-
-#define GB_WHERE(w) { GB_thread_local.where = w ; }
-
-// The GB_REPORT_NO_VALUE macro is used only by GB_extractElement, to report
-// the last A(i,j) that was searched but which was not present in the matrix.
-// In the interest of speed, no other action is taken.   If A(i,j) is found,
-// then the status is set to GrB_SUCCESS via the GB_REPORT_SUCCESS macro.
-
-#define GB_REPORT_NO_VALUE(i,j)                 \
-(                                               \
-    GB_thread_local.row = i,                    \
-    GB_thread_local.col = j,                    \
-    GB_thread_local.info = GrB_NO_VALUE         \
-)
-
-// GB_REPORT_MATRIX and GB_REPORT_VECTOR is only used in GrB_*_extractElement_*
-// to allow the error reporting to distinguish between the GrB_Matrix_* and
-// GrB_Vector_* versions of the functions.
-#define GB_REPORT_MATRIX(info)                                          \
-    if (info != GrB_SUCCESS) GB_thread_local.is_matrix = true ;         \
-
-#define GB_REPORT_VECTOR(info)                                          \
-    if (info != GrB_SUCCESS) GB_thread_local.is_matrix = false ;        \
-
-// All methods and operations use this macro for a successful return
-#define GB_REPORT_SUCCESS                       \
-(                                               \
-    GB_thread_local.info = GrB_SUCCESS          \
-)
-
-//------------------------------------------------------------------------------
-// Thread local storage management
-//------------------------------------------------------------------------------
-
-// All allocator and free functions are called *_walloc and *_wfree.
-
-GrB_Info GB_Mark_walloc             // allocate Mark space
-(
-    int64_t Mark_required           // ensure Mark is at least this large
-) ;
-
-void GB_Mark_wfree ( ) ;            // free the Mark array
-
-int64_t GB_Mark_reset   // increment the Mark_flag by reset
-(
-    int64_t reset,      // does Mark_flag += reset
-    int64_t range       // clear Mark if flag+reset+range overflows
-) ;
-
-#ifndef NDEBUG
-    #define ASSERT_MARK_IS_RESET                                            \
-    {                                                                       \
-        for (int64_t i = 0 ; i < GB_thread_local.Mark_size ; i++)           \
-        {                                                                   \
-            ASSERT (GB_thread_local.Mark [i] < GB_thread_local.Mark_flag) ; \
-        }                                                                   \
-    }
 #else
-    #define ASSERT_MARK_IS_RESET
+// _OPENMP, USER_OPENMP_THREADS, or USER_NO_THREADS
+// This is the default.
+extern char GB_thread_local_report [GB_RLEN+1] ;
+#pragma omp threadprivate (GB_thread_local_report)
 #endif
 
-GrB_Info GB_Work_walloc             // allocate Work space
-(
-    size_t Work_nitems_required,    // ensure Work is at least this large,
-    size_t Work_itemsize            // # items times size of each item
-) ;
-
-void GB_Work_wfree ( ) ;            // free the Work array
-
-GrB_Info GB_Flag_walloc             // allocate Flag space
-(
-    int64_t Flag_required           // ensure Flag is at least this large
-) ;
-
-void GB_Flag_wfree ( ) ;            // free the Flag array
-
-#ifndef NDEBUG
-    #define ASSERT_FLAG_IS_CLEAR                                            \
-    {                                                                       \
-        for (int64_t i = 0 ; i < GB_thread_local.Flag_size ; i++)           \
-        {                                                                   \
-            ASSERT (GB_thread_local.Flag [i] == 0) ;                        \
-        }                                                                   \
-    }
-#else
-    #define ASSERT_FLAG_IS_CLEAR
-#endif
-
-void GB_wfree ( ) ;                 // free all thread-local storage
+// return pointer to thread-local storage
+char *GB_thread_local_access ( ) ;
 
 //------------------------------------------------------------------------------
 // boiler plate macros for checking inputs and returning if an error occurs
@@ -2226,7 +2298,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     bool dout, dm, d0, d1 ;                                             \
     GrB_Desc_Value dalgo ;                                              \
     /* if desc is NULL then defaults are used.  This is OK */           \
-    info = GB_Descriptor_get (desc, &dout, &dm, &d0, &d1, &dalgo) ;     \
+    info = GB_Descriptor_get (desc, &dout, &dm, &d0, &d1, &dalgo, Context) ; \
     if (info != GrB_SUCCESS)                                            \
     {                                                                   \
         /* desc not NULL, but uninitialized or an invalid object */     \
@@ -2239,8 +2311,32 @@ void GB_wfree ( ) ;                 // free all thread-local storage
     if (Mask_comp && Mask == NULL)                                      \
     {                                                                   \
         /* C<~NULL>=NULL since result does not depend on computing Z */ \
-        return (GB_mask (C, NULL, NULL, C_replace, true)) ;             \
+        return (GB_mask (C, NULL, NULL, C_replace, true, Context)) ;    \
     }
+
+//------------------------------------------------------------------------------
+// random number generator
+//------------------------------------------------------------------------------
+
+// return a random GrB_Index, in range 0 to 2^60
+#define GB_RAND_MAX 32767
+
+// return a random number between 0 and GB_RAND_MAX
+static inline GrB_Index GB_rand15 (uint64_t *seed)
+{ 
+   (*seed) = (*seed) * 1103515245 + 12345 ;
+   return (((*seed) / 65536) % (GB_RAND_MAX + 1)) ;
+}
+
+// return a random GrB_Index, in range 0 to 2^60
+static inline GrB_Index GB_rand (uint64_t *seed)
+{ 
+    GrB_Index i = GB_rand15 (seed) ;
+    i = GB_RAND_MAX * i + GB_rand15 (seed) ;
+    i = GB_RAND_MAX * i + GB_rand15 (seed) ;
+    i = GB_RAND_MAX * i + GB_rand15 (seed) ;
+    return (i) ;
+}
 
 //------------------------------------------------------------------------------
 // Pending upddate and zombies
@@ -2292,7 +2388,7 @@ void GB_wfree ( ) ;                 // free all thread-local storage
 // do all pending updates:  delete zombies and assemble any pending tuples
 #define GB_WAIT_MATRIX(A)                                               \
 {                                                                       \
-    GrB_Info info = GB_wait ((GrB_Matrix) A) ;                          \
+    GrB_Info info = GB_wait ((GrB_Matrix) A, Context) ;                 \
     if (info != GrB_SUCCESS)                                            \
     {                                                                   \
         /* out of memory; no other error possible */                    \
@@ -2759,7 +2855,7 @@ void GB_ijlength            // get the length and kind of an index list I
 
 GrB_Info GB_ijproperties        // check I and determine its properties
 (
-    const GrB_Index *I,         // list of indices, or GrB_ALL
+    const GrB_Index *I,         // list of indices, or special
     const int64_t ni,           // length I, or special
     const int64_t nI,           // actual length from GB_ijlength
     const int64_t limit,        // I must be in the range 0 to limit-1
@@ -2769,15 +2865,17 @@ GrB_Info GB_ijproperties        // check I and determine its properties
     bool *I_is_contig,          // true if I is a contiguous list, imin:imax
     int64_t *imin_result,       // min (I)
     int64_t *imax_result,       // max (I)
-    bool is_I
+    bool is_I,                  // true if I, false if J (debug only)
+    GB_Context Context
 ) ;
 
 GrB_Info GB_ijsort
 (
     const GrB_Index *I, // index array of size ni
     int64_t *p_ni,      // input: size of I, output: number of indices in I2
-    GrB_Index **p_I2    // output array of size ni, where I2 [0..ni2-1]
+    GrB_Index **p_I2,   // output array of size ni, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
+    GB_Context Context
 ) ;
 
 // given k, return the kth item i = I [k] in the list
@@ -3790,7 +3888,8 @@ static inline GrB_Info GB_jappend
     int64_t j,              // new vector to append
     int64_t *jlast,         // last vector appended, -1 if none
     int64_t cnz,            // nnz(C) after adding this vector j
-    int64_t *cnz_last       // nnz(C) before adding this vector j
+    int64_t *cnz_last,      // nnz(C) before adding this vector j
+    GB_Context Context
 )
 {
 
@@ -3827,7 +3926,8 @@ static inline GrB_Info GB_jappend
         { 
             // double the size of C->h and C->p
             GrB_Info info ;
-            info = GB_hyper_realloc (C, GB_IMIN (C->vdim, 2*(C->plen+1))) ;
+            info = GB_hyper_realloc (C, GB_IMIN (C->vdim, 2*(C->plen+1)),
+                Context) ;
             if (info != GrB_SUCCESS)
             { 
                 return (info) ;
@@ -5718,8 +5818,69 @@ GrB_Info GB_AxB_user
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
     GB_Element *restrict Heap,
-    const int64_t bjnz_max
+    const int64_t bjnz_max,
+
+    // for Gustavson's method only:
+    GB_Sauna Sauna,
+
+    GB_Context Context
 ) ;
+
+//------------------------------------------------------------------------------
+// Sauna methods: the sparse accumulator
+//------------------------------------------------------------------------------
+
+void GB_Sauna_free                  // free a Sauna
+(
+    GB_Sauna *Sauna_Handle          // handle of Sauna to free
+) ;
+
+GrB_Info GB_Sauna_alloc             // create a Sauna
+(
+    GB_Sauna *Sauna_Handle,         // handle of Sauna to create
+    int64_t Sauna_n,                // size of the Sauna
+    size_t Sauna_size,              // size of each entry in the Sauna
+    GB_Context Context
+) ;
+
+#ifndef NDEBUG
+    #define ASSERT_SAUNA_IS_RESET                                           \
+    {                                                                       \
+        for (int64_t i = 0 ; i < Sauna->Sauna_n ; i++)                      \
+        {                                                                   \
+            ASSERT (Sauna->Sauna_Mark [i] < Sauna->Sauna_hiwater) ;         \
+        }                                                                   \
+    }
+#else
+    #define ASSERT_SAUNA_IS_RESET
+#endif
+
+// GB_Sauna_reset: increment the Sauna_hiwater and clear Sauna_Mark if needed
+static inline int64_t GB_Sauna_reset
+(
+    GB_Sauna Sauna,     // Sauna to reset
+    int64_t reset,      // does Sauna_hiwater += reset
+    int64_t range       // clear Mark if Sauna_hiwater+reset+range overflows
+)
+{ 
+
+    Sauna->Sauna_hiwater += reset ;     // increment the Sauna_hiwater
+
+    if (Sauna->Sauna_hiwater + range <= 0 || reset == 0)
+    { 
+        // integer overflow has occurred; clear all of the Sauna_Mark array
+        for (int64_t i = 0 ; i < Sauna->Sauna_n ; i++)
+        { 
+            Sauna->Sauna_Mark [i] = 0 ;
+        }
+        Sauna->Sauna_hiwater = 1 ;
+    }
+
+    // assertion for debugging only:
+    ASSERT_SAUNA_IS_RESET ;         // assert that Sauna_Mark [...] < hiwater
+
+    return (Sauna->Sauna_hiwater) ;
+}
 
 #endif
 

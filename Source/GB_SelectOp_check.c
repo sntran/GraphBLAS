@@ -15,7 +15,8 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     const char *name,       // name of the operator
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 )
 { 
 
@@ -68,7 +69,7 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 
     if (op->xtype != NULL)
     { 
-        GrB_Info info = GB_Type_check (op->xtype, "xtype", pr, f) ;
+        GrB_Info info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
         if (info != GrB_SUCCESS)
         { 
             if (pr > 0) GBPR ("SelectOP has an invalid xtype\n") ;
@@ -77,6 +78,6 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
         }
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

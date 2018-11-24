@@ -22,7 +22,8 @@ GrB_Info GB_user_build          // check inputs then build matrix
     const GrB_Index nvals,      // number of tuples
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
     const GB_Type_code scode,   // GB_Type_code of S array
-    const bool is_matrix        // true if C is a matrix, false if GrB_Vector
+    const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
+    GB_Context Context
 )
 {
 
@@ -124,6 +125,6 @@ GrB_Info GB_user_build          // check inputs then build matrix
     // build the matrix
     //--------------------------------------------------------------------------
 
-    return (GB_build (C, I, J, S, nvals, dup, scode, is_matrix, true)) ;
+    return (GB_build (C, I, J, S, nvals, dup, scode, is_matrix, true, Context));
 }
 

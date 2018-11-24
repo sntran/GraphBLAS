@@ -30,6 +30,6 @@ GrB_Info GxB_UnaryOp_ztype          // return the type of z
     //--------------------------------------------------------------------------
 
     (*ztype) = unaryop->ztype ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -54,12 +54,11 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
 
     GrB_Info info ;
     int64_t vlen, vdim ;
-    bool A_is_csc ;
 
     // A is created with auto hypersparsity (typically hypersparse unless
     // vdim <= 1 or hyper_ratio < 0) and default CSR/CSC format.
 
-    GB_global_option_get (NULL, NULL, &A_is_csc) ;
+    bool A_is_csc = GB_Global.is_csc ;
 
     if (A_is_csc)
     { 

@@ -30,6 +30,6 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     // duplicate the matrix
     //--------------------------------------------------------------------------
 
-    return (GB_dup (C, A)) ;
+    return (GB_dup (C, A, Context)) ;
 }
 

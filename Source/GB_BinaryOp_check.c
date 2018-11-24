@@ -15,7 +15,8 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     const char *name,       // name of the operator
     int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
-    FILE *f                 // file for output
+    FILE *f,                // file for output
+    GB_Context Context
 )
 { 
 
@@ -62,7 +63,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     GrB_Info info ;
 
-    info = GB_Type_check (op->ztype, "ztype", pr, f) ;
+    info = GB_Type_check (op->ztype, "ztype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("BinaryOp has an invalid ztype\n") ;
@@ -70,7 +71,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
             "BinaryOp has an invalid ztype: %s [%s]", GB_NAME, op->name))) ;
     }
 
-    info = GB_Type_check (op->xtype, "xtype", pr, f) ;
+    info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("BinaryOp has an invalid xtype\n") ;
@@ -78,7 +79,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
             "BinaryOp has an invalid xtype: %s [%s]", GB_NAME, op->name))) ;
     }
 
-    info = GB_Type_check (op->ytype, "ytype", pr, f) ;
+    info = GB_Type_check (op->ytype, "ytype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("BinaryOp has an invalid ytype\n") ;
@@ -86,6 +87,6 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
             "BinaryOp has an invalid ytype: %s [%s]", GB_NAME, op->name))) ;
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

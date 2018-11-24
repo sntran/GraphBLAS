@@ -83,15 +83,6 @@ int main (int argc, char **argv)
     double t_U = simple_toc (tic) ;
     printf ("U=triu(A) time:  %14.6f sec\n", t_U) ;
 
-    GxB_Statistics stats ;
-
-    int64_t maxused1 ;
-    GxB_stats (&stats) ;
-    maxused1 = stats.maxused ;
-
-    printf ("read A, create U memory usage: %g GB\n",
-        1e-9 * (double) maxused1) ;
-
     //--------------------------------------------------------------------------
     // count the triangles via C<U> = L'*U (dot-produt)
     //--------------------------------------------------------------------------
@@ -128,12 +119,6 @@ int main (int argc, char **argv)
     fprintf (stderr, "GrB: C<U>=L'*U (dot)   "
             "rate %10.2f (with prep), %10.2f (just tricount)\n", r1, r2) ;
 
-    int64_t maxused2 ;
-    GxB_stats (&stats) ;
-    maxused2 = MAX (maxused1, stats.maxused) ;
-    printf ("tricount (dot)   memory usage: %g GB\n",
-        1e-9 * (double) maxused2) ;
-
     //--------------------------------------------------------------------------
     // count the triangles via C<L> = L*L (outer-product)
     //--------------------------------------------------------------------------
@@ -158,12 +143,6 @@ int main (int argc, char **argv)
     printf ("rate %10.2f million edges/sec (just tricount itself)\n\n",  r2) ;
     fprintf (stderr, "GrB: C<L>=L*L (outer)  "
             "rate %10.2f (with prep), %10.2f (just tricount)\n", r1, r2) ;
-
-    int64_t maxused3 ;
-    GxB_stats (&stats) ;
-    maxused3 = MAX (maxused1, stats.maxused) ;
-    printf ("tricount (outer) memory usage: %g GB\n",
-        1e-9 * (double) maxused3) ;
 
     //--------------------------------------------------------------------------
     // check result and free workspace

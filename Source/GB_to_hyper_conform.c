@@ -15,7 +15,8 @@
 
 GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
 (
-    GrB_Matrix A                // matrix to conform
+    GrB_Matrix A,               // matrix to conform
+    GB_Context Context
 )
 {
 
@@ -41,11 +42,11 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
 
     if (GB_to_hyper_test (A, A->nvec_nonempty, A->vdim))
     { 
-        info = GB_to_hyper (A) ;
+        info = GB_to_hyper (A, Context) ;
     }
     else if (GB_to_nonhyper_test (A, A->nvec_nonempty, A->vdim))
     { 
-        info = GB_to_nonhyper (A) ;
+        info = GB_to_nonhyper (A, Context) ;
     }
     else
     { 
@@ -65,6 +66,6 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     //--------------------------------------------------------------------------
 
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A conformed", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

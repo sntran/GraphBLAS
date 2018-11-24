@@ -51,14 +51,14 @@ sparse matrix operations on a semiring.
 \end{abstract}
 
 \begin{verbatim}
-This is a BETA release.  The version has passed all tests,
-and is ready to use, but it has significant new extensions
-to the API (compile-time user-defined objects, in particular).
-Sections 8 and 9 are new.  I would like to get feedback on
-their design before posting this as the definitive Version 2.2.0.
+This is a BETA release.  The version has passed all tests, and is
+ready to use, but it has significant new extensions to the API.
+Sections 8 and 9 are new.  The default matrix format is now CSR.
+This version also adds support for user threading in POSIX pthreads
+and OpenMP.  I would like to get feedback on the API design for
+compile-time objects and GxB_print before posting this as the
+definitive Version 2.2.0.
 \end{verbatim}
-
-\maketitle
 
 \newpage
 {\small
@@ -129,6 +129,12 @@ earlier), just compile with \verb'-DBYCOL', or add the following after calling
 Also added are the \verb'GxB_*print' methods for printing the contents of each
 GraphBLAS object (Section~\ref{fprint}).   PageRank demos have been added to
 the \verb'Demos' folder.
+
+Prior versions required GraphBLAS to be compiled with OpenMP, for it to be
+thread-safe.  It can now be compiled with POSIX pthreads.  The \verb'cmake'
+script automatically detects if OpenMP and/or POSIX pthreads are available.
+Demos have been added to show how GraphBLAS can be called from a multi-threaded
+user application.
 
 \item
 Version 2.1 (Oct 2018) was
@@ -924,27 +930,30 @@ computations for a single object are completed.  Use \verb'GrB_wait'
 to ensure that all computations are completed (see Section~\ref{wait}).
 
 SuiteSparse:GraphBLAS is not yet multithreaded, but it is safe to use in a
-multithreaded user application.  This support is in Beta status, however,
-because of the behavior of \verb'GrB_finalize' discussed below.  User threads
-should not operate on the same matrices at the same time, with one exception.
-Multiple threads can use the same matrices as inputs to GraphBLAS operations,
-but only if they have no pending operations (use \verb'GrB_Matrix_nvals' or
-\verb'GrB_wait' first).  User threads cannot simultaneously modify the output
-matrix of any GraphBLAS operation.
+multithreaded user application.  SuiteSparse:GraphBLAS must be compiled for
+each specific user threading model; see Section~\ref{sec:install} for details.
 
-With multiple user threads, at least thread should call \verb'GrB_init'
-before any thread calls any \verb'GrB_*' or \verb'GxB_*' function.
+User threads must not operate on the same matrices at the same time, with one
+exception.  Multiple threads can use the same matrices or vectors as read-only
+inputs to GraphBLAS operations or methods, but only if they have no pending
+operations (use \verb'GrB_Matrix_nvals' or \verb'GrB_wait' first).  User
+threads cannot simultaneously modify a matrix or vector via any GraphBLAS
+operation or method.
 
-When the user application is finished, {\bf all} user application threads that
-called any GraphBLAS operation must call \verb'GrB_finalize', to free up
-thread-local workspace allocated internally.  This behavior is a deviation from
-the GraphBLAS API and may be modified in the future.
+With multiple user threads, exactly one user thread must call \verb'GrB_init'
+before any user thread may call any \verb'GrB_*' or \verb'GxB_*' function.
+When the user application is finished, exactly one user thread 
+must call \verb'GrB_finalize', after which no user thread may call
+any \verb'GrB_*' or \verb'GxB_*' function.
 
-\begin{spec}
-{\bf SPEC:} Requiring all user threads in a multi-threaded user application to
-call \verb'GrB_finalize' is specific to SuiteSparse:GraphBLAS and is a
-deviation from the {\em GraphBLAS C API Specification}.
-\end{spec}
+You can query the mode of a GraphBLAS session with the following
+(see Section~\ref{options}), which returns the \verb'mode' passed to
+\verb'GrB_init':
+
+{\footnotesize
+\begin{verbatim}
+    GrB_mode mode ;
+    GxB_get (GxB_MODE, &mode) ; \end{verbatim} }
 
 \newpage
 %===============================================================================
@@ -1074,7 +1083,6 @@ are error codes.
                                   for indices in a list of indices. \\
 \hline
 \verb'GrB_PANIC'                & unrecoverable error.
-SuiteSparse:GraphBLAS never panics, however.
 \\
 \hline
 \end{tabular}
@@ -1114,7 +1122,7 @@ const char *GrB_error ( ) ;     // return a string describing the last error
 Each GraphBLAS method and operation returns a \verb'GrB_Info' error code.  The
 \verb'GrB_error' function returns additional information on the error in a
 thread-safe null-terminated string.  The string returned by \verb'GrB_error' is
-statically allocated in thread local storage and must not be freed or modified.
+allocated in thread local storage and must not be freed or modified.
 Each user thread has its own error status.
 The simplest way to use it is just to print it out, such as:
 
@@ -1134,9 +1142,13 @@ record the name the function passed to them, and \verb'GrB_Type_new' records
 the name of its type parameter, and these are printed if the user-defined types
 and operators are used incorrectly.  Refer to the output of the example
 programs in the \verb'Demo' folder, which intentionally generate errors to
-illustrate the use of \verb'GrB_error'.
+illustrate the use of \verb'GrB_error'.  Successful GraphBLAS methods do not
+modify this error message.  If a GraphBLAS method fails and then
+subsequent GraphBLAS method succeeds, the error message is not modified from
+the last failure.  Only a subsequent failure will cause \verb'GrB_error' to
+return a different error message.
 
-% \newpage
+\newpage
 %===============================================================================
 \subsection{{\sf GrB\_finalize:} finish GraphBLAS} %============================
 %===============================================================================
@@ -1156,9 +1168,8 @@ application should be freed first, before calling \verb'GrB_finalize' since
 GraphBLAS may leave some computations as pending.  These computations can be
 safely abandoned if the user application frees all GraphBLAS objects it has
 created and then calls \verb'GrB_finalize'.  There is no need to call
-\verb'GrB_wait' in this case.  When the user application is finished, {\bf all}
-user threads must call \verb'GrB_finalize', to free up thread-local workspace
-allocated internally.
+\verb'GrB_wait' in this case.  When the user application is finished, exactly
+one user thread must call \verb'GrB_finalize'.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1377,7 +1388,6 @@ types.
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Type\_size:} return the size of a type}
 %-------------------------------------------------------------------------------
-\label{type_size}
 
 \begin{mdframed}[userdefinedwidth=6in]
 {\footnotesize
@@ -2870,9 +2880,20 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
 ) ;
 \end{verbatim} } \end{mdframed}
 
-\verb'GxB_Vector_resize' changes the size of a vector.
-If the dimension decreases, entries that fall outside the resized 
-vector are deleted.
+\verb'GxB_Vector_resize' changes the size of a vector.  If the dimension
+decreases, entries that fall outside the resized vector are deleted.
+
+\verb'GxB_Vector_resize' also frees the workspace kept in the vector \verb'u'
+if Gustavson's method is used in \verb'GrB_mxv' or \verb'GrB_vxm' to compute
+the vector \verb'u'.  It frees this space, even if the size does not change:
+
+{\footnotesize
+\begin{verbatim}
+    GrB_Index nrows ;
+    GrB_Vector_size (&nrows, v) ;
+    GxB_Vector_resize (v, nrows) ; \end{verbatim} }
+
+See Section~\ref{guswork} for more details.
 
 % \newpage
 %-------------------------------------------------------------------------------
@@ -3405,7 +3426,20 @@ GrB_Info GxB_Matrix_resize      // change the size of a matrix
 If the dimensions decrease, entries that fall outside the resized 
 matrix are deleted.
 
-% \newpage
+\verb'GxB_Matrix_resize' also frees the workspace kept in the matrix \verb'C'
+if Gustavson's method is used in \verb'GrB_mxm' to compute the matrix \verb'C'.
+It frees this space, even if the size does not change:
+
+{\footnotesize
+\begin{verbatim}
+    GrB_Index nrows, ncols ;
+    GrB_Matrix_nrows (&nrows, C) ;
+    GrB_Matrix_ncols (&ncols, C) ;
+    GxB_Matrix_resize (C, nrows, nrows) ; \end{verbatim} }
+
+See Section~\ref{guswork} for more details.
+
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_free:} free a matrix}
 %-------------------------------------------------------------------------------
@@ -4077,6 +4111,9 @@ typedef enum
 {
     GxB_HYPER,      // defines switch to hypersparse format (a double value)
     GxB_FORMAT      // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+    GxB_MODE,           // mode passed to GrB_init (blocking or non-blocking)
+    GxB_THREAD_SAFETY,  // thread library for thread safety
+    GxB_THREADING       // current none
 }
 GxB_Option_Field ;
 \end{verbatim} }
@@ -4101,7 +4138,7 @@ just like MATLAB.
 The default format is given by the predefined value \verb'GxB_FORMAT_DEFAULT',
 which is equal to \verb'GxB_BY_ROW' if default compile-time options are used.
 To change the default at compile time to \verb'GxB_BY_COL', compile the
-SuiteSparse:GraphBLAS library with \verb'-DBYCOL'.  This changes
+SuiteSparse: GraphBLAS library with \verb'-DBYCOL'.  This changes
 \verb'GxB_FORMAT_DEFAULT' to \verb'GxB_BY_COL'.  The default hypersparsity
 ratio is 0.0625 (1/16), but this value may change in the future.
 
@@ -4149,7 +4186,7 @@ SuiteSparse:GraphBLAS that is equivalent to the MATLAB format is given below:
 
 {\footnotesize
 \begin{verbatim}
-    GrB_init ( ) ;
+    GrB_init (...) ;
     GxB_set (GxB_HYPER, GxB_NEVER_HYPER) ;
     GxB_set (GxB_FORMAT, GxB_BY_COL) ;
     // no subsequent use of GxB_HYPER or GxB_FORMAT
@@ -4164,22 +4201,73 @@ future.  Any prior options no longer needed in future versions of
 SuiteSparse:GraphBLAS will be silently ignored, so the use these options is
 safe for future updates.
 
-SuiteSparse:GraphBLAS is not yet multi-threaded, but it is thread-safe if the
-user application threads do not operate on the same matrices at the same time.
-Output matrices and vectors used by different threads must be different, and
-input matrices and vectors can be safely used only if any pending computations
-on them have finished, via \verb'GrB_wait' or the per-matrix methods,
-\verb'GrB_*_nvals', \verb'GrB_*_extractElement', \verb'GrB_*_extractTuples',
-and reduction to a scalar via \verb'GrB_*_reduce'.
+%-------------------------------------------------------------------------------
+\subsection{Other global options}
+%-------------------------------------------------------------------------------
+
+\verb'GxB_MODE', \verb'GxB_THREAD_SAFETY', and \verb'GxB_THREADING' can only be
+queried by \verb'GxB_get'; they cannot be modified by \verb'GxB_set'.  The mode
+is the value passed to \verb'GrB_init' (blocking or non-blocking).  The
+\verb'GxB_THREAD*' options are returned as an \verb'enum' type with one of the
+following options:
+
+{\footnotesize
+\begin{verbatim}
+    typedef enum
+    {
+        GxB_THREAD_NONE = 0,    // no threading
+        GxB_THREAD_OPENMP,      // OpenMP
+        GxB_THREAD_POSIX,       // POSIX pthreads
+        GxB_THREAD_WINDOWS,     // Windows threads
+        GxB_THREAD_ANSI         // ANSI C11 threads
+    }
+    GxB_Thread_Model ;
+\end{verbatim} }
+
+SuiteSparse:GraphBLAS is not yet multi-threaded, but it is thread-safe if it is
+compiled with OpenMP or POSIX pthreads, and if the user application threads do
+not operate on the same matrices at the same time.  Output matrices and vectors
+used by different threads must be different, and input matrices and vectors can
+be safely used only if any pending computations on them have finished, via
+\verb'GrB_wait' or the per-matrix methods, \verb'GrB_*_nvals',
+\verb'GrB_*_extractElement', \verb'GrB_*_extractTuples', and reduction to a
+scalar via \verb'GrB_*_reduce'.
+
+The \verb'GxB_THREAD_SAFETY' option returns the threading model used internally
+to synchronize user threads.  This is determine during installation (see
+Section~\ref{sec:threads}).  Since \verb'GxB_THREAD_NONE' is zero, the
+following can be used:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_Thread_Model safe ;
+    GxB_get (GxB_THREAD_SAFETY, &safe) ;
+    if (safe)
+    {
+        printf ("GraphBLAS is thread-safe\n") ;
+    }
+    else
+    {
+        // neither OpenMP, POSIX pthreads, nor any other threading model
+        // was available at compile-time
+        printf ("GraphBLAS is not thread-safe!\n") ;
+    }
+\end{verbatim} }
+
+The \verb'GxB_THREADING' option currently returns \verb'GxB_THREAD_NONE', but
+this will change when SuiteSparse:GraphBLAS exploits OpenMP for internal
+parallelism.  In this case, the \verb'GxB_THREADING' option will return either
+\verb'GxB_THREAD_NONE' (if OpenMP is not available) or \verb'GxB_THREAD_OPENMP'
+otherwise.
 
 All threads in the same user application share the same global options,
-including hypersparsity and CSR/CSC format determined by \verb'GxB_set', and
-blocking mode determined by \verb'GrB_init'.  Specific format and hypersparsity
-parameters of each matrix are specific to that matrix and can be independently
-changed.
+including hypersparsity and CSR/CSC format determined by \verb'GxB_set', the
+blocking mode determined by \verb'GrB_init', and the threading options.
+Specific format and hypersparsity parameters of each matrix are specific to
+that matrix and can be independently changed.
 
 %===============================================================================
-\subsection{{\sf GxB\_set:} set a global option}
+\subsection{{\sf GxB\_Global\_Option\_set:} set a global option}
 %===============================================================================
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -4207,7 +4295,7 @@ No existing matrices are changed.
 
 \newpage
 %===============================================================================
-\subsection{{\sf GxB\_set:} set a matrix option}
+\subsection{{\sf GxB\_Matrix\_Option\_set:} set a matrix option}
 %===============================================================================
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -4241,8 +4329,9 @@ For performance, the matrix option should be set as soon as it is created with
 \end{verbatim} }
 
 %===============================================================================
-\subsection{{\sf GxB\_set:} set a {\sf GrB\_Descriptor} value}
+\subsection{{\sf GxB\_Desc\_set:} set a {\sf GrB\_Descriptor} value}
 %===============================================================================
+\label{gxbset}
 
 \begin{mdframed}[userdefinedwidth=6in]
 {\footnotesize
@@ -4256,15 +4345,14 @@ GrB_Info GxB_set                // set a parameter in a descriptor
 \end{verbatim} } \end{mdframed}
 
 This usage is identical to \verb'GrB_Descriptor_set', just with a name that is
-consistent with the other usages of this generic function.  The \verb'field'
-parameter can be \verb'GrB_OUTP', \verb'GrB_MASK', \verb'GrB_INP0', or
-\verb'GrB_INP1'.  Future versions will allow for different types for the third
-parameter.  Refer to Sections~\ref{descriptor_set}~and~\ref{desc_set} for
-details.
+consistent with the other usages of this generic function.  Unlike
+\verb'GrB_Descriptor_set', Future versions of \verb'GxB_Desc_set' will allow
+for different types for the third parameter.  Refer to
+Sections~\ref{descriptor_set}~and~\ref{desc_set} for details.
 
 \newpage
 %===============================================================================
-\subsection{{\sf GxB\_get:} retrieve a global option}
+\subsection{{\sf GxB\_Global\_Option\_get:} retrieve a global option}
 %===============================================================================
 \label{gxbget}
 
@@ -4278,9 +4366,10 @@ GrB_Info GxB_get                    // gets the current global default option
 ) ;
 \end{verbatim} } \end{mdframed}
 
-This usage of \verb'GxB_get' retrieves the value of a global option.
-The \verb'field' parameter can be \verb'GxB_HYPER' or \verb'GxB_FORMAT'.
-For example:
+This usage of \verb'GxB_get' retrieves the value of a global option.  The
+\verb'field' parameter can be \verb'GxB_HYPER', \verb'GxB_FORMAT'.
+\verb'GxB_MODE', \verb'GxB_THREAD_SAFETY', or \verb'GxB_THREADING'.  For
+example:
 
 {\footnotesize
 \begin{verbatim}
@@ -4291,10 +4380,22 @@ For example:
     GxB_Format_Value s ;
     GxB_get (GxB_FORMAT, &s) ;
     if (s == GxB_BY_COL) printf ("all new matrices are stored by column\n") :
-    else printf ("all new matrices are stored by row\n") ; \end{verbatim} }
+    else printf ("all new matrices are stored by row\n") ;
 
+    GrB_mode mode ;
+    GxB_get (GxB_MODE, &mode) ;
+    if (mode == GrB_BLOCKING) printf ("GrB_init(GrB_BLOCKING) was called.\n") :
+    else printf ("GrB_init(GrB_NONBLOCK) was called.\n") ;
+
+    // see Demo/Program/pthread_demo.c and openmp_demo.c for examples:
+    GxB_Threading_Model thread_safety, threading ;
+    GxB_get (GxB_THREAD_SAFETY, &thread_safey) ;
+    GxB_get (GxB_THREADING, &threading) ;
+    \end{verbatim} }
+
+\newpage
 %===============================================================================
-\subsection{{\sf GxB\_get:} retrieve a matrix option}
+\subsection{{\sf GxB\_Matrix\_Option\_get:} retrieve a matrix option}
 %===============================================================================
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -4323,9 +4424,8 @@ For example:
     if (s == GxB_BY_COL) printf ("matrix A is stored by column\n") :
     else printf ("matrix A is stored by row\n") ; \end{verbatim} }
 
-\newpage
 %===============================================================================
-\subsection{{\sf GxB\_get:} retrieve a {\sf GrB\_Descriptor} value}
+\subsection{{\sf GxB\_Desc\_get:} retrieve a {\sf GrB\_Descriptor} value}
 %===============================================================================
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -4339,11 +4439,9 @@ GrB_Info GxB_get                // get a parameter from a descriptor
 ) ;
 \end{verbatim} } \end{mdframed}
 
-This usage is identical to \verb'GxB_Desc_get', just with a name
-that is consistent with the other usages of this generic function.
-The \verb'field' parameter can be \verb'GrB_OUTP', \verb'GrB_MASK',
-\verb'GrB_INP0', \verb'GrB_INP1' or \verb'GxB_AxB_METHOD'.  Refer to
-Section~\ref{desc_get} for details.
+This usage is the same as \verb'GxB_Desc_get'.  The \verb'field' parameter can
+be \verb'GrB_OUTP', \verb'GrB_MASK', \verb'GrB_INP0', \verb'GrB_INP1' or
+\verb'GxB_AxB_METHOD'.  Refer to Section~\ref{desc_get} for details.
 
 %===============================================================================
 \newpage
@@ -4365,6 +4463,15 @@ To set/get the global options:
     GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
     GxB_set (GxB_FORMAT, GxB_BY_COL) ;
     GxB_get (GxB_FORMAT, GxB_Format_Value *s) ; \end{verbatim} }
+
+\noindent
+To get global options that can be queried but not modified:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_get (GxB_MODE,          GrB_Mode *mode) ;
+    GxB_get (GxB_THREAD_SAFETY, GxB_Thread_Model *thread_safety) ;
+    GxB_get (GxB_THREADING,     GxB_Thread_Model *threading) ; \end{verbatim} }
 
 \noindent
 To set/get a matrix option:
@@ -5118,7 +5225,7 @@ matrices.
 The automatic selection applies to any mixture of the format of the
 four matrices (CSR or CSC, and hypersparse or non-hypersparse), and any
 combination of the input descriptors that transpose \verb'A' and \verb'B'.
-Note that if all matrices are CSR format, \verb'C<M>=A*B' does not explicitly
+If all matrices are CSR format, \verb'C<M>=A*B' does not explicitly
 transpose any matrix.
 
 \paragraph{\bf Performance considerations:}
@@ -5128,13 +5235,15 @@ select the fastest method, which is why the method can be selected via the
 
 The meta-algorithm never transposes the final result (\verb"C=A'*B'" is never
 converted into \verb"C=(B*A)'"), although that strategy can lead to better
-performance.  A different \verb'swap_rule' would allow for the output matrix to
-be transposed (with \verb"C=(B*A)'" being computed); a user descriptor may be
-added in the future to allow for this selection.  The user application can also
-do this by computing \verb"C'=B*A", and then transposing the result via
-\verb'GrB_transpose' to obtain \verb"C=(B*A)'=A'*B'".  This can be faster in
-some cases, depending on the size and sparsity of the three or four matrices
-(\verb'C', \verb'A', \verb'B', and \verb'M' if present).
+performance. 
+% A different \verb'swap_rule' would allow for the output matrix to
+% be transposed (with \verb"C=(B*A)'" being computed); a user descriptor may be
+% added in the future to allow for this selection. 
+The user application can do this by computing \verb"C'=B*A", and then
+transposing the result via \verb'GrB_transpose' to obtain
+\verb"C=(B*A)'=A'*B'".  This can be faster in some cases, depending on the size
+and sparsity of the three or four matrices (\verb'C', \verb'A', \verb'B', and
+\verb'M' if present).
 
 \newpage
 %===============================================================================
@@ -5192,6 +5301,8 @@ The breadth-first search presented in Section~\ref{bfs} of this User Guide uses
 SuiteSparse:GraphBLAS is \verb'GxB_BY_ROW'.  If the matrix is stored by column,
 then use \verb'GrB_mxv' instead.
 
+See Section~\ref{guswork} on the workspace kept in the output vector \verb'w'.
+
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_mxv:} matrix-vector multiply} %===========================
@@ -5238,6 +5349,58 @@ default descriptor is used, and when the matrix is \verb'GxB_BY_COL'.  When
 \verb'GxB_BY_COL' format.  If an application needs to perform \verb"A'*u"
 repeatedly where \verb'u' is very sparse, then use the \verb'GxB_BY_ROW' format
 for \verb'A' instead.
+
+See Section~\ref{guswork} on the workspace kept in the output vector \verb'w'.
+
+\newpage
+%===============================================================================
+\subsection{Workspace for Gustavson's method for
+{\sf GrB\_mxm}, {\sf GrB\_vxm}, and {\sf GrB\_mxv} }
+%===============================================================================
+\label{guswork}
+
+Gustavon's method for multiplying two sparse matrices or a sparse matrix and a
+sparse vector invovles a tradeoff between workspace and time.  If a
+pre-initialized workspace is kept for repeated multiplications, the time can be
+significantly reduced.  This is very important for methods such as
+\verb'GrB_vxm' when used in a very sparse computation such as breadth-first
+search.
+
+The workspace required by Gustavson's method is size $O(n)$ for the CSR format,
+or $O(m)$ for CSC, if the output matrix \verb'C' is $m$-by-$n$, or $O(n)$ for a
+vector \verb'w' of length $n$.  This space is reused for repeated used by
+\verb'GrB_mxm', \verb'GrB_mxv', and \verb'GrB_vxm'.  To free this space, use
+\verb'GxB_Matrix_resize' or \verb'GxB_Vector_resize', and simply keep the size
+the same:
+
+{\footnotesize
+\begin{verbatim}
+    GrB_Index nrows, ncols ;
+    GrB_Matrix_nrows (&nrows, C) ;
+    GrB_Matrix_ncols (&ncols, C) ;
+    GxB_Matrix_resize (C, nrows, nrows) ;
+
+    GrB_Vector_size (&nrows, w) ;
+    GxB_Vector_resize (w, nrows) ; \end{verbatim} }
+
+This has no effect on the matrix \verb'C' or vector \verb'w', other than to
+free the workspace kept for Gustavson's method.  If the workspace is not
+allocated inside the output matrix \verb'C' or vector \verb'w', or for the the
+first call to \verb'GrB_mxm(C,...)' (or \verb'GrB_vxm(w,...)'), the time taken
+is $O(m+n+f)$, where $f$ is the number of numerical operations that must be
+performed.
+
+Assuming the workspace held internally in \verb'C' or \verb'w' is not freed,
+subsequent uses of Gustavson's method in \verb'GrB_mxm' to compute \verb'C'
+takes only $O(n+f)$ time for a CSC matrix, or $O(m+f)$ for a CSR matrix, and
+subsequent uses of \verb'GrB_mxv' and \verb'GrB_vxm' with the same output
+vector \verb'w' takes only $O(f)$ time.
+
+The \verb'GxB_print' function will report if the workspace for Gustavson's
+method is present, called the \verb'Sauna' (short-hand for the SParse
+Accumulator, or SPA, as this workspace is called in the sparse matrix
+library used internally in MATLAB \cite{GilbertMolerSchreiber92}).  See
+Section~\ref{fprint}.
 
 \newpage
 %===============================================================================
@@ -7561,7 +7724,7 @@ For example,
 
 
 %===============================================================================
-\subsection{{\sf GxB\_SelectOp\_fprint:} Print a {\sf GrB\_SelectOp}}
+\subsection{{\sf GxB\_SelectOp\_fprint:} Print a {\sf GxB\_SelectOp}}
 %===============================================================================
 
 \begin{mdframed}[userdefinedwidth=6in]
@@ -7729,8 +7892,15 @@ first.  If a matrix or vector has pending operations, SuiteSparse:GraphBLAS
 prints a list of the {\em pending tuples}, which are the entries not yet
 inserted into the primary data structure.  It can also print out entries that
 remain in the data structure but are awaiting deletion; these are called {\em
-zombies} in the output report.  Most of the rest of the report is
-self-explanatory. 
+zombies} in the output report.
+
+The \verb'GxB_print' function will report if the workspace for Gustavson's
+method is present, called the \verb'Sauna' (short-hand for the SParse
+Accumulator, or SPA, as this workspace is called in the sparse matrix
+library used internally in MATLAB \cite{GilbertMolerSchreiber92}).  See
+Section~\ref{guswork}.
+
+Most of the rest of the report is self-explanatory. 
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7869,7 +8039,7 @@ use in the \verb'User/*m4' file, in the following style:
 
     #else
 
-        // Part 2: declartions of user-defined variables, and executable
+        // Part 2: declarations of user-defined variables, and executable
         // code that should be compiled just once appears here.
 
     #endif \end{verbatim}}
@@ -7977,17 +8147,16 @@ defined at run-time instead, \verb'GrB_mxm' is about two to three times slower.
 
 User definitions in the \verb'User/*m4' files are visible to all internal
 SuiteSparse:GraphBLAS functions and thus must be given names that do not
-conflict with internal variables, functions, and macros.  Objects defined by
-\verb'GxB_*_define' and user-defined static inline functions and macros (via
-\verb'#define') in the \verb'User/*.m4' files must avoid using names with
-reserved prefixes \verb'GrB', \verb'GxB', \verb'GXB', \verb'GB', and
-\verb'ASSERT'.  User-defined macros have additional restrictions.  A
-user-defined macro is safe if it has a name that is all upper case of length 3
-characters or more and avoids the reserved prefixes.  For best practice,
-however, all user-defined macros should use a unique prefix such as \verb'MY_',
-\verb'USER_', or the name of the user application (say \verb'RealCoolApp_',
-or \verb'PAGERANK_' as exemplified in the \verb'my_pagerank.m4' example).
-This will ensure that no name conflicts will occur.
+conflict with internal variables, functions, and macros. 
+
+Objects defined by \verb'GxB_*_define', user-defined static inline functions,
+typedefs, global variables, and macros (via \verb'#define') in the
+\verb'User/*.m4' files must be given names with a unique prefix, such as
+\verb'MY_', \verb'USER_', \verb'my_', \verb'user_',
+or the name of the user application (say
+\verb'RealCoolApp_', or \verb'PAGERANK_' as exemplified in the
+\verb'my_pagerank.m4' example).  This will ensure that no name conflicts will
+occur.
 
 An example macro name conflict occurs in the \verb'User/Example/my_complex.m4'
 example in Figure~\ref{fig:complex}, which includes the ANSI \verb'complex.h'
@@ -8147,7 +8316,7 @@ for the value of the \verb'identity' parameter of \verb'GxB_Monoid_define'.
 Consider the following excerpt from \verb'User/Example/my_pagerank.m4'.  A
 struct variable such as the \verb'pagerank_type' can be initialized with the C
 expression \verb'identity = {0,0}', but the expression \verb'{0,0}' cannot be
-passed to an \verb'm4' macro since it is interpretted by \verb'm4' as two
+passed to an \verb'm4' macro since it is interpreted by \verb'm4' as two
 arguments.  The solution is to define a C preprocessor token,
 \verb'PAGERANK_ZERO', and pass that token as the third argument of
 \verb'GxB_Monoid_define'.
@@ -8910,9 +9079,10 @@ two ways.  If \verb'PAGERANK_UNSAFE' is defined at compile-time, the change in
 side-effect of a user-defined operator.  This works in the current version of
 SuiteSparse:GraphBLAS, but is unsafe since it assumes the accumulator operator
 is computed sequentially.  If computed in parallel, a race condition would
-occur.  If \verb'my_pagerank.m4' is placed in \verb'GraphBLAS/User/', then
+occur.  If \verb'PAGERANK_UNSAFE' is not defined, then a safe method is used
+instead.  If \verb'my_pagerank.m4' is placed in \verb'GraphBLAS/User/', then
 the user objects are created at compile-time instead of at run-time, which
-leads to faster execution..
+leads to faster execution.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -9047,8 +9217,72 @@ endless possibilities of user-defined types and their use in GraphBLAS.
 
 \newpage
 %-------------------------------------------------------------------------------
-\section{Installing SuiteSparse:GraphBLAS}
+\subsection{User applications using OpenMP or POSIX pthreads} 
 %-------------------------------------------------------------------------------
+\label{threads}
+
+Two example demo programs are included that illustrate how a multi-threaded
+user application can use GraphBLAS:  \verb'openmp_demo' uses OpenMP for its
+user threads and \verb'pthread_demo' uses POSIX pthreads.  {\bf To be
+thread-safe, SuiteSparse:GraphBLAS must be compiled with a threading library,
+either OpenMP or POSIX}.  Either option used inside GraphBLAS can typically be
+combined with any user threading model.  See Section~\ref{sec:install}.
+
+The \verb'openmp_demo' can be compiled without OpenMP, in which case it
+becomes single-threaded.  GraphBLAS can be compiled with OpenMP, POSIX
+pthreads, or no threading support (and is not thread-safe in this latter
+case).  This gives 9 different combinations:
+
+\vspace{0.1in}
+{\footnotesize
+\begin{tabular}{llll}
+\hline
+User    & GraphBLAS & \verb'Demo/Output' file & comments \\
+applic. &           & & \\
+\hline
+none    & none      & \verb'user_none_gb_none.out'      & OK \\
+none    & OpenMP    & \verb'user_none_gb_openmp.out'    & OK \\
+none    & pthread   & \verb'user_none_gb_pthread.out'   & OK \\
+\hline
+OpenMP  & none      & \verb'user_openmp_gb_none.out'    & fail \\
+OpenMP  & OpenMP    & \verb'user_openmp_gb_openmp.out'  & OK, random \\
+OpenMP  & pthread   & \verb'user_openmp_gb_pthread.out' & OK, random \\
+\hline
+pthread & none      & \verb'user_pthread_gb_none.out'   & fail \\
+pthread & OpenMP    & \verb'user_pthread_gb_openmp.out' & OK, random \\
+pthread & pthread   & \verb'user_pthread_gb_pthread.out'& OK, random \\
+\hline
+\end{tabular}}
+\vspace{0.1in}
+
+\noindent
+When the user application is multithreaded, GraphBLAS must be compiled with a
+threading library to be thread-safe.  The results listed above as {\em OK,
+random} mean that the output of the program will appear out of order.  This is
+by design, simply to show that the user application is running in parallel.
+The output of each thread should be the same.  In particular, each thread
+generates an intentional error, and later on prints it with \verb'GrB_error'.
+It will print its own error, not an error from another thread.  When all the
+threads finish, the master thread prints out each matrix generated by each
+thread, and these results are identical for all 7 cases listed above as OK.
+
+The GraphBLAS C API requires GraphBLAS to be thread-safe.  If
+SuiteSparse:GraphBLAS is not compiled with a threading library it will not be
+thread-safe (the two {\em fail} cases above).  For these cases, a thread will
+not retrieve its own error, but the last error of any thread.  In addition,
+since there is no critical section that SuiteSparse:GraphBLAS can use, the
+output will include errors about an invalid state of the global matrix queue.
+These errors are to be expected if SuiteSparse:GraphBLAS is not thread-safe.
+
+\newpage
+%-------------------------------------------------------------------------------
+\section{Compiling and Installing SuiteSparse:GraphBLAS}
+%-------------------------------------------------------------------------------
+\label{sec:install}
+
+%----------------------------------------
+\subsection{Required compiler}
+%----------------------------------------
 
 GraphBLAS makes extensive use of features in the ANSI C11 standard, and thus a
 C compiler supporting this version of the C standard is required.  On the Mac
@@ -9062,20 +9296,6 @@ To compile SuiteSparse:GraphBLAS and the demo programs, simply type \verb'make'
 in the main GraphBLAS folder, which compiles the library and runs several
 demos.
 
-SuiteSparse:GraphBLAS is not yet parallel, but it is thread-safe if multiple
-simultaneous calls are made to GraphBLAS functions.  The output variables of
-those calls to GraphBLAS must be unique; you cannot safely modify one GraphBLAS
-object in parallel, with two or more simultaneous GraphBLAS functions operating
-on the same output object.  In addition, all pending operations of objects that
-appear in parallel calls to GraphBLAS must be complete.  This can be done for
-all objects via \verb'GrB_wait', or it can be done by calling a method or
-operation that forces completion of a particular object (such as
-\verb'GrB_*_nvals').  If multiple parallel calls to GraphBLAS functions operate
-on unique inputs, then those input objects can safely have pending operations.
-To use GraphBLAS from parallel threads, GraphBLAS must be compiled with OpenMP
-so that it has access to a critical section mechanism.  OpenMP is optional if
-the user application does not make multiple simultaneous calls to GraphBLAS.
-
 If \verb'cmake' or \verb'make' fail, it might be that your default compiler
 does not support ANSI C11.  Try another compiler.  For example, try one of
 these options.  Go into the \verb'build' directory and type one of these:
@@ -9087,17 +9307,89 @@ these options.  Go into the \verb'build' directory and type one of these:
     CC=xlc cmake ..
     CC=icc cmake ..  \end{verbatim} }
 
-By default, SuiteSparse:GraphBLAS stores its matrices by row, using
-the \verb'GxB_BY_ROW' format.  You can change the default at compile 
-time to \verb'GxB_BY_COL' using the \verb'-DBYCOL' flag when compiling.
-For example:
+%----------------------------------------
+\subsection{Thread-safety in multithreaded user applications}
+\label{sec:threads}
+%----------------------------------------
+
+SuiteSparse:GraphBLAS is not yet parallel, but it is thread-safe if multiple
+simultaneous calls are made to GraphBLAS functions.  The output variables of
+those calls to GraphBLAS must be unique; you cannot safely modify one GraphBLAS
+object in parallel, with two or more simultaneous GraphBLAS functions operating
+on the same output object.  In addition, all pending operations of objects that
+appear in parallel calls to GraphBLAS must be complete.  This can be done for
+all objects via \verb'GrB_wait', or it can be done by calling a method or
+operation that forces completion of a particular object (such as
+\verb'GrB_*_nvals').  If multiple parallel calls to GraphBLAS functions operate
+on unique inputs, then those input objects can safely have pending operations.
+
+To use GraphBLAS from a multithreaded user application, GraphBLAS
+requires access to a critical section for the \verb'GrB_wait' queue of
+matrices with pending operations, and to a thread-local storage space
+so that each user thread can safely retrieve its own error message with
+\verb'GrB_error'.
+
+SuiteSparse:GraphBLAS supports the following user threading models.  By
+default, the \verb'cmake' script detects the presence of OpenMP and POSIX
+pthreads.  If OpenMP is present, it uses OpenMP critical sections for
+\verb'GrB_wait' and OpenMP \verb'threadprivate(...)' for thread-local storage
+for \verb'GrB_error'.  Otherwise, if POSIX pthreads are available, it uses a
+POSIX \verb'mutex', and POSIX thread-local storage via
+\verb'pthread_key_create'.
+
+These methods used inside GraphBLAS can typically inter-operate with any user
+threading model.  That is, a user application that relies on POSIX threads,
+OpenMP, ANSI C11 threads, or Microsoft Windows threads will find GraphBLAS
+thread-safe, even though GraphBLAS uses OpenMP or POSIX internally to
+synchronize the user threads.  However, for the most reliable results, the
+preferred approach is to use the same threading model in GraphBLAS as is used
+in the user application.
+
+You can modify the automatic selection of a user thread synchronization model
+by adding the following settings for \verb'cmake'.  This setting does not
+determine how SuiteSparse:GraphBLAS creates and exploits multiple threads {\em
+inside} any given GraphBLAS operation. Rather, it determines which threading
+library it will use to synchronize multiple calls to GraphBLAS from more than
+one user thread.
+
+\begin{itemize}
+\item OpenMP: this is the default if your compiler supports OpenMP.
+    It can also be specified with \verb'cmake -DUSER_OPENMP=1' in the
+    \verb'cmake' command line.  Internal parallelism in a future
+    SuiteSparse:GraphBLAS version will be based on OpenMP, but this is
+    typically safe to use with any user threading models.
+
+\item POSIX: this is used if OpenMP is not available.
+    If OpenMP is available but you still want GraphBLAS to use POSIX
+    synchronization, compile with \verb'cmake -DUSER_POSIX=1'
+
+\item no user threading:  compile with \verb'cmake -DUSER_NONE=1'.
+    {\bf GraphBLAS will not be thread-safe}.
+
+\end{itemize}
+
+The following user-threading models are not yet supported, but may be in
+a future version.
+
+\begin{itemize}
+\item Microsoft Windows:  \verb'cmake -DUSER_WINDOWS=1'
+\item ANSI C11 threads:   \verb'cmake -DUSER_ANSI=1'
+\end{itemize}
+
+%----------------------------------------
+\subsection{Default matrix format}
+%----------------------------------------
+
+By default, SuiteSparse:GraphBLAS stores its matrices by row, using the
+\verb'GxB_BY_ROW' format.  You can change the default at compile time to
+\verb'GxB_BY_COL' using \verb'cmake -DBYCOL=1'.  For example:
 
     {\small
     \begin{verbatim}
-    CFLAGS=-DBYCOL cmake ..  \end{verbatim} }
+    cmake -DBYCOL=1 ..  \end{verbatim} }
 
-The user application can also use \verb'GxB_get' to query the global option
-(see also Section~\ref{gxbget}):
+The user application can also use \verb'GxB_get' and \verb'GxB_set' to set and
+query the global option (see also Sections~\ref{gxbset} and \ref{gxbget}):
 
     {\small
     \begin{verbatim}
@@ -9106,20 +9398,25 @@ The user application can also use \verb'GxB_get' to query the global option
     if (s == GxB_BY_COL) printf ("all new matrices are stored by column\n") :
     else printf ("all new matrices are stored by row\n") ; \end{verbatim} }
 
-These options can also be combined.  For example, to use the \verb'gcc'
-compiler and to change the default format \verb'GxB_FORMAT_DEFAULT'
-to \verb'GxB_BY_COL', use the following \verb'cmake' command:
+%----------------------------------------
+\subsection{Setting the C flags and using CMake}
+%----------------------------------------
+
+The above options can also be combined.  For example, to use the \verb'gcc'
+compiler, to change the default format \verb'GxB_FORMAT_DEFAULT' to
+\verb'GxB_BY_COL', and to use a POSIX mutex inside GraphBLAS to synchronize
+user threads, use the following \verb'cmake' command:
 
     {\small
     \begin{verbatim}
-    CC=gcc CFLAGS=-DBYCOL cmake ..  \end{verbatim} }
+    CC=gcc cmake -DBYCOL=1 -DUSER_POSIX=1 .. \end{verbatim}}
 
 \noindent
 Then do \verb'make' in the \verb'build' directory.  If this still fails, see
-the \verb'CMakeLists.txt' file.  You may need to pass compiler-specific options
-to your compiler.  Locate this section in the \verb'CMakeLists.txt' file.  Use
-the \verb'set' command in \verb'cmake', as in the example below, to set the
-compiler flags you need.
+the \verb'CMakeLists.txt' file.  You can edit that file to pass
+compiler-specific options to your compiler.  Locate this section in the
+\verb'CMakeLists.txt' file.  Use the \verb'set' command in \verb'cmake', as in
+the example below, to set the compiler flags you need.
 
     {\small
     \begin{verbatim}
@@ -9128,7 +9425,7 @@ compiler flags you need.
     if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
         # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
         # cmake 3.0 doesn't have this problem.
-        set (CMAKE_C_FLAGS  "-std=c11 -lm -fopenmp")
+        set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm " )
         ...
     elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
         ...
@@ -9139,33 +9436,54 @@ compiler flags you need.
     endif ( )
     \end{verbatim} }
 
-Once \verb'cmake' and \verb'make' finish, run the demos in the
-\verb'GraphBLAS/Demo' folder:
+To compile SuiteSparse:GraphBLAS without running the demos, use
+\verb'make library' in the top-level directory, or \verb'make' in the
+\verb'build' directory.
+
+Several compile-time options can be selected by editing the \verb'Source/GB.h'
+file, but these are meant only for code development of SuiteSparse:GraphBLAS
+itself, not for end-users of SuiteSparse:GraphBLAS.
+
+%----------------------------------------
+\subsection{Running the Demos}
+%----------------------------------------
+
+By default, \verb'make' in the top-level directory compiles the library
+and runs the demos.  You can also run the demos after compiling:
 
     {\small
     \begin{verbatim}
-    cd ../Demo
+    cd Demo
     ./demo \end{verbatim} }
 
 The \verb'./demo' command is a script that runs the demos with various input
 matrices in the \verb'Demo/Matrix' folder.  The output of the demos will be
 compared with expected output files in \verb'Demo/Output'.
 
-To install the library in \verb'/usr/local/lib' and \verb'/usr/local/include',
-go to the top-level GraphBLAS folder and type:
+%----------------------------------------
+\subsection{Installing SuiteSparse:GraphBLAS}
+%----------------------------------------
+
+To install the library (typically in \verb'/usr/local/lib' and
+\verb'/usr/local/include' for Linux systems), go to the top-level GraphBLAS
+folder and type:
 
     {\small
     \begin{verbatim}
     sudo make install \end{verbatim} }
 
-Several compile-time options can be selected by editing the \verb'Source/GB.h'
-file, but these are meant only for code development of SuiteSparse:GraphBLAS
-itself, not for end-users of SuiteSparse:GraphBLAS.
+%----------------------------------------
+\subsection{Running the tests}
+%----------------------------------------
 
 To perform the extensive tests in the \verb'Test' folder, and the statement
 coverage tests in \verb'Tcov', MATLAB R2017A is required.  See the
 \verb'README.txt' files in those two folders for instructions on how to run the
 tests.
+
+%----------------------------------------
+\subsection{Cleaning up}
+%----------------------------------------
 
 To remove all compiled files, type \verb'make' \verb'distclean' in the top-level
 GraphBLAS folder.
@@ -9183,18 +9501,29 @@ National Laboratory), Timothy G. Mattson (Intel Corporation) Scott McMillan
 specification and for patiently answering my many questions while I was
 implementing it.
 
-I would like to thank John Gilbert (UC Santa Barbara) for many helpful
-discussions on GraphBLAS, and for our decades-long conversation on sparse
+I would like to thank John Gilbert (UC Santa Barbara) for our many discussions
+on GraphBLAS, and for our decades-long conversation and collaboration on sparse
 matrix computations, and sparse matrices in MATLAB in particular.
 
 I would like to thank Cleve Moler (MathWorks) for our many discussions on
 MATLAB, and for creating MATLAB in the first place.  Without MATLAB,
-SuiteSparse:GraphBLAS would have been very difficult to implement and test.
+SuiteSparse:GraphBLAS would have been impossible to implement and test.
 
-I would also like to thank S\'ebastien Villemot (Debian Developer,
+I would like to thank S\'ebastien Villemot (Debian Developer,
 \url{http://sebastien.villemot.name}) for helping me with various build issues
 and other code issues with GraphBLAS (and all of SuiteSparse) for its packaging
 in Debian Linux.
+
+I would like to thank Roi Lipman, RedisLabs (\url{https://redislabs.com}), for
+our many discussions on GraphBLAS and its use in RedisGraph
+(\url{https://redislabs.com/redis-enterprise/technology/redisgraph/}), a graph
+database module for Redis.  Based on SuiteSparse:GraphBLAS, RedisGraph is up
+600x faster than the fastest graph databases ({\footnotesize
+\url{https://youtu.be/9h3Qco_x0QE} \newline
+\url{https://redislabs.com/blog/new-redisgraph-1-0-achieves-600x-faster-performance-graph-databases/}}).
+
+SuiteSparse:GraphBLAS was developed with support from
+MIT Lincoln Lab and NSF grant 1514406.
 
 \newpage
 %-------------------------------------------------------------------------------

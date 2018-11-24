@@ -353,7 +353,7 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
     // create rdouble, a double vector of size n
     OK (GrB_Vector_new (&rdouble, GrB_FP64, n)) ;
 
-    GxB_print (A, GxB_SUMMARY) ;
+    // GxB_print (A, GxB_SUMMARY) ;
 
     #ifndef PAGERANK_UNSAFE
     // the safe version requires another vector, rnew.  Note that dup is
@@ -396,7 +396,7 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
             // GrB_vxm, or part of it, remains pending.
             OK (GrB_wait ( )) ;
 
-            // The following would be better, since it would just finsh the
+            // The following would be better, since it would just finish the
             // computations for r, not all other computations:
             // GrB_Index ignore ;
             // OK (GrB_Vector_nvals (&ignore, r)) ;

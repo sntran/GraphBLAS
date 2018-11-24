@@ -28,6 +28,6 @@ GrB_Info GxB_Matrix_resize      // change the size of a matrix
     // resize the matrix
     //--------------------------------------------------------------------------
 
-    return (GB_resize (A, nrows_new, ncols_new)) ;
+    return (GB_resize (A, nrows_new, ncols_new, Context)) ;
 }
 

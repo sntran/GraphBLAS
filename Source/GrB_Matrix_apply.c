@@ -43,6 +43,7 @@ GrB_Info GrB_Matrix_apply           // C<Mask> = accum (C, op(A)) or op(A')
         Mask,   Mask_comp,          // Mask and its descriptor
         accum,                      // optional accum for Z=accum(C,T)
         op,                         // operator to apply to the entries
-        A,      A_transpose)) ;     // A and its descriptor
+        A,      A_transpose,        // A and its descriptor
+        Context)) ;
 }
 

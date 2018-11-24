@@ -26,7 +26,8 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     const GrB_Matrix A,             // input matrix
     bool A_transpose,               // if true, use A' instead of A
     const GrB_Matrix B,             // input matrix
-    bool B_transpose                // if true, use B' instead of B
+    bool B_transpose,               // if true, use B' instead of B
+    GB_Context Context
 )
 {
 
@@ -51,14 +52,14 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     ASSERT_OK (GB_check (B, "B for GB_kron", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GrB_Info info = GB_compatible (C->type, C, M, accum, op->ztype) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, op->ztype, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
     }
 
     // T=op(A,B) via op operator, so A and B must be compatible with z=op(a,b)
-    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type, 0) ;
+    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type, 0, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -118,8 +119,8 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     if (A_transpose)
     {
         // AT = A' and typecast to op->xtype
-        // transpose: shallow output ok, typecast, no op
-        info = GB_transpose (&AT, op->xtype, is_csc, A, NULL) ;
+        // transpose: typecast, no op, not in place
+        info = GB_transpose (&AT, op->xtype, is_csc, A, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             return (info) ;
@@ -132,8 +133,8 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     if (B_transpose)
     {
         // BT = B' and typecast to op->ytype
-        // transpose: shallow output ok, typecast, no op
-        info = GB_transpose (&BT, op->ytype, is_csc, B, NULL) ;
+        // transpose: typecast, no op, not in place
+        info = GB_transpose (&BT, op->ytype, is_csc, B, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             GB_MATRIX_FREE (&AT) ;
@@ -148,7 +149,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 
     GrB_Matrix T ;
     info = GB_kron_kernel (&T, C->is_csc, op,
-        A_transpose ? AT : A, B_transpose ? BT : B) ;
+        A_transpose ? AT : A, B_transpose ? BT : B, Context) ;
 
     // free workspace
     GB_MATRIX_FREE (&AT) ;
@@ -165,6 +166,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

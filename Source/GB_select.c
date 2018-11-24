@@ -35,7 +35,8 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     const GxB_SelectOp op,          // operator to select the entries
     const GrB_Matrix A,             // input matrix
     const void *k,                  // optional input for select operator
-    const bool A_transpose          // A matrix descriptor
+    const bool A_transpose,         // A matrix descriptor
+    GB_Context Context
 )
 {
 
@@ -61,7 +62,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     ASSERT_OK (GB_check (A, "A input for GB_select", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GrB_Info info = GB_compatible (C->type, C, M, accum, A->type) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, A->type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -218,7 +219,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                         GB_KEEP_IF ((j-i) <= kk) ;
                     }
                 }
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -238,7 +239,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     int64_t i = Ai [p] ;
                     GB_KEEP_IF ((j-i) >= kk) else break ;
                 }
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -270,7 +271,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     GB_BINARY_SEARCH (i, Ai, p, pright, found) ;
                 }
                 GB_KEEP_IF (found) ;
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -289,7 +290,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     int64_t i = Ai [p] ;
                     GB_KEEP_IF ((j-i) != kk) ;
                 }
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -308,7 +309,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     int64_t i = Ai [p] ;
                     GB_KEEP_IF (is_nonzero (Ax +(p*asize), asize)) ;
                 }
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -338,7 +339,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                     }
                     GB_KEEP_IF (keep) ;
                 }
-                info = GB_jappend (T, j, &jlast, tnz, &tnz_last) ;
+                info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
         }
@@ -353,6 +354,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

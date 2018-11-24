@@ -13,7 +13,7 @@
 
 #include "GB.h"
 
-GrB_Info GB_I_inverse
+GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
 (
     const GrB_Index *I,         // list of indices, duplicates OK
     int64_t nI,                 // length of I
@@ -23,8 +23,9 @@ GrB_Info GB_I_inverse
     int64_t **p_Mark,           // head pointers for buckets, size avlen
     int64_t **p_Inext,          // next pointers for buckets, size nI
     int64_t **p_Iwork1,         // workspace of size nI, if needed
-    int64_t *p_nduplicates,     // number of duplicate entires in I
-    int64_t *p_flag             // Mark [0:avlen-1] < flag
+    int64_t *p_nduplicates,     // number of duplicate entries in I
+    int64_t *p_flag,            // Mark [0:avlen-1] < flag
+    GB_Context Context
 )
 {
 
@@ -36,58 +37,38 @@ GrB_Info GB_I_inverse
     int64_t *Inext = NULL ;
     int64_t *Iwork1 = NULL ;
     int64_t nduplicates = 0 ;
-    int64_t flag = 0 ;
+    int64_t flag = 1 ;
 
     *p_Mark = NULL ;
     *p_Inext = NULL ;
     *p_Iwork1 = NULL ;
     *p_nduplicates = 0 ;
-    *p_flag = 0 ;
+    *p_flag = 1 ;
 
     //--------------------------------------------------------------------------
-    // ensure Work is large enough for the scattered form of I
+    // allocate workspace
     //--------------------------------------------------------------------------
 
-    int64_t iworksize = nI ;            // Inext [nI]
+    double memory = GBYTES (nI, sizeof (int64_t)) ;
+    GB_MALLOC_MEMORY (Inext, nI, sizeof (int64_t)) ;
 
     if (need_Iwork1)
     { 
-        iworksize += nI ;               // Iwork1 [nI]
+        memory += GBYTES (nI, sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (Iwork1, nI, sizeof (int64_t)) ;
     }
 
-    // memory space for Inext, and Iwork1 of size nI or 2*nI
-    GrB_Info info = GB_Work_walloc (iworksize, sizeof (int64_t)) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory for Work
-        GB_wfree ( ) ;
-        return (info) ;
+    memory += GBYTES (avlen, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Mark, avlen, sizeof (int64_t)) ;
+
+    if (Inext == NULL || (need_Iwork1 && Iwork1 == NULL) || Mark == NULL)
+    {
+        // out of memory
+        GB_FREE_MEMORY (Inext,  nI,    sizeof (int64_t)) ;
+        GB_FREE_MEMORY (Iwork1, nI,    sizeof (int64_t)) ;
+        GB_FREE_MEMORY (Mark,   avlen, sizeof (int64_t)) ;
+        return (GB_OUT_OF_MEMORY (memory)) ;
     }
-
-    Inext = (int64_t *) GB_thread_local.Work ;
-
-    if (need_Iwork1)
-    { 
-        // Iwork1 workspace is only needed if the indices I are jumbled,
-        // and only for GB_subref_numeric
-        Iwork1 = Inext + nI ;            // size nI
-    }
-
-    //--------------------------------------------------------------------------
-    // ensure Mark is large enough for Mark, of size avlen
-    //--------------------------------------------------------------------------
-
-    info = GB_Mark_walloc (avlen) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory for Mark
-        GB_wfree ( ) ;
-        return (info) ;
-    }
-
-    // ensure flag + nI does not overflow
-    Mark = GB_thread_local.Mark ;
-    flag = GB_Mark_reset (1, nI) ;
 
     //--------------------------------------------------------------------------
     // scatter the I indices into buckets
@@ -100,6 +81,7 @@ GrB_Info GB_I_inverse
     for (int64_t inew = nI-1 ; inew >= 0 ; inew--)
     {
         int64_t i = I [inew] ;
+        ASSERT (i >= 0 && i < avlen) ;
         int64_t ihead = (Mark [i] - flag) ;
         if (ihead < 0)
         { 
@@ -131,7 +113,8 @@ GrB_Info GB_I_inverse
     // Otherise, the first index in bucket i is (Mark [i] - flag).
 
     #ifndef NDEBUG
-    // no part of this code takes O(avlen) time, except this debug test
+    // no part of this code takes O(avlen) time, except for the
+    // calloc of Inext and this debug test
     for (int64_t i = 0 ; i < avlen ; i++)
     {
         GB_for_each_entry_in_bucket (inew, i)

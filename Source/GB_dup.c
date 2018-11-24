@@ -8,12 +8,12 @@
 //------------------------------------------------------------------------------
 
 // C = A, making a deep copy.  Not user-callable; this function does the work
-// for user-callable functions GrB_*_dup.
+// for user-callable functions GrB_*_dup.  The Sauna is not copied from A to C.
 
-// There is little use for this feature, but (*Chandle) and A might be
-// identical, with GrB_dup (&A, A).  The input matrix A will be lost,
-// and will result in a memory leak, unless the user application does the
-// following (which is valid and memory-leak free):
+// There is little use for the following feature, but (*Chandle) and A might be
+// identical, with GrB_dup (&A, A).  The input matrix A will be lost, and will
+// result in a memory leak, unless the user application does the following
+// (which is valid and memory-leak free):
 
 //  B = A ;
 //  GrB_dup (&A, A) ;
@@ -22,12 +22,14 @@
 
 // A is the new copy and B is the old copy.  Each should be freed when done.
 
+
 #include "GB.h"
 
 GrB_Info GB_dup             // make an exact copy of a matrix
 (
     GrB_Matrix *Chandle,    // handle of output matrix to create
-    const GrB_Matrix A      // input matrix to copy
+    const GrB_Matrix A,     // input matrix to copy
+    GB_Context Context
 )
 {
 
@@ -87,6 +89,6 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     //--------------------------------------------------------------------------
 
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

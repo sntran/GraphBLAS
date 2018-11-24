@@ -38,13 +38,17 @@ my_*.out
 *.tmp
 
 Demo/bfs_demo.out
-Demo/complex_demo_out.m
 Demo/mis_demo.out
-Demo/simple_demo.out
-Demo/wildtype_demo.out
-Demo/tri_demo.out
+Demo/openmp_demo.out
 Demo/pagerank_demo.out
+Demo/pthread_demo.out
+Demo/simple_demo.out
+Demo/tri_demo.out
+Demo/wildtype_demo.out
+Demo/*.log
+Demo/complex_demo_out.m
 
+Test/*.log
 Test/errlog.txt
 Test/log.txt
 Doc/GraphBLAS_UserGuide.log

@@ -46,6 +46,7 @@ GrB_Info GrB_Matrix_extract     // C<Mask> = accum (C, A(I,J))
         accum,                      // optional accum for Z=accum(C,T)
         A,      A_transpose,        // A and its descriptor
         I, ni,                      // row indices
-        J, nj)) ;                   // column indices
+        J, nj,                      // column indices
+        Context)) ;
 }
 

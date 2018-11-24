@@ -10,6 +10,8 @@
 #ifndef GB_MEXH
 #define GB_MEXH
 
+#define GB_PANIC mexErrMsgTxt ("panic") ;
+
 #include "GB.h"
 #include "demos.h"
 #undef OK
@@ -28,7 +30,10 @@
 
 // timer functions, and result statistics
 extern double gbtime, tic [2] ;
-void GB_mx_put_time ( ) ;               // return the time to MATLAB
+void GB_mx_put_time
+(
+    GrB_Desc_Value AxB_method_used
+) ;
 void GB_mx_clear_time ( ) ;             // clear the time and start the tic
 #define TIC { GB_mx_clear_time ( ) ; }
 #define TOC { gbtime = simple_toc (tic) ; }
@@ -208,7 +213,11 @@ bool GB_mx_Monoid               // true if successful, false otherwise
 
 bool GB_mx_get_global (bool cover) ;
 
-void GB_mx_put_global (bool cover) ;
+void GB_mx_put_global
+(   
+    bool cover,
+    GrB_Desc_Value AxB_method_used
+) ;
 
 void GB_mx_complex_merge    // merge real/imag parts of MATLAB array
 (
@@ -316,10 +325,7 @@ bool GB_mx_isequal  // true if A and B are exactly the same
     else                                                                    \
     {                                                                       \
         /* brutal malloc debug */                                           \
-        int nmalloc_start = (int) GB_Global.nmalloc                         \
-            - ((GB_thread_local.Mark == NULL) ? 0:1 )                       \
-            - ((GB_thread_local.Work == NULL) ? 0:1 )                       \
-            - ((GB_thread_local.Flag == NULL) ? 0:1 ) ;                     \
+        int nmalloc_start = (int) GB_Global.nmalloc ;                       \
         for (int tries = 0 ; ; tries++)                                     \
         {                                                                   \
             /* give GraphBLAS the ability to do a # of mallocs, */          \
@@ -328,7 +334,6 @@ bool GB_mx_isequal  // true if A and B are exactly the same
             METHOD_TRY ;                                                    \
             /* call the method with malloc debug enabled */                 \
             GB_Global.malloc_debug = true ;                                 \
-            GB_thread_local.info = GrB_SUCCESS ;                            \
             TIC ;                                                           \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
             TOC ;                                                           \
@@ -347,10 +352,7 @@ bool GB_mx_isequal  // true if A and B are exactly the same
                 /* but turn off malloc debugging to get the copy */         \
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
-                int nmalloc_end = (int) GB_Global.nmalloc                   \
-                    - ((GB_thread_local.Mark == NULL) ? 0:1 )               \
-                    - ((GB_thread_local.Work == NULL) ? 0:1 )               \
-                    - ((GB_thread_local.Flag == NULL) ? 0:1 ) ;             \
+                int nmalloc_end = (int) GB_Global.nmalloc ;                 \
                 if (nmalloc_end > nmalloc_start)                            \
                 {                                                           \
                     /* memory leak */                                       \

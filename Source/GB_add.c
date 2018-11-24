@@ -57,7 +57,8 @@ GrB_Info GB_add             // C = A+B
     const bool C_is_csc,    // format of output matrix C
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
-    const GrB_BinaryOp op   // op to perform C = op (A,B)
+    const GrB_BinaryOp op,  // op to perform C = op (A,B)
+    GB_Context Context
 )
 {
 
@@ -220,7 +221,7 @@ GrB_Info GB_add             // C = A+B
 
             // this cannot fail since C->plen is the upper bound: the sum of
             // the non-empty vectors of A and B.
-            info = GB_jappend (C, j, &jlast, cnz, &cnz_last) ;
+            info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
             #if 0
             // if it could fail:
@@ -338,7 +339,7 @@ GrB_Info GB_add             // C = A+B
 
             // this cannot fail since C->plen is the upper bound: the sum of
             // the non-empty vectors of A and B.
-            info = GB_jappend (C, j, &jlast, cnz, &cnz_last) ;
+            info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
 
             #if 0
             // if it could fail:
@@ -352,10 +353,10 @@ GrB_Info GB_add             // C = A+B
     //--------------------------------------------------------------------------
 
     GB_jwrapup (C, jlast, cnz) ;
-    info = GB_ix_realloc (C, GB_NNZ (C), true) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
     ASSERT_OK (GB_check (C, "C output for C=A+B", GB0)) ;
     (*Chandle) = C ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

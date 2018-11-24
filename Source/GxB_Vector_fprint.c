@@ -28,17 +28,13 @@ GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_Vector_check (v, name, pr, f) ;
+    GrB_Info info = GB_Vector_check (v, name, pr, f, Context) ;
 
     //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 
-    if (info == GrB_SUCCESS)
-    { 
-        return (GB_REPORT_SUCCESS) ;
-    }
-    else if (info == GrB_INDEX_OUT_OF_BOUNDS)
+    if (info == GrB_INDEX_OUT_OF_BOUNDS)
     { 
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "vector invalid: indices out of order [%s]", GB_NAME))) ;

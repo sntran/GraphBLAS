@@ -11,7 +11,7 @@
 
 #include "GB.h"
 
-void GB_free                    // free a matrix
+GrB_Info GB_free                // free a matrix
 (
     GrB_Matrix *matrix          // handle of matrix to free
 )
@@ -22,13 +22,15 @@ void GB_free                    // free a matrix
         GrB_Matrix A = *matrix ;
         if (A != NULL && (A->magic == GB_MAGIC || A->magic == GB_MAGIC2))
         { 
-            // free all content of A
-            GB_phix_free (A) ;
+            // free all content of A, including the Sauna
+            GB_CONTENT_FREE (A) ;
             // free the header of A itself
             A->magic = GB_FREED ;      // to help detect dangling pointers
             GB_FREE_MEMORY (*matrix, 1, sizeof (struct GB_Matrix_opaque)) ;
         }
         (*matrix) = NULL ;
     }
+
+    return (GrB_SUCCESS) ;
 }
 

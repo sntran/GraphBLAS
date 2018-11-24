@@ -52,7 +52,7 @@
 #define FREE_ALL                \
 {                               \
     GB_MATRIX_FREE (&C) ;       \
-    GB_mx_put_global (true) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #else
@@ -68,7 +68,7 @@
 #define FREE_ALL                \
 {                               \
     GrB_free (&C) ;             \
-    GB_mx_put_global (true) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #endif
@@ -96,7 +96,8 @@ GrB_Info builder
     GrB_Index ni,
     GrB_BinaryOp dup,
     bool C_is_csc,
-    mxClassID xclass
+    mxClassID xclass,
+    GB_Context Context
 )
 {
 
@@ -114,7 +115,7 @@ GrB_Info builder
     {
         // create a hypersparse CSR matrix
         info = GB_new (Chandle, ctype, ncols, nrows, GB_Ap_calloc,
-            false, GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1) ;
+            false, GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1, Context) ;
     }
     #else
     info = GrB_Vector_new (Chandle, ctype, nrows) ;
@@ -321,7 +322,7 @@ void mexFunction
     #endif
 
     METHOD (builder (&C, ctype, nrows, ncols, I, J, X, ni, dup,
-        C_is_csc, xclass)) ;
+        C_is_csc, xclass, Context)) ;
 
     ASSERT_OK (GB_check (C, "C built", GB0)) ;
 

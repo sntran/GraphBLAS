@@ -32,6 +32,7 @@
     GrB_free (&A) ;                 \
     if (Pd != NULL) free (Pd) ;     \
     if (Pi != NULL) free (Pi) ;     \
+    if (P2 != NULL) free (P2) ;     \
 }
 
 #include "demos.h"

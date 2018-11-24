@@ -15,7 +15,8 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     const char *name,           // name of the monoid, optional
     int pr,                     // 0: print nothing, 1: print header and errors,
                                 // 2: print brief, 3: print all
-    FILE *f                     // file for output
+    FILE *f,                    // file for output
+    GB_Context Context
 )
 { 
 
@@ -57,7 +58,8 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
                 "Monoid->object_kind is invalid: [%s]", GB_NAME))) ;
     }
 
-    GrB_Info info = GB_BinaryOp_check (monoid->op, "monoid->op", pr, f) ;
+    GrB_Info info = GB_BinaryOp_check (monoid->op, "monoid->op", pr, f,
+        Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("Monoid contains an invalid operator\n") ;
@@ -70,18 +72,20 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     { 
         if (pr > 0) GBPR ("All domains of operator must be the same\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
-            "All domains of monoid operator must be the same: [%s]", GB_NAME))) ;
+            "All domains of monoid operator must be the same: [%s]",
+            GB_NAME))) ;
     }
 
     // print the identity value
     if (pr > 0)
     { 
         GBPR ("identity: [ ") ;
-        info = GB_entry_check (monoid->op->ztype, monoid->identity, f) ;
+        info = GB_entry_check (monoid->op->ztype, monoid->identity, f,  
+            Context) ;
         if (info != GrB_SUCCESS) return (info) ;
         GBPR (" ]\n") ;
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

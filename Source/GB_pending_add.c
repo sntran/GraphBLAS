@@ -66,7 +66,8 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     const GrB_Type stype,           // scalar type
     const GrB_BinaryOp pop,         // new A->operator_pending, if 1st pending
     const int64_t i,                // index into vector
-    const int64_t j                 // vector index
+    const int64_t j,                // vector index
+    GB_Context Context
 )
 {
 
@@ -95,6 +96,7 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
         // tuples, and the operator to eventually be used to assemble them.
         // If pop is NULL, the implicit SECOND_Atype operator will be used.
         A->type_pending = stype ;
+        A->type_pending_size = stype->size ;
         A->operator_pending = pop ;
     }
 
@@ -136,11 +138,8 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
 
         if (!ok1 || !ok2 || !ok3)
         { 
-            // out of memory; clear all of A and remove from the queue
-            GB_phix_free (A) ;
-            ASSERT (!(A->enqueued)) ;
-            ASSERT (!GB_PENDING (A)) ;
-            ASSERT (!GB_ZOMBIES (A)) ;
+            // out of memory
+            GB_CONTENT_FREE (A) ;
             return (GB_OUT_OF_MEMORY (memory)) ;
         }
 
@@ -190,7 +189,7 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     ASSERT (GB_PENDING (A)) ;
     if (!(A->enqueued))
     { 
-        GB_queue_insert (A) ;
+        GB_CRITICAL (GB_queue_insert (A)) ;
     }
     return (GrB_SUCCESS) ;
 }

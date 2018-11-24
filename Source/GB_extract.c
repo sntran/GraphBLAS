@@ -31,7 +31,8 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     const GrB_Index *Rows,          // row indices
     const GrB_Index nRows_in,       // number of row indices
     const GrB_Index *Cols,          // column indices
-    const GrB_Index nCols_in        // number of column indices
+    const GrB_Index nCols_in,       // number of column indices
+    GB_Context Context
 )
 {
 
@@ -51,7 +52,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     ASSERT_OK (GB_check (A, "A input for GB_Matrix_extract", GB0)) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GrB_Info info = GB_compatible (C->type, C, M, accum, A->type) ;
+    GrB_Info info = GB_compatible (C->type, C, M, accum, A->type, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -163,7 +164,8 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     //--------------------------------------------------------------------------
 
     GrB_Matrix T ;
-    info = GB_subref_numeric (&T, T_is_csc, A, I, ni, J, nj, must_sort) ;
+    info = GB_subref_numeric (&T, T_is_csc, A, I, ni, J, nj, must_sort,
+        Context) ;
     if (info != GrB_SUCCESS)
     {
         return (info) ;
@@ -182,6 +184,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     // C<M> = accum (C,T): accumulate the results into C via the mask M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

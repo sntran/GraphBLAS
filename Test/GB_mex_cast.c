@@ -81,7 +81,6 @@ void mexFunction
         // X is a shallow copy that must not be freed
     }
 
-    // do not return coverage counts
-    GB_mx_put_global (do_cover) ;
+    GB_mx_put_global (do_cover, 0) ;
 }
 

@@ -14,7 +14,7 @@
 
 #define GET_DEEP_COPY ;
 #define FREE_DEEP_COPY ;
-#define FREE_ALL GB_mx_put_global (true) ;
+#define FREE_ALL GB_mx_put_global (true, 0) ;
 
 void mexFunction
 (

@@ -26,9 +26,7 @@ GrB_Info GrB_Matrix_extractElement_ ## T     /* x = A(row,col) */             \
 {                                                                             \
     GB_WHERE ("GrB_Matrix_extractElement_" GB_STR(T) " (x, A, row, col)") ;   \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                         \
-    GrB_Info info = GB_extractElement (x, GB_ ## T ## _code, A, row, col) ;   \
-    GB_REPORT_MATRIX (info) ;                                                 \
-    return (info) ;                                                           \
+    return (GB_extractElement (x, GB_ ## T ## _code, A, row, col, Context)) ; \
 }
 
 GB_EXTRACT (bool     , BOOL) ;

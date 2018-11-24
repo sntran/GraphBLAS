@@ -68,5 +68,5 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
                     field, GxB_HYPER, GxB_FORMAT))) ;
 
     }
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }

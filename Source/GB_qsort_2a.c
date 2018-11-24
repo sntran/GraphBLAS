@@ -52,6 +52,7 @@ void GB_qsort_2a        // sort array A of size 2-by-n, using 1 key (A [0][])
     int64_t n
 )
 { 
-    GB_quicksort (GB_arg (A), n) ;
+    uint64_t seed = n ;
+    GB_quicksort (GB_arg (A), n, &seed) ;
 }
 

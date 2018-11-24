@@ -14,7 +14,7 @@
 #define FREE_ALL                        \
 {                                       \
     GrB_free (&C) ;                     \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

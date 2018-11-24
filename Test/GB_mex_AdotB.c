@@ -22,7 +22,7 @@
     GB_MATRIX_FREE (&Mask) ;            \
     GrB_free (&add) ;                   \
     GrB_free (&semiring) ;              \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, GxB_AxB_DOT) ; \
 }
 
 GrB_Matrix A = NULL, B = NULL, C = NULL, Aconj = NULL, Mask = NULL ;
@@ -31,7 +31,7 @@ GrB_Semiring semiring = NULL ;
 
 //------------------------------------------------------------------------------
 
-GrB_Info adotb_complex ( )
+GrB_Info adotb_complex (GB_Context Context)
 {
     GrB_Info info = GrB_Matrix_new (&Aconj, Complex, A->vlen, A->vdim) ;
     if (info != GrB_SUCCESS) return (info) ;
@@ -54,7 +54,7 @@ GrB_Info adotb_complex ( )
         #else
             Complex_plus_times,
         #endif
-        false) ;
+        false, Context) ;
 
     #ifdef MY_COMPLEX
     // convert back to run-time complex type
@@ -69,7 +69,7 @@ GrB_Info adotb_complex ( )
 
 //------------------------------------------------------------------------------
 
-GrB_Info adotb ( ) 
+GrB_Info adotb (GB_Context Context) 
 {
     // create the Semiring for regular z += x*y
     GrB_Info info = GrB_Monoid_new (&add, GrB_PLUS_FP64, (double) 0) ;
@@ -82,7 +82,7 @@ GrB_Info adotb ( )
     }
     // C = A'*B
     info = GB_AxB_dot (&C, Mask, A, B,
-        semiring /* GxB_PLUS_TIMES_FP64 */, false) ;
+        semiring /* GxB_PLUS_TIMES_FP64 */, false, Context) ;
     GrB_free (&add) ;
     GrB_free (&semiring) ;
     return (info) ;
@@ -142,11 +142,11 @@ void mexFunction
     if (A->type == Complex)
     {
         // C = A'*B, complex case
-        METHOD (adotb_complex ( )) ;
+        METHOD (adotb_complex (Context)) ;
     }
     else
     {
-        METHOD (adotb ( )) ;
+        METHOD (adotb (Context)) ;
     }
 
     // return C to MATLAB

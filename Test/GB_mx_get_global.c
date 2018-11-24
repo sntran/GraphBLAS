@@ -22,7 +22,6 @@ bool GB_mx_get_global      // true if doing malloc_debug
     // get malloc debug
     //--------------------------------------------------------------------------
 
-    GB_thread_local.info = GrB_SUCCESS ;
     bool malloc_debug = false ;
     bool *debug = NULL ;
     const mxArray *debug_matlab = NULL ;

@@ -24,7 +24,8 @@
 
 GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
 (
-    GrB_Matrix A            // matrix to clear
+    GrB_Matrix A,           // matrix to clear
+    GB_Context Context
 )
 {
 
@@ -43,8 +44,8 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     // clear the content of A
     //--------------------------------------------------------------------------
 
-    // free all content
-    GB_phix_free (A) ;
+    // free all content, but not the Sauna
+    GB_PHIX_FREE (A) ;
 
     // no more zombies or pending tuples
     ASSERT (!GB_PENDING (A)) ;
@@ -84,8 +85,8 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         GB_CALLOC_MEMORY (A->h, plen  , sizeof (int64_t)) ;
         if (A->p == NULL || A->h == NULL)
         { 
-            // out of memory; free all content
-            GB_phix_free (A) ;
+            // out of memory
+            GB_CONTENT_FREE (A) ;
             return (GB_NO_MEMORY) ;
         }
 
@@ -104,8 +105,8 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         ASSERT (A->h == NULL) ;
         if (A->p == NULL)
         { 
-            // out of memory; free all content
-            GB_phix_free (A) ;
+            // out of memory
+            GB_CONTENT_FREE (A) ;
             return (GB_OUT_OF_MEMORY (GBYTES (plen+1, sizeof (int64_t)))) ;
         }
     }
@@ -115,6 +116,6 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     //--------------------------------------------------------------------------
 
     A->magic = GB_MAGIC ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

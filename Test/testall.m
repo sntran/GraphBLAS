@@ -75,6 +75,7 @@ logstat ('test74') ;  % test GrB_mxm on all semirings, just dot product method
 logstat ('test99') ;  % GB_mex_transpose with explicit zeros in the Mask
 logstat ('test19') ;  % GxB_subassign, many pending operators
 logstat ('test23') ;  % quick test of GB_*_build
+logstat ('test96') ;  % A*B using dot product
 logstat ('test25') ;  % quick test of GxB_select
 logstat ('test53') ;  % quick test of GB_mex_Matrix_extract
 logstat ('test24') ;  % test of GrB_Matrix_reduce

@@ -25,7 +25,9 @@ GrB_Info GrB_Monoid_free            // free a user-created monoid
                 // only user-defined monoids are freed.  predefined monoids
                 // are statically allocated and cannot be freed.
                 mon->magic = GB_FREED ; // to help detect dangling pointers
-                GB_FREE_MEMORY (mon->identity, 1, mon->op->ztype->size) ;
+                // mon->op->ztype->size might not be safe if op or ztype are
+                // user-defined and have already been freed; use op_ztype_size.
+                GB_FREE_MEMORY (mon->identity, 1, mon->op_ztype_size) ;
                 GB_FREE_MEMORY (*monoid, 1, sizeof (struct GB_Monoid_opaque)) ;
             }
             (*monoid) = NULL ;

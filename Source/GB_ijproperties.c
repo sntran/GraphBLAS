@@ -32,7 +32,8 @@ GrB_Info GB_ijproperties        // check I and determine its properties
     bool *I_is_contig,          // true if I is a contiguous list, imin:imax
     int64_t *imin_result,       // min (I)
     int64_t *imax_result,       // max (I)
-    bool is_I                   // true if I, false if J (debug only)
+    bool is_I,                  // true if I, false if J (debug only)
+    GB_Context Context
 )
 {
 
@@ -211,6 +212,6 @@ GrB_Info GB_ijproperties        // check I and determine its properties
     (*I_is_unsorted) = I_unsorted ;
     (*imin_result) = imin ;
     (*imax_result) = imax ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -120,7 +120,8 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     const GrB_BinaryOp accum,   // optional accum for Z=accum(C,results)
     GrB_Matrix *Thandle,        // results of computation, freed when done
     const bool C_replace,       // if true, clear C first
-    const bool Mask_complement  // if true, complement the mask
+    const bool Mask_complement, // if true, complement the mask
+    GB_Context Context
 )
 {
 
@@ -160,9 +161,8 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     if (C->is_csc != T->is_csc)
     { 
-        // transpose: shallow output ok, no typecast, no op, in place of C,
-        // input jumbled
-        info = GB_transpose (Thandle, NULL, C->is_csc, NULL, NULL) ;
+        // transpose: no typecast, no op, in place of T, jumbled
+        info = GB_transpose (Thandle, NULL, C->is_csc, NULL, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory ; Thandle already freed
@@ -177,10 +177,10 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     if (M != NULL && C->is_csc != M->is_csc)
     {
         // MT = M' to conform M to the same CSR/CSC format as C.
-        // transpose: shallow output ok, typecast, no op, not in place
+        // transpose: typecast, no op, not in place
         if (MT_in == NULL)
         { 
-            info = GB_transpose (&MT, GrB_BOOL, C->is_csc, M, NULL) ;
+            info = GB_transpose (&MT, GrB_BOOL, C->is_csc, M, NULL, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -240,7 +240,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // FUTURE: use GB_shallow_cast and free Thandle later
 
         // Z and T have same vlen, vdim, is_csc, is_hyper
-        info = GB_transplant (Z, C->type, Thandle) ;
+        info = GB_transplant (Z, C->type, Thandle, Context) ;
         // Z is now initialized, and Z->p, Z->h, Z->i, and Z->x are allocated ]
 
     }
@@ -251,7 +251,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // Z = (ctype) accum (C,T) ;
         //----------------------------------------------------------------------
 
-        info = GB_add (&Z, C->type, C->is_csc, C, T, accum) ;
+        info = GB_add (&Z, C->type, C->is_csc, C, T, accum, Context) ;
         GB_MATRIX_FREE (Thandle) ;
     }
 
@@ -279,7 +279,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     // apply the mask, storing the results back into C, and free Z.
     ASSERT_OK (GB_check (C, "C<M>=Z input", GB0)) ;
-    info = GB_mask (C, M, &Z, C_replace, Mask_complement) ;
+    info = GB_mask (C, M, &Z, C_replace, Mask_complement, Context) ;
     ASSERT (Z == NULL) ;
     ASSERT (!C->p_shallow && !C->h_shallow && !C->i_shallow && !C->x_shallow) ;
 
@@ -288,11 +288,11 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     if (info != GrB_SUCCESS)
     { 
-        // out of memory in GB_mask
+        // out of memory
         return (info) ;
     }
 
     ASSERT_OK (GB_check (C, "C<M>=accum(C,T) output", GB0)) ;
-    return (GB_REPORT_SUCCESS)  ;
+    return (GrB_SUCCESS)  ;
 }
 

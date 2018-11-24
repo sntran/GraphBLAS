@@ -13,7 +13,8 @@
 GrB_Info GB_hyper_realloc
 (
     GrB_Matrix A,               // matrix with hyperlist to reallocate
-    int64_t plen_new            // new size of A->p and A->h
+    int64_t plen_new,           // new size of A->p and A->h
+    GB_Context Context
 )
 {
 
@@ -49,8 +50,8 @@ GrB_Info GB_hyper_realloc
 
         if (!ok)
         { 
-            // out of memory; free all content of A
-            GB_phix_free (A) ;
+            // out of memory
+            GB_CONTENT_FREE (A) ;
             return (GB_OUT_OF_MEMORY (GBYTES (2*plen_new+1, sizeof (int64_t))));
         }
 
@@ -62,6 +63,6 @@ GrB_Info GB_hyper_realloc
     // return result
     //--------------------------------------------------------------------------
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

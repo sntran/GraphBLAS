@@ -27,6 +27,6 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
     // resize the vector
     //--------------------------------------------------------------------------
 
-    return (GB_resize ((GrB_Matrix) u, nrows_new, 1)) ;
+    return (GB_resize ((GrB_Matrix) u, nrows_new, 1, Context)) ;
 }
 

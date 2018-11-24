@@ -57,6 +57,6 @@ void mexFunction
     GB_qsort_2b (Iout, Jout, n) ;
 
     TOC ;
-    GB_mx_put_time ( ) ;
+    GB_mx_put_time (0) ;
 }
 

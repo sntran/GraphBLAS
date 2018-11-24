@@ -27,7 +27,6 @@ GrB_Info GrB_mxm                    // C<Mask> = accum (C, A*B)
 )
 { 
 
-
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
@@ -55,6 +54,7 @@ GrB_Info GrB_mxm                    // C<Mask> = accum (C, A*B)
         A,          A_transpose,    // A matrix and its descriptor
         B,          B_transpose,    // B matrix and its descriptor
         false,                      // use fmult(x,y), flipxy false
-        AxB_method)) ;              // algorithm selector
+        AxB_method,                 // algorithm selector
+        Context)) ;
 }
 

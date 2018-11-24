@@ -18,7 +18,7 @@
     GrB_free (&v) ;         \
     GrB_free (&desc) ;      \
     GrB_free (&mask) ;      \
-    GB_mx_put_global (true) ;         \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

@@ -30,6 +30,6 @@ GrB_Info GxB_Monoid_identity        // return the monoid identity
     //--------------------------------------------------------------------------
 
     memcpy (identity, monoid->identity, monoid->op->ztype->size) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

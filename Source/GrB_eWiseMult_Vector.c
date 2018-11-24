@@ -32,7 +32,8 @@
         op,                             /* operator that defines t=u.*v */  \
         (GrB_Matrix) u,    false,       /* u, never transposed          */  \
         (GrB_Matrix) v,    false,       /* v, never transposed          */  \
-        false)) ;                       /* do eWiseMult                 */  \
+        false,                          /* do eWiseMult                 */  \
+        Context)) ;                                                         \
 }
 
 //------------------------------------------------------------------------------

@@ -18,7 +18,8 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_BinaryOp reduce,      // reduce operator for t=reduce(A)
     const GrB_Matrix A,             // first input:  matrix A
-    const GrB_Descriptor desc       // descriptor for w, mask, and A
+    const GrB_Descriptor desc,      // descriptor for w, mask, and A
+    GB_Context Context
 )
 {
 
@@ -50,7 +51,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
 
     // check domains and dimensions for w<mask> = accum (w,T)
     GrB_Type ttype = reduce->ztype ;
-    info = GB_compatible (w->type, w, mask, accum, ttype) ;
+    info = GB_compatible (w->type, w, mask, accum, ttype, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -337,7 +338,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             }
 
             info = GB_build (T, (GrB_Index *) Ai, NULL, Ax, anz, reduce, acode,
-                false, false) ;
+                false, false, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -355,33 +356,28 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             //------------------------------------------------------------------
 
             // memory usage is O(wlen) and time is O(wlen + anz).  This can be
-            // costly if A is hypersparse, but it is only used if anz > wlen,
+            // costly if A is hypersparse, but it is only used if anz >= wlen,
             // so the time and memory usage are OK.
 
-            // ensure Mark is at least of size wlen+1.
-            // Mark [i] = flag if work [i] is "nonzero"
-            info = GB_Mark_walloc (wlen + 1) ;  // OK; not used if A hypersparse
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                return (info) ;
+            bool *restrict mark = NULL ;
+            GB_CALLOC_MEMORY (mark, wlen + 1, sizeof (bool)) ;
+
+            void *restrict work = NULL ;
+            GB_MALLOC_MEMORY (work, wlen + 1, zsize) ;
+
+            #define GB_REDUCE_FREE_WORK                                     \
+            {                                                               \
+                GB_FREE_MEMORY (mark, wlen + 1, sizeof (bool)) ;            \
+                GB_FREE_MEMORY (work, wlen + 1, zsize) ;                    \
             }
 
-            // ensure Work is at least size (wlen+1) * (zsize+sizeof(int64_t)
-            info = GB_Work_walloc (wlen + 1,    // OK; not used if A hypersparse
-                zsize + sizeof (int64_t)) ;
-            if (info != GrB_SUCCESS)
+            if (mark == NULL || work == NULL)
             { 
                 // out of memory
-                GB_wfree ( ) ;
-                return (info) ;
+                GB_REDUCE_FREE_WORK ;
+                double memory = GBYTES (wlen + 1, sizeof (bool) + zsize) ;
+                return (GB_OUT_OF_MEMORY (memory)) ;
             }
-
-            int64_t *Mark = GB_thread_local.Mark ;
-            int64_t flag = GB_Mark_reset (1, 0) ;
-
-            void *work = GB_thread_local.Work ;
-            int64_t *wpattern = (int64_t *) (work + (wlen+1) * zsize) ;
 
             //------------------------------------------------------------------
             // sum across each index: work [i] = reduce (A (i,:))
@@ -398,12 +394,12 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                 {                                                           \
                     /* get A(i,j) */                                        \
                     int64_t i = Ai [p] ;                                    \
-                    if (Mark [i] != flag)                                   \
+                    if (!mark [i])                                          \
                     {                                                       \
                         /* first time row i has been seen */                \
                         ww [i] = ax [p] ;                                   \
-                        Mark [i] = flag ;                                   \
-                        wpattern [tnz++] = i ;                              \
+                        mark [i] = true ;                                   \
+                        tnz++ ;                                             \
                     }                                                       \
                     else                                                    \
                     {                                                       \
@@ -447,12 +443,12 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                 {
                     // get A(i,j)
                     int64_t i = Ai [p] ;
-                    if (Mark [i] != flag)
+                    if (!mark [i])
                     { 
                         // work [i] = (ztype) Ax [p]
                         cast_A_to_Z (work +(i*zsize), Ax +(p*asize), zsize) ;
-                        Mark [i] = flag ;
-                        wpattern [tnz++] = i ;
+                        mark [i] = true ;
+                        tnz++ ;
                     }
                     else
                     { 
@@ -466,48 +462,71 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             }
 
             //------------------------------------------------------------------
-            // clear the Mark array
-            //------------------------------------------------------------------
-
-            GB_Mark_reset (1, 0) ;
-
-            //------------------------------------------------------------------
             // allocate T
             //------------------------------------------------------------------
+
+            // if T is dense, then transplant work into T->x
+            bool tdense = (tnz == wlen) ;
 
             // since T is a GrB_Vector, it is CSC and not hypersparse
             T = NULL ;                  // allocate a new header for T
             GB_CREATE (&T, ttype, wlen, 1, GB_Ap_calloc, true,
-                GB_FORCE_NONHYPER, GB_HYPER_DEFAULT, 1, tnz, true);
+                GB_FORCE_NONHYPER, GB_HYPER_DEFAULT, 1, tnz, !tdense) ;
             if (info != GrB_SUCCESS)
             { 
+                // out of memory
+                GB_REDUCE_FREE_WORK ;
                 return (info) ;
             }
-            ASSERT (GB_VECTOR_OK (T)) ;
+
+            if (tdense)
+            { 
+                // T is dense, transplant work into T->x
+                T->x = work ;
+                // set work to NULL so it will not be freed
+                work = NULL ;
+            }
 
             T->p [0] = 0 ;
             T->p [1] = tnz ;
             int64_t *restrict Ti = T->i ;
-            void    *restrict Tx = T->x ;
             T->nvec_nonempty = (tnz > 0) ? 1 : 0 ;
 
             //------------------------------------------------------------------
-            // sort the pattern of T
+            // gather the results into T
             //------------------------------------------------------------------
 
-            GB_qsort_1 (wpattern, tnz) ;
-
-            //------------------------------------------------------------------
-            // copy the result into T
-            //------------------------------------------------------------------
-
-            for (int64_t p = 0 ; p < tnz ; p++)
-            { 
-                int64_t i = wpattern [p] ;
-                Ti [p] = i ;
-                // Tx [p] = work [i]
-                memcpy (Tx +(p*zsize), work +(i*zsize), zsize) ;
+            if (tdense)
+            {
+                // construct the pattern of T
+                for (int64_t i = 0 ; i < wlen ; i++)
+                { 
+                    Ti [i] = i ;
+                }
             }
+            else
+            {
+                // gather T from mark and work
+                void *restrict Tx = T->x ;
+                int64_t p = 0 ;
+                for (int64_t i = 0 ; i < wlen ; i++)
+                {
+                    if (mark [i])
+                    { 
+                        Ti [p] = i ;
+                        // Tx [p] = work [i]
+                        memcpy (Tx +(p*zsize), work +(i*zsize), zsize) ;
+                        p++ ;
+                    }
+                }
+                ASSERT (p == tnz) ;
+            }
+
+            //------------------------------------------------------------------
+            // free workspace
+            //------------------------------------------------------------------
+
+            GB_REDUCE_FREE_WORK ;
         }
     }
     ASSERT_OK (GB_check (T, "T output for T = reduce (A)", GB0)) ;
@@ -516,6 +535,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     // w<mask> = accum (w,T): accumulate the results into w via the mask
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (w, mask, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (w, mask, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

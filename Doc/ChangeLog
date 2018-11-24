@@ -1,8 +1,27 @@
+Version 2.2.0 (BETA3), Nov 23, 2018
+
+    * removed persistent thread-local O(n) workspace:  the Mark,
+        Flag, and Work arrays in GB_thread_local in prior versions are removed.
+        Replaced with temporary workspace, except for C=A*B using Gustavson's
+        method, which now uses the C->Sauna workspace, held in the output
+        matrix.
+    * better support for user-application threads: GrB_finalize is now fully
+        compliant with the spec.  User applications can use POSIX or OpenMP
+        threads, or no threading, and use GraphBLAS in a thread-safe manner.
+        Added OpenMP and POSIX pthread demos.
+    * bug fix: freeing an object (monoid, matrix, or vector) that is
+        dependent on another user-defined objects (an operator or type) that
+        has already been freed led to the reading of an invalid value: the size
+        of the object.  This only affects the memory usage statistics for
+        testing only, not production use.
+    * beta bug fix: memory leak in pagerank_demo program (bug first appears in
+        2.2.0BETA2, not in any non-BETA final release
+
 Version 2.2.0 (BETA2), Nov 15, 2018
 
     * added additional pagerank example in Demo/
-    * GxB_Monoid_define: bug fix for C struct types.  This bug only appears
-        in Version 2.2.0 (BETA1), not in any non-BETA final release. 
+    * beta bug fix: GxB_Monoid_define: bug fix for C struct types.  bug first
+        appears in Version 2.2.0 (BETA1), not in any non-BETA final release. 
 
 Version 2.2.0 (BETA1), Nov 2, 2018
 

@@ -19,7 +19,8 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess   // rough estimate of nnz(C)
+    const int64_t rough_guess,  // rough estimate of nnz(C)
+    GB_Context Context
 )
 {
 

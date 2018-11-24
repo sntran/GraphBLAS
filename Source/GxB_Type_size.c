@@ -29,6 +29,6 @@ GrB_Info GxB_Type_size          // determine the size of the type
     //--------------------------------------------------------------------------
 
     (*size) = type->size ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

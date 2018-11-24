@@ -28,7 +28,7 @@ double pagerank_damping, pagerank_teleport, pagerank_rdiff,
 // to dpagerank2 on independent problems.
 #pragma omp threadprivate(pagerank_damping, pagerank_teleport, pagerank_rdiff, pagerank_init_rank, pagerank_rsum)
 
-// The identity value for the pagerank_add monoid is {0.0}. For the
+// The identity value for the pagerank_add monoid is {0,0}. For the
 // GxB_*_define macro that defines the GrB_Monoid, the identity argument must
 // be a compile-time constant (for the C definition), and it must also be
 // parsable as an argument to the m4 macro.  If the user-defined type is a

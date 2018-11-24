@@ -17,7 +17,12 @@ GrB_Info GB_AxB_user
     int64_t *restrict GB_List,
     GB_pointer_pair *restrict GB_pA_pair,
     GB_Element *restrict GB_Heap,
-    const int64_t GB_bjnz_max
+    const int64_t GB_bjnz_max,
+
+    // for Gustavson method only:
+    GB_Sauna GB_C_Sauna,
+
+    GB_Context Context
 )
 {
     GrB_Info GB_info = GrB_INVALID_OBJECT ;

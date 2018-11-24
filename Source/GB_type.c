@@ -12,7 +12,8 @@
 GrB_Info GB_type            // get the type of a matrix
 (
     GrB_Type *type,         // returns the type of the matrix
-    const GrB_Matrix A      // matrix to query
+    const GrB_Matrix A,     // matrix to query
+    GB_Context Context
 )
 { 
 
@@ -28,6 +29,6 @@ GrB_Info GB_type            // get the type of a matrix
     //--------------------------------------------------------------------------
 
     (*type) = A->type ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

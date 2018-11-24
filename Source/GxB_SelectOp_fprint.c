@@ -28,12 +28,6 @@ GrB_Info GxB_SelectOp_fprint        // print and check a GrB_SelectOp
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_SelectOp_check (selectop, name, pr, f) ;
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    return ((info == GrB_SUCCESS) ? GB_REPORT_SUCCESS : info) ;
+    return (GB_SelectOp_check (selectop, name, pr, f, Context)) ;
 }
 

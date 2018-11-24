@@ -24,7 +24,7 @@
     GB_MATRIX_FREE (&E) ;               \
     GB_MATRIX_FREE (&L) ;               \
     GB_MATRIX_FREE (&U) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

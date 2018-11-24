@@ -91,6 +91,6 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
                 GrB_OUTP, GrB_MASK, GrB_INP0, GrB_INP1, GxB_AxB_METHOD))) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

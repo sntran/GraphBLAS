@@ -28,12 +28,6 @@ GrB_Info GxB_BinaryOp_fprint        // print and check a GrB_BinaryOp
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_BinaryOp_check (binaryop, name, pr, f) ;
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    return ((info == GrB_SUCCESS) ? GB_REPORT_SUCCESS : info) ;
+    return (GB_BinaryOp_check (binaryop, name, pr, f, Context)) ;
 }
 

@@ -24,7 +24,7 @@
     {                                   \
         GB_FREE_MEMORY (c, 1, sizeof (double complex)) ; \
     }                                   \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

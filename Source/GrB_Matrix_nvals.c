@@ -30,6 +30,6 @@ GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
     // get the number of entries
     //--------------------------------------------------------------------------
 
-    return (GB_nvals (nvals, A)) ;
+    return (GB_nvals (nvals, A, Context)) ;
 }
 

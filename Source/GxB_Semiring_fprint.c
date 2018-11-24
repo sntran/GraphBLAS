@@ -28,12 +28,6 @@ GrB_Info GxB_Semiring_fprint        // print and check a GrB_Semiring
     // print and check the object
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_Semiring_check (semiring, name, pr, f) ;
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    return ((info == GrB_SUCCESS) ? GB_REPORT_SUCCESS : info) ;
+    return (GB_Semiring_check (semiring, name, pr, f, Context)) ;
 }
 

@@ -157,7 +157,7 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
         if (argc > 1) one_based = strtol (argv [1], NULL, 0) ;
 
         OK (read_matrix (&A, stdin, true, no_self_edges, one_based, boolean,
-            true)) ;
+            false)) ;
 
         OK (GrB_Matrix_nrows (&nrows, A)) ;
         OK (GrB_Matrix_ncols (&ncols, A)) ;

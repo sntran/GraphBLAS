@@ -46,8 +46,13 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
     cmake_policy ( SET CMP0048 NEW )
 endif ( )
 
+find_program ( M4EXISTS m4 )
+if ( NOT M4EXISTS )
+    message ( FATAL_ERROR "m4 not found, but is required.  Install via your system package manager, or download at http://www.gnu.org/software/m4/m4.html or http://gnuwin32.sourceforge.net for Windows" )
+endif ( )
+
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Nov 13, 2018 (BETA2)" )
+set ( GraphBLAS_DATE "Nov 23, 2018 (BETA3)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
 set ( GraphBLAS_VERSION_MINOR 2 )
 set ( GraphBLAS_VERSION_SUB   0 )
@@ -67,12 +72,12 @@ endif ( )
 
 include ( GNUInstallDirs )
 
-if (NOT CMAKE_BUILD_TYPE )
-    set ( CMAKE_BUILD_TYPE Release )
-endif ( )
-
 # For development only, not for end-users:
 # set ( CMAKE_BUILD_TYPE Debug )
+
+if ( NOT CMAKE_BUILD_TYPE )
+    set ( CMAKE_BUILD_TYPE Release )
+endif ( )
 
 # configure user-defined objects defined in User/*.m4
 file ( GLOB USER_M4 "User/*.m4" )
@@ -111,6 +116,15 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/README.txt"
 )
 
+# determine what user threading model to use
+include ( FindOpenMP  )
+include ( FindThreads )
+
+message ( STATUS "CMAKE thread library:      " ${CMAKE_THREAD_LIBS_INIT} )
+message ( STATUS "CMAKE have pthreads:       " ${CMAKE_USE_PTHREADS_INIT}  )
+message ( STATUS "CMAKE have Win32 pthreads: " ${CMAKE_USE_WIN32_THREADS_INIT} )
+message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
+
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # include directories for both graphblas and graphblasdemo libraries
@@ -118,25 +132,25 @@ include_directories ( Source/Template Source Source/Generated Source/Generator I
 
 # check which compiler is being used.  If you need to make
 # compiler-specific modifications, here is the place to do it.
-if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set (CMAKE_C_FLAGS  "-std=c11 -lm -fopenmp")
-    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9)
-        message (FATAL_ERROR "gcc version must be at least 4.9")
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm " )
+    if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9 )
+        message ( FATAL_ERROR "gcc version must be at least 4.9" )
     endif ( )
-elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Intel" )
     # options for icc: also needs -std=c11
-    set (CMAKE_C_FLAGS  "-std=c11 -fopenmp")
-    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 18.0)
-        message (FATAL_ERROR "icc version must be at least 18.0")
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 " )
+    if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 18.0 )
+        message ( FATAL_ERROR "icc version must be at least 18.0" )
     endif ( )
-elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" )
     # options for clang
-    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3)
-        message (FATAL_ERROR "clang version must be at least 3.3")
+    if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3 )
+        message ( FATAL_ERROR "clang version must be at least 3.3" )
     endif ( )
-elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
     # options for MicroSoft Visual Studio
 endif ( )
 
@@ -149,7 +163,6 @@ SET_TARGET_PROPERTIES ( graphblas PROPERTIES
     C_STANDARD_REQUIRED 11
     PUBLIC_HEADER "Include/GraphBLAS.h" )
 set_property ( TARGET graphblas PROPERTY C_STANDARD 11 )
-target_link_libraries ( graphblas m )
 
 # create the static graphblas library.  Requires ANSI C11
 add_library ( graphblas_static STATIC ${GRAPHBLAS_SOURCES} )
@@ -161,6 +174,70 @@ SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES
     C_STANDARD_REQUIRED 11
     PUBLIC_HEADER "Include/GraphBLAS.h" )
 set_property ( TARGET graphblas_static PROPERTY C_STANDARD 11 )
+
+# select the threading library 
+if ( USER_OPENMP )
+    # user insists on OpenMP synchronization inside GraphBLAS
+    message ( STATUS "cmake -DUSER_OPENMP=1: insisting on using OpenMP" )
+    set ( USE_OPENMP true )
+elseif ( USER_POSIX )
+    # user insists on POSIX synchronization inside GraphBLAS
+    message ( STATUS "cmake -DUSER_POSIX=1: insisting on using POSIX" )
+    set ( USE_POSIX true )
+elseif ( USER_NONE )
+    message ( STATUS "cmake -DUSER_NONE=1: insisting on using no threading" )
+    set ( USE_NONE true )
+else ( )
+    # default: automatic selection
+    message ( STATUS "Automatic selection of synchronization method" )
+    if ( OPENMP_FOUND )
+        set ( USE_OPENMP true )
+    elseif ( CMAKE_USE_PTHREADS_INIT )
+        set ( USE_POSIX true )
+    endif ( )
+endif ( )
+
+# add the threading library
+if ( USE_OPENMP )
+    # use OpenMP
+    message ( STATUS "Using OpenMP to synchronize user threads" )
+    target_link_libraries ( graphblas        m ${OpenMP_C_LIBRARIES} )
+    target_link_libraries ( graphblas_static m ${OpenMP_C_LIBRARIES} )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -DUSER_OPENMP_THREADS " )
+elseif ( USE_POSIX )
+    # use POSIX
+    message ( STATUS "Using POSIX pthreads to synchronize user threads" )
+    target_link_libraries ( graphblas        m )
+    target_link_libraries ( graphblas_static m )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -pthread -DUSER_POSIX_THREADS " )
+else ( )
+    # use no threading at all
+    message ( WARNING "No support for user threads; GraphBLAS will not be thread-safe" )
+    target_link_libraries ( graphblas        m )
+    target_link_libraries ( graphblas_static m )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DUSER_NO_THREADS " )
+endif ( )
+
+if ( CMAKE_THREAD_LIBS_INIT )
+    target_link_libraries ( graphblas        ${CMAKE_THREAD_LIBS_INIT} )
+    target_link_libraries ( graphblas_static ${CMAKE_THREAD_LIBS_INIT} )
+endif ( )
+
+if ( CMAKE_USE_PTHREADS_INIT )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DHAVE_PTHREADS " )
+endif ( )
+
+if ( CMAKE_USE_WIN32_THREADS_INIT )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DHAVE_WINDOWS_THREADS " )
+endif ( )
+
+# determine the default matrix format
+if ( BYCOL )
+    message ( STATUS "cmake -DBYCOL=1: default matrix format: GxB_BY_COL" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DBYCOL  " )
+endif ( )
+
+message ( STATUS "CMAKE C flags: " ${CMAKE_C_FLAGS} )
 
 # Notes from Sebastien Villemot (sebastien@debian.org):
 # SOVERSION policy: if a binary compiled against the old version of the shared
@@ -208,6 +285,8 @@ target_link_libraries ( graphblasdemo_static  graphblas_static )
 add_executable ( pagerank_demo "Demo/Program/pagerank_demo.c" )
 add_executable ( bfs_demo      "Demo/Program/bfs_demo.c" )
 add_executable ( tri_demo      "Demo/Program/tri_demo.c" )
+add_executable ( pthread_demo  "Demo/Program/pthread_demo.c" )
+add_executable ( openmp_demo   "Demo/Program/openmp_demo.c" )
 add_executable ( mis_demo      "Demo/Program/mis_demo.c" )
 add_executable ( complex_demo  "Demo/Program/complex_demo.c" )
 add_executable ( kron_demo     "Demo/Program/kron_demo.c" )
@@ -218,6 +297,8 @@ add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
 target_link_libraries ( pagerank_demo graphblas graphblasdemo )
 target_link_libraries ( bfs_demo      graphblas graphblasdemo )
 target_link_libraries ( tri_demo      graphblas graphblasdemo )
+target_link_libraries ( pthread_demo  graphblas graphblasdemo )
+target_link_libraries ( openmp_demo   graphblas graphblasdemo )
 target_link_libraries ( mis_demo      graphblas graphblasdemo )
 target_link_libraries ( complex_demo  graphblas graphblasdemo )
 target_link_libraries ( kron_demo     graphblas graphblasdemo )

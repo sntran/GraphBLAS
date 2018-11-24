@@ -242,6 +242,7 @@ struct GB_Monoid_opaque GB_opaque_GxB_ ## OP ## _MONOID =                   \
     GB_MAGIC,                                                               \
     & GB_opaque_ ## PREFIX ## OP,                                           \
     & GB_opaque_identity_ ## OP,                                            \
+    sizeof (CTYPE),                                                         \
     GB_BUILTIN                                                              \
 } ;                                                                         \
 GrB_Monoid GxB_ ## OP ## _MONOID = & GB_opaque_GxB_ ## OP ## _MONOID ;

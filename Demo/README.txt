@@ -36,6 +36,7 @@ tricount.c              six triangle counting methods using GraphBLAS
 usercomplex.c           user-defined double complex type
 wathen.c                GraphBLAS version of the MATLAB wathen.m
 dpagerank.c             PageRank via real semiring
+dpagerank2.c            PageRank via pagegrank semiring
 drowscale.c             row scaling for dpagerank
 ipagerank.c             PageRank via integer semiring
 irowscale.c             row scaling for ipagerank
@@ -52,6 +53,8 @@ tri_demo.c              demo program to test tricount
 simple_demo.c           demo program to test simple_rand and simple_timer
 wildtype_demo.c         demo program with arbitrary struct as user-defined type
 pagerank_demo.c         demo program to test dpagerank and ipagerank
+openmp_demo.c           demo program using OpenMP
+pthread_demo.c          demo program using POSIX pthreads
 
 --------------------------------------------------------------------------------
 in Demo/Output:
@@ -65,11 +68,39 @@ tri_demo.out            output of tri_demo
 wildtype_demo.out       output of wildtype_demo
 pagerank_demo.out       output of pagerank_demo
 
+6 output files from openmp_demo.c:
+user_openmp_gb_openmp.out    user threads: OpenMP, GraphBLAS: OpenMP
+user_openmp_gb_pthread.out   user threads: OpenMP, GraphBLAS: POSIX 
+user_openmp_gb_none.out      user threads: OpenMP, GraphBLAS: none, expect fail
+user_none_gb_openmp.out      user threads: none, GraphBLAS: OpenMP
+user_none_gb_pthread.out     user threads: none, GraphBLAS: POSIX 
+user_none_gb_none.out        user threads: none, GraphBLAS: none (OK)
+
+3 output files from pthread_demo.c:
+user_pthread_gb_openmp.out   user threads: POSIX, GraphBLAS: OpenMP
+user_pthread_gb_pthread.out  user threads: POSIX, GraphBLAS: POSIX 
+user_pthread_gb_none.out     user threads: POSIX, GraphBLAS: none, expect fail
+
+Note that two of the above files show expected failures: synchronization
+failures (queue invalid) and mangled error messages, because the user
+application is multithreaded but GraphBLAS was compiled with no threading
+library and is thus not thread-safe.
+
+Output/V220:            output files from Nov 22, 2018 (Version 2.2.0)
+    go_out_cholesky.txt
+
 Output/V210             output files from Sept 11, 2018 (Version 2.1.0)
     go2_out_laptop.txt
     go3_out_laptop.txt
     go_out_cholesky.txt
     go_out_laptop.txt
+
+    bfs_demo.out
+    mis_demo.out
+    pagerank_demo.out
+    simple_demo.out
+    tri_demo.out
+    wildtype_demo.out
 
 Output/V112:            output files from Dec 23, 2017 (Version 1.1.2
                         of SuiteSparse:GraphBLAS); same as filenames above

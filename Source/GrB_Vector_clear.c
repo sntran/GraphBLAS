@@ -24,9 +24,9 @@ GrB_Info GrB_Vector_clear   // clear a vector of all entries;
     ASSERT (GB_VECTOR_OK (v)) ;
 
     //--------------------------------------------------------------------------
-    // clear the vector
+    // clear the vector (but keep the v->Sauna)
     //--------------------------------------------------------------------------
 
-    return (GB_clear ((GrB_Matrix) v)) ;
+    return (GB_clear ((GrB_Matrix) v, Context)) ;
 }
 

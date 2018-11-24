@@ -78,13 +78,13 @@
         ASSERT (bjnz > 0) ;
 
         //----------------------------------------------------------------------
-        // clear w
+        // clear Sauna_Work
         //----------------------------------------------------------------------
 
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
-            // w [Ci [pC]] = identity ;
-            GB_COPY_SCALAR_TO_ARRAY (w, Ci [pC], GB_IDENTITY, zsize) ;
+            // Sauna_Work [Ci [pC]] = identity ;
+            GB_COPY_SCALAR_TO_ARRAY (Sauna_Work, Ci [pC], GB_IDENTITY, zsize) ;
         }
 
         #ifdef GB_HYPER_CASE
@@ -128,25 +128,25 @@
             GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
 
             //------------------------------------------------------------------
-            // w += A(:,k) * B(k,j)
+            // Sauna_Work += A(:,k) * B(k,j)
             //------------------------------------------------------------------
 
             for (int64_t pA = pA_start ; pA < pA_end ; pA++)
             { 
-                // w [i] += A(i,k) * B(k,j)
+                // Sauna_Work [i] += A(i,k) * B(k,j)
                 int64_t i = Ai [pA] ;
                 GB_MULTADD_NOMASK ;
             }
         }
 
         //----------------------------------------------------------------------
-        // gather C(:,j) from w
+        // gather C(:,j) from Sauna_Work
         //----------------------------------------------------------------------
 
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
-            // Cx [pC] = w [Ci [pC]] ;
-            GB_COPY_ARRAY_TO_ARRAY (Cx, pC, w, Ci [pC], zsize) ;
+            // Cx [pC] = Sauna_Work [Ci [pC]] ;
+            GB_COPY_ARRAY_TO_ARRAY (Cx, pC, Sauna_Work, Ci [pC], zsize) ;
         }
     }
 

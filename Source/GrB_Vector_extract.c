@@ -61,6 +61,7 @@ GrB_Info GrB_Vector_extract         // w<mask> = accum (w, u(I))
         accum,                          // optional accum for z=accum(w,t)
         (GrB_Matrix) u,     false,      // u as matrix; never transposed
         I, ni,                          // row indices I and length ni
-        J, 1)) ;                        // one column index, nj = 1
+        J, 1,                           // one column index, nj = 1
+        Context)) ;
 }
 

@@ -64,6 +64,7 @@ m4_define(`GxB_Monoid_define', `
         GB_MAGIC,           // object is defined
         & GB_opaque_$2,     // binary operator
         & GB_DEF_$1_identity,   // identity value
+        sizeof (GB_DEF_$2_ztype),   // identity size
         GB_USER_COMPILED    // user-defined at compile-time
     } ;
     GrB_Monoid $1 = & GB_opaque_$1')
@@ -79,18 +80,19 @@ m4_define(`GB_semiring', `m4_define(`GB_semirings', GB_semirings()
         if (GB_AxB_method == GxB_AxB_GUSTAVSON)
         { 
             GB_info = GB_AxB_user_gus_$1
-                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy) ;
+                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, GB_C_Sauna,
+                Context) ;
         }
         else if (GB_AxB_method == GxB_AxB_DOT)
         { 
             GB_info = GB_AxB_user_dot_$1
-                (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy) ;
+                (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, Context) ;
         }
         else // (GB_AxB_method == GxB_AxB_HEAP)
         { 
             GB_info = GB_AxB_user_heap_$1
                 (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy,
-                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max) ;
+                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max, Context) ;
         }
     } ) $2')
 

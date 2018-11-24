@@ -65,7 +65,8 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     const int64_t   nj,             // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code  // type code of scalar to expand
+    const GB_Type_code scalar_code, // type code of scalar to expand
+    GB_Context Context
 )
 {
 
@@ -93,7 +94,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
                 // sub-case of C_replace=false is handled.  The C_replace=true
                 // sub-case needs to delete all entries in C(I,J), which is
                 // handled below, not here.
-                return (GB_REPORT_SUCCESS) ;
+                return (GrB_SUCCESS) ;
             }
         }
         else
@@ -461,7 +462,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         /* C(iC,jC) = aij, inserting a pending tuple.  aij is */        \
         /* either A(i,j) or the scalar for scalar expansion */          \
         ASSERT (aij != NULL) ;                                          \
-        info = GB_pending_add (C, aij, atype, accum, iC, jC) ;          \
+        info = GB_pending_add (C, aij, atype, accum, iC, jC, Context) ; \
         if (info != GrB_SUCCESS)                                        \
         {                                                               \
             /* failed to add pending tuple */                           \
@@ -1212,7 +1213,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
             {
                 // jC = J [j] ; or J is a colon expression
                 int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
-                if (jC < 0 || jC > cvdim)
+                if (jC < 0 || jC >= cvdim)
                 { 
                     // invalid vector; check them all in GB_subref_symbolic
                     break ;
@@ -1264,7 +1265,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
 
         // S and C have the same CSR/CSC format.  S is always returned sorted,
         // in the same hypersparse form as C. This step also checks I and J.
-        info = GB_subref_symbolic (&S, C->is_csc, C, I, ni, J, nj) ;
+        info = GB_subref_symbolic (&S, C->is_csc, C, I, ni, J, nj, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory or invalid indices I and J
@@ -1325,14 +1326,14 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         bool I_unsorted, I_contig, J_unsorted, J_contig ;
         int64_t imin, imax, jmin, jmax ;
         info = GB_ijproperties (I, ni, nI, cvlen, Ikind, Icolon,
-                    &I_unsorted, &I_contig, &imin, &imax, true) ;
+                    &I_unsorted, &I_contig, &imin, &imax, true, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // I invalid
             return (info) ;
         }
         info = GB_ijproperties (J, nj, nJ, cvdim, Jkind, Jcolon,
-                    &J_unsorted, &J_contig, &jmin, &jmax, false) ;
+                    &J_unsorted, &J_contig, &jmin, &jmax, false, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // J invalid
@@ -1374,7 +1375,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // insert C in the queue if it has work to do and isn't already queued
         //----------------------------------------------------------------------
 
-        GB_queue_insert (C) ;
+        GB_CRITICAL (GB_queue_insert (C)) ;
         ASSERT_OK (GB_check(C, "C: empty mask compl, C_replace, done", GB0)) ;
 
         //----------------------------------------------------------------------
@@ -1382,7 +1383,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         //----------------------------------------------------------------------
 
         GB_MATRIX_FREE (&S) ;
-        return (GB_block (C)) ;
+        return (GB_block (C, Context)) ;
     }
 
     // C_replace can now only be true if the mask M is present.  If the mask M
@@ -3145,13 +3146,13 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         // can bring zombies back to life, and the zombie count can go to zero.
         // In that case, C must be removed from the queue.  The removal does
         // nothing if C is already not in the queue.
-        GB_queue_remove (C) ;
+        GB_CRITICAL (GB_queue_remove (C)) ;
     }
     else
     { 
         // If C has any zombies or pending tuples, it must be in the queue.
         // The queue insert does nothing if C is already in the queue.
-        GB_queue_insert (C) ;
+        GB_CRITICAL (GB_queue_insert (C)) ;
     }
     ASSERT_OK (GB_check (C, "C(I,J) result", GB0)) ;
 
@@ -3160,6 +3161,6 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     //--------------------------------------------------------------------------
 
     GB_MATRIX_FREE (&S) ;
-    return (GB_block (C)) ;
+    return (GB_block (C, Context)) ;
 }
 

@@ -12,7 +12,8 @@
 GrB_Info GB_nvals           // get the number of entries in a matrix
 (
     GrB_Index *nvals,       // matrix has nvals entries
-    const GrB_Matrix A      // matrix to query
+    const GrB_Matrix A,     // matrix to query
+    GB_Context Context
 )
 { 
 
@@ -32,6 +33,6 @@ GrB_Info GB_nvals           // get the number of entries in a matrix
     //--------------------------------------------------------------------------
 
     (*nvals) = GB_NNZ (A) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -46,6 +46,7 @@ GrB_Info GxB_Matrix_select  // C<Mask> = accum (C, select(A,k)) or select(A',k)
         op,                         // operator to select the entries
         A,                          // first input: A
         k,                          // optional input for select operator
-        A_transpose)) ;             // descriptor for A
+        A_transpose,                // descriptor for A
+        Context)) ;
 }
 

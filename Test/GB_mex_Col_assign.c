@@ -27,7 +27,7 @@
     GB_MATRIX_FREE (&Mask) ;            \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #define GET_DEEP_COPY \
@@ -258,8 +258,6 @@ GrB_Info many_assign
 )
 {
 
-#define CATCH 9999999999
-
     GrB_Info info = GrB_SUCCESS ;
 
     for (int64_t k = 0 ; k < nwork ; k++)
@@ -272,8 +270,6 @@ GrB_Info many_assign
         // each struct has fields A, I, J, and optionally Mask, accum, and desc
 
         mxArray *p ;
-
-        // if (k == CATCH) GB_check (C, "C start", GB3) ;
 
         // [ turn off malloc debugging
         bool save = GB_Global.malloc_debug ;
@@ -291,7 +287,6 @@ GrB_Info many_assign
                 mexErrMsgTxt ("Mask failed") ;
             }
         }
-        // if (k == CATCH) GB_check (Mask, "Mask", GB3) ;
 
         // get A (shallow copy)
         p = mxGetFieldByNumber (pargin [1], k, fA) ;
@@ -301,7 +296,6 @@ GrB_Info many_assign
             FREE_ALL ;
             mexErrMsgTxt ("A failed") ;
         }
-        // if (k == CATCH) GB_check (A, "A", GB3) ;
 
         // get accum; default: NOP, default class is class(C)
         accum = NULL ;
@@ -316,7 +310,6 @@ GrB_Info many_assign
                 mexErrMsgTxt ("accum failed") ;
             }
         }
-        // if (k == CATCH) GB_check (accum, "accum", GB3) ;
 
         // get I
         p = mxGetFieldByNumber (pargin [1], k, fI) ;
@@ -326,16 +319,6 @@ GrB_Info many_assign
             mexErrMsgTxt ("I failed") ;
         }
 
-        /*
-        if (k == CATCH)
-        {
-            printf ("I: ") ;
-            if (I == GrB_ALL) printf ("all") ;
-            else for (int kk = 0 ; kk < ni ; kk++) printf ("%lld ", I [kk]) ;
-            printf ("\n") ;
-        }
-        */
-
         // get J
         p = mxGetFieldByNumber (pargin [1], k, fJ) ;
         if (!GB_mx_mxArray_to_indices (&J, p, &nj, J_range, &ignore))
@@ -343,21 +326,6 @@ GrB_Info many_assign
             FREE_ALL ;
             mexErrMsgTxt ("J failed") ;
         }
-
-        /*
-        if (k == CATCH)
-        {
-            printf ("J: ") ;
-            if (J == GrB_ALL) printf ("all") ;
-            else for (int kk = 0 ; kk < ni ; kk++) printf ("%lld ", J [kk]) ;
-            printf ("\n") ;
-        }
-        */
-
-        /*
-        printf ("many assign: fI %d fJ %d ni %lld nj %lld\n", fI, fJ, ni, nj) ;
-        for (int kk = 0 ; kk < nj ; kk++) printf ("J[%d]=%lld\n", kk, J[kk]) ;
-        */
 
         // get desc
         desc = NULL ;
@@ -377,13 +345,7 @@ GrB_Info many_assign
         // C<Mask>(I,J) = A
         //----------------------------------------------------------------------
 
-        // GB_thread_local.line = (k == CATCH) ? -911 : 0 ;
-
         info = assign ( ) ;
-
-        // GB_thread_local.line = 0 ;
-
-        // if (k == CATCH) GB_check (C, "C done", GB3) ;
 
         GB_MATRIX_FREE (&A) ;
         GB_MATRIX_FREE (&Mask) ;
@@ -480,8 +442,6 @@ void mexFunction
 
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
-        // GB_thread_local.line = 0 ;
-
         METHOD (many_assign (nwork, fA, fI, fJ, faccum, fMask, fdesc, cclass,
             pargin)) ;
 
@@ -540,8 +500,6 @@ void mexFunction
         }
 
         // C<Mask>(I,J) = A
-
-        // GB_thread_local.line = 0 ;
 
         METHOD (assign ( )) ;
     }

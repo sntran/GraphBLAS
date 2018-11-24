@@ -58,6 +58,6 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
                 "invalid descriptor field"))) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

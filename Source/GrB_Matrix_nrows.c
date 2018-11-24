@@ -29,6 +29,6 @@ GrB_Info GrB_Matrix_nrows   // get the number of rows of a matrix
     //--------------------------------------------------------------------------
 
     (*nrows) = GB_NROWS (A) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

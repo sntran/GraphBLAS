@@ -66,6 +66,7 @@ GrB_Info GrB_Col_extract        // w<mask> = accum (w, A(I,j)) or (A(j,I))'
         accum,                          // optional accum for z=accum(w,t)
         A,                 A_transpose, // A and its descriptor
         I, ni,                          // row indices I and length ni
-        J, 1)) ;                        // one column index, nj = 1
+        J, 1,                           // one column index, nj = 1
+        Context)) ;
 }
 

@@ -30,6 +30,6 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
     //--------------------------------------------------------------------------
 
     (*xtype) = unaryop->xtype ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -56,6 +56,6 @@ GrB_Info GB_UnaryOp_new             // create a new user-defined unary operator
     strncpy (op->name, name, GB_LEN-1) ;
     op->opcode = GB_USER_R_opcode ;     // run-time user-defined operator
     ASSERT_OK (GB_check (op, "new user-defined unary op", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

@@ -45,7 +45,6 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
 {
 
     size_t size ;
-    int nmalloc ;
 
     // make sure at least one item is allocated
     nitems_old = GB_IMAX (1, nitems_old) ;
@@ -76,66 +75,64 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
         // change the size of the object from nitems_old to nitems_new
         void *pnew ;
 
-        // check the malloc debug status.  This debug flag is set outside
-        // of GraphBLAS and not modified, so it is safe to check it outside
-        // a critical section.
+        #ifdef GB_MALLOC_TRACKING
         bool pretend_to_fail = false ;
         if (GB_Global.malloc_debug)
         {
             // brutal malloc debug; pretend to fail if the count <= 0
-            #pragma omp critical (GB_memory)
-            {
-                pretend_to_fail = (GB_Global.malloc_debug_count-- <= 0) ;
-            }
+            pretend_to_fail = (GB_Global.malloc_debug_count-- <= 0) ;
         }
-
         if (pretend_to_fail)
         {
             // brutal malloc debug; pretend to fail if the count <= 0,
-#ifdef GB_PRINT_MALLOC
+            #ifdef GB_PRINT_MALLOC
             printf ("pretend to fail: realloc\n") ;
-#endif
+            #endif
             pnew = NULL ;
         }
         else
+        #endif
         {
+            // realloc the space
             pnew = (void *) GB_REALLOC (p, size) ;
         }
 
-        #pragma omp critical (GB_memory)
+        if (pnew == NULL)
         {
-            if (pnew == NULL)
+            if (nitems_new < nitems_old)
             {
-                if (nitems_new < nitems_old)
-                {
-                    // the attempt to reduce the size of the block failed, but
-                    // the old block is unchanged.  So pretend to succeed.
-                    (*ok) = true ;
-                    GB_Global.inuse -= (nitems_old - nitems_new) * size_of_item;
-                }
-                else
-                {
-                    // out of memory
-                    (*ok) = false ;
-                }
+                // the attempt to reduce the size of the block failed, but
+                // the old block is unchanged.  So pretend to succeed.
+                (*ok) = true ;
+                #ifdef GB_MALLOC_TRACKING
+                GB_Global.inuse -= (nitems_old - nitems_new) * size_of_item;
+                #endif
             }
             else
             {
-                // success
-                p = pnew ;
-                (*ok) = true ;
-                GB_Global.inuse += (nitems_new - nitems_old) * size_of_item ;
-                GB_Global.maxused
-                    = GB_IMAX (GB_Global.maxused, GB_Global.inuse) ;
+                // out of memory
+                (*ok) = false ;
             }
-            nmalloc = GB_Global.nmalloc ;
+        }
+        else
+        {
+            // success
+            p = pnew ;
+            (*ok) = true ;
+            #ifdef GB_MALLOC_TRACKING
+            GB_Global.inuse += (nitems_new - nitems_old) * size_of_item ;
+            GB_Global.maxused = GB_IMAX (GB_Global.maxused, GB_Global.inuse) ;
+            #endif
         }
 
-#ifdef GB_PRINT_MALLOC
+        #ifdef GB_MALLOC_TRACKING
+        #ifdef GB_PRINT_MALLOC
         printf ("realloc: %14p %3d %1d n "GBd" -> "GBd" size "GBd"\n",
-            pnew, nmalloc, GB_Global.malloc_debug, (int64_t) nitems_old,
-            (int64_t) nitems_new, (int64_t) size_of_item) ;
-#endif
+            pnew, GB_Global.nmalloc, GB_Global.malloc_debug,
+            (int64_t) nitems_old, (int64_t) nitems_new,
+            (int64_t) size_of_item) ;
+        #endif
+        #endif
 
     }
     return (p) ;

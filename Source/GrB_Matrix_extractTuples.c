@@ -32,7 +32,8 @@ GrB_Info GrB_Matrix_extractTuples_ ## T     /* [I,J,X] = find (A) */          \
     GB_WHERE ("GrB_Matrix_extractTuples_" GB_STR(T) " (I, J, X, nvals, A)") ; \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                         \
     GB_RETURN_IF_NULL (p_nvals) ;                                             \
-    return (GB_extractTuples (I, J, X, p_nvals, GB_ ## T ## _code, A)) ;      \
+    return (GB_extractTuples (I, J, X, p_nvals, GB_ ## T ## _code, A,         \
+        Context)) ;                                                           \
 }
 
 GB_EXTRACT (bool     , BOOL   ) ;

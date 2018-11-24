@@ -15,7 +15,7 @@
 {                                       \
     GrB_free (&v) ;                     \
     GB_FREE_MEMORY (Xtemp, ni, sizeof (double complex)) ; \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction

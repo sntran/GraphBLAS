@@ -43,9 +43,8 @@
     GB_MATRIX_FREE (&Mask) ;            \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
-    GrB_free (&op) ;                    \
     if (!reduce_is_complex) GrB_free (&reduce) ;                \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #define GET_DEEP_COPY \
@@ -83,7 +82,7 @@ bool reduce_is_complex = false ;
     }                                   \
 }
 
-GrB_Info assign ( )
+GrB_Info assign (GB_Context Context)
 {
     bool at = (desc != NULL && desc->in0 == GrB_TRAN) ;
     GrB_Info info ;
@@ -236,10 +235,11 @@ GrB_Info assign ( )
         if (ph) printf ("row assign\n") ;
         if (Mask != NULL)
         {
-            OK (GB_transpose_bucket (&mask, GrB_BOOL, true, Mask, NULL)) ;
+            OK (GB_transpose_bucket (&mask, GrB_BOOL, true, Mask, NULL,
+                Context)) ;
             ASSERT (GB_VECTOR_OK (mask)) ;
         }
-        OK (GB_transpose_bucket (&u, A->type, true, A, NULL)) ;
+        OK (GB_transpose_bucket (&u, A->type, true, A, NULL, Context)) ;
         ASSERT (GB_VECTOR_OK (u)) ;
         OK (GxB_subassign (C, (GrB_Vector) mask, accum, (GrB_Vector) u,
             I [0], J, nj, desc)) ;
@@ -273,7 +273,8 @@ GrB_Info many_subassign
     int fMask,
     int fdesc,
     mxClassID cclass,
-    const mxArray *pargin [ ]
+    const mxArray *pargin [ ],
+    GB_Context Context
 )
 {
     GrB_Info info = GrB_SUCCESS ;
@@ -364,7 +365,7 @@ GrB_Info many_subassign
         // C(I,J)<Mask> = A
         //----------------------------------------------------------------------
 
-        info = assign ( ) ;
+        info = assign (Context) ;
 
         GB_MATRIX_FREE (&A) ;
         GB_MATRIX_FREE (&Mask) ;
@@ -462,7 +463,7 @@ void mexFunction
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
         METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fMask, fdesc, cclass,
-            pargin)) ;
+            pargin, Context)) ;
 
     }
     else
@@ -552,7 +553,7 @@ void mexFunction
 
         // C(I,J)<Mask> = A
 
-        METHOD (assign ( )) ;
+        METHOD (assign (Context)) ;
 
         // apply the reduce monoid
         if (nargin == 8 && (nargout == 2 || nargout == 3))

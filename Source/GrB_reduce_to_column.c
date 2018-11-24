@@ -24,7 +24,7 @@ GrB_Info GrB_Matrix_reduce_ ## kind /* w<mask> = accum (w,reduce(A))       */ \
         " (w, mask, accum, reduce, A, desc)") ;                               \
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;                                    \
     return (GB_reduce_to_column ((GrB_Matrix) w, (GrB_Matrix) mask, accum,    \
-        reduceop, A, desc)) ;                                                 \
+        reduceop, A, desc, Context)) ;                                        \
 }
 
 GB_REDUCE (BinaryOp, reduce    ) ;

@@ -11,10 +11,12 @@ GrB_Info GB_ijsort
 (
     const GrB_Index *I, // index array of size ni
     int64_t *p_ni,      // input: size of I, output: number of indices in I2
-    GrB_Index **p_I2    // output array of size ni, where I2 [0..ni2-1]
+    GrB_Index **p_I2,   // output array of size ni, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
+    GB_Context Context
 )
 {
+
     GrB_Index *I2 = NULL ;
     int64_t ni = *p_ni ;
 
@@ -59,6 +61,6 @@ GrB_Info GB_ijsort
     *p_I2 = I2 ;        // I2 has size ni, but only I2 [0..ni2-1] is defined
     *p_ni = ni2 ;
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

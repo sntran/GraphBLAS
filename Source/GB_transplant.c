@@ -22,7 +22,8 @@ GrB_Info GB_transplant          // transplant one matrix into another
 (
     GrB_Matrix C,               // output matrix to overwrite with A
     const GrB_Type ctype,       // new type of C
-    GrB_Matrix *Ahandle         // input matrix to copy from and free
+    GrB_Matrix *Ahandle,        // input matrix to copy from and free
+    GB_Context Context
 )
 {
 
@@ -51,14 +52,16 @@ GrB_Info GB_transplant          // transplant one matrix into another
     // clear C and transplant the type, size, and hypersparsity
     //--------------------------------------------------------------------------
 
-    // free all content of C
-    GB_phix_free (C) ;
+    // free all content of C but not the Sauna
+    GB_PHIX_FREE (C) ;
+
     ASSERT (!GB_PENDING (C)) ;
     ASSERT (!GB_ZOMBIES (C)) ;
     ASSERT (C->nzmax == 0) ;
 
     // It is now safe to change the type, dimension, and hypersparsity of C
     C->type = ctype ;
+    C->type_size = ctype->size ;
     C->is_csc = A->is_csc ;
     C->is_hyper = A->is_hyper ;
     C->vlen = A->vlen ;
@@ -94,8 +97,8 @@ GrB_Info GB_transplant          // transplant one matrix into another
             GB_MALLOC_MEMORY (C->h, C->plen,   sizeof (int64_t)) ;
             if (C->p == NULL || C->h == NULL)
             { 
-                // out of memory; free A and all content of C
-                GB_phix_free (C) ;
+                // out of memory
+                GB_CONTENT_FREE (C) ;
                 GB_MATRIX_FREE (Ahandle) ;
                 return (GB_OUT_OF_MEMORY (memory)) ;
             }
@@ -113,8 +116,8 @@ GrB_Info GB_transplant          // transplant one matrix into another
             GB_MALLOC_MEMORY (C->p, C->plen+1, sizeof (int64_t)) ;
             if (C->p == NULL)
             { 
-                // out of memory; free A and all content of C
-                GB_phix_free (C) ;
+                // out of memory
+                GB_CONTENT_FREE (C) ;
                 GB_MATRIX_FREE (Ahandle) ;
                 return (GB_OUT_OF_MEMORY (memory)) ;
             }
@@ -159,7 +162,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
         // quick return if A has no entries
         ASSERT_OK (GB_check (C, "C empty transplant", GB0)) ;
         GB_MATRIX_FREE (Ahandle) ;
-        return (GB_REPORT_SUCCESS) ;
+        return (GrB_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -196,8 +199,8 @@ GrB_Info GB_transplant          // transplant one matrix into another
 
     if (!ok)
     { 
-        // out of memory; free A and all content of C
-        GB_phix_free (C) ;
+        // out of memory
+        GB_CONTENT_FREE (C) ;
         GB_MATRIX_FREE (Ahandle) ;
         return (GB_OUT_OF_MEMORY (memory)) ;
     }
@@ -266,7 +269,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     C->i_shallow = false ;
 
     C->nzombies = A->nzombies ;     // zombies have been transplanted into C
-    GB_queue_insert (C) ;
+    GB_CRITICAL (GB_queue_insert (C)) ;
 
     //--------------------------------------------------------------------------
     // free A and return result
@@ -274,6 +277,6 @@ GrB_Info GB_transplant          // transplant one matrix into another
 
     GB_MATRIX_FREE (Ahandle) ;
     ASSERT_OK (GB_check (C, "C after transplant", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

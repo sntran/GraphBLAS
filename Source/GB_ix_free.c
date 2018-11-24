@@ -12,7 +12,7 @@
 
 #include "GB.h"
 
-void GB_ix_free                 // free A->i and A->x of a matrix
+GrB_Info GB_ix_free             // free A->i and A->x of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 )
@@ -24,7 +24,7 @@ void GB_ix_free                 // free A->i and A->x of a matrix
 
     if (A == NULL)
     { 
-        return ;
+        return (GrB_SUCCESS) ;
     }
 
     //--------------------------------------------------------------------------
@@ -36,12 +36,20 @@ void GB_ix_free                 // free A->i and A->x of a matrix
     ASSERT (GB_ZOMBIES_OK (A)) ;
 
     // free A->i unless it is shallow
-    if (!A->i_shallow) GB_FREE_MEMORY (A->i, A->nzmax, sizeof (int64_t)) ;
+    if (!A->i_shallow)
+    { 
+        GB_FREE_MEMORY (A->i, A->nzmax, sizeof (int64_t)) ;
+    }
     A->i = NULL ;
     A->i_shallow = false ;
 
     // free A->x unless it is shallow
-    if (!A->x_shallow) GB_FREE_MEMORY (A->x, A->nzmax, A->type->size) ;
+    if (!A->x_shallow)
+    { 
+        // A->type_size is used since A->type might already be freed, and thus
+        // A->type->size cannot be accessed.
+        GB_FREE_MEMORY (A->x, A->nzmax, A->type_size) ;
+    }
     A->x = NULL ;
     A->x_shallow = false ;
 
@@ -53,7 +61,9 @@ void GB_ix_free                 // free A->i and A->x of a matrix
     // free pending tuples
     GB_pending_free (A) ;
 
-    // remove from the queue, if present
-    GB_queue_remove (A) ;
+    // remove from the queue, if present; panic if critical section fails
+    GB_CRITICAL (GB_queue_remove (A)) ;
+
+    return (GrB_SUCCESS) ;
 }
 

@@ -44,6 +44,7 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, select(u,k))
         op,                                 // operator to select the entries
         (GrB_Matrix) u,                     // first input: u
         k,                                  // optional input for select op
-        false)) ;                           // u, not transposed
+        false,                              // u, not transposed
+        Context)) ;
 }
 

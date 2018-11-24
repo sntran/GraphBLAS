@@ -18,7 +18,8 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     const GrB_Matrix C,         // the output matrix C; NULL if C is a scalar
     const GrB_Matrix Mask,      // optional Mask, NULL if no mask
     const GrB_BinaryOp accum,   // C<Mask> = accum(C,T) is computed
-    const GrB_Type ttype        // type of T
+    const GrB_Type ttype,       // type of T
+    GB_Context Context
 )
 {
 
@@ -38,7 +39,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
         // be compatible.  This is the same as the condition below
         // when accum is NULL.
 
-        info = GB_BinaryOp_compatible (accum, ctype, ctype, ttype, 0) ;
+        info = GB_BinaryOp_compatible (accum, ctype, ctype, ttype, 0, Context) ;
         if (info != GrB_SUCCESS)
         { 
             return (info) ;
@@ -56,12 +57,6 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     }
 
     // check the mask
-    info = GB_Mask_compatible (Mask, C, 1, 1) ;
-    if (info != GrB_SUCCESS)
-    { 
-        return (info) ;
-    }
-
-    return (GB_REPORT_SUCCESS) ;
+    return (GB_Mask_compatible (Mask, C, 1, 1, Context)) ;
 }
 

@@ -15,7 +15,8 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     const char *name,               // name of the semiring, optional
     int pr,                         // 0: print nothing, 1: print header and
                                     // errors, 2: print brief, 3: print all
-    FILE *f                         // file for output
+    FILE *f,                        // file for output
+    GB_Context Context
 )
 { 
 
@@ -58,7 +59,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     }
 
     GrB_Info info ;
-    info = GB_Monoid_check (semiring->add, "semiring->add", pr, f) ;
+    info = GB_Monoid_check (semiring->add, "semiring->add", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("Semiring->add invalid\n") ;
@@ -66,7 +67,8 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
             "Semiring->add is an invalid monoid: [%s]", GB_NAME))) ;
     }
 
-    info = GB_BinaryOp_check (semiring->multiply, "semiring->multiply", pr, f) ;
+    info = GB_BinaryOp_check (semiring->multiply, "semiring->multiply", pr, f,
+        Context) ;
     if (info != GrB_SUCCESS)
     { 
         if (pr > 0) GBPR ("Semiring->multiply invalid\n") ;
@@ -84,6 +86,6 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
             GB_NAME))) ;
     }
 
-    return (GrB_SUCCESS) ; // not GB_REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

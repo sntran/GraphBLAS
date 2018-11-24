@@ -11,7 +11,8 @@
 
 void GB_mx_put_global
 (
-    bool cover
+    bool cover,
+    GrB_Desc_Value AxB_method_used
 )
 {
 
@@ -25,7 +26,7 @@ void GB_mx_put_global
     // return the time to MATLAB, if it was computed
     //--------------------------------------------------------------------------
 
-    GB_mx_put_time ( ) ;
+    GB_mx_put_time (AxB_method_used) ;
 
     //--------------------------------------------------------------------------
     // log the statement coverage
@@ -39,14 +40,10 @@ void GB_mx_put_global
     // finalize GraphBLAS
     //--------------------------------------------------------------------------
 
-    GB_wfree ( ) ;
-
-    GxB_Statistics stats ;
-    GB_stats (&stats) ;
-    if (stats.nmalloc != 0)
+    if (GB_Global.nmalloc != 0)
     {
         printf ("GraphBLAS nmalloc "GBd"! inuse "GBd" maxused "GBd"\n",
-            stats.nmalloc, stats.inuse, stats.maxused) ;
+            GB_Global.nmalloc, GB_Global.inuse, GB_Global.maxused) ;
         mexErrMsgTxt ("memory leak!") ;
     }
 }

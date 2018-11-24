@@ -24,7 +24,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     const GrB_Type ctype,       // the type of scalar, c
     const GrB_BinaryOp accum,   // for c = accum(c,twork)
     const GrB_Monoid reduce,    // monoid to do the reduction
-    const GrB_Matrix A          // matrix to reduce
+    const GrB_Matrix A,         // matrix to reduce
+    GB_Context Context
 )
 {
 
@@ -58,7 +59,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
 
     // check domains and dimensions for c = accum (c,twork)
     GrB_Type ztype = reduce->op->ztype ;
-    GrB_Info info = GB_compatible (ctype, NULL, NULL, accum, ztype) ;
+    GrB_Info info = GB_compatible (ctype, NULL, NULL, accum, ztype, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -274,6 +275,6 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         cast_zaccum_to_C (c, zaccum, ctype->size) ;
     }
 
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

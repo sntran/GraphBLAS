@@ -11,7 +11,7 @@
 
 #define USAGE "A = GB_mex_wathen (nx, ny, method, scale, rho)"
 
-#define FREE_ALL GB_mx_put_global (true) ;
+#define FREE_ALL GB_mx_put_global (true, 0) ;
 
 void mexFunction
 (

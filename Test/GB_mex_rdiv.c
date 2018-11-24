@@ -20,9 +20,10 @@
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&C) ;               \
+    GB_Sauna_free (&Sauna) ;            \
     GrB_free (&My_rdiv) ;               \
     GrB_free (&My_plus_rdiv) ;          \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 //------------------------------------------------------------------------------
@@ -35,7 +36,8 @@ int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
-GrB_Desc_Value AxB_method = GxB_DEFAULT ;
+GrB_Desc_Value AxB_method = GxB_DEFAULT, AxB_method_used ;
+GB_Sauna Sauna = NULL ;
 
 #ifndef MY_RDIV
 GrB_Semiring My_plus_rdiv = NULL ;
@@ -54,7 +56,7 @@ void my_rdiv
 
 //------------------------------------------------------------------------------
 
-GrB_Info axb ( )
+GrB_Info axb (GB_Context Context)
 {
     #ifndef MY_RDIV
     // create the rdiv operator
@@ -76,7 +78,8 @@ GrB_Info axb ( )
     info = GB_AxB_meta (&C, true /* CSC */,
         NULL /* no MT returned */,
         NULL /* no Mask */,
-        A, B, My_plus_rdiv, false, false, false, &ignore, AxB_method) ;
+        A, B, My_plus_rdiv, false, false, false, &ignore,
+        AxB_method, &AxB_method_used, &Sauna, Context) ;
 
     // does nothing if the objects are pre-compiled
     GrB_free (&My_rdiv) ;
@@ -159,7 +162,7 @@ void mexFunction
         mexErrMsgTxt ("invalid dimensions") ;
     }
 
-    METHOD (axb ( )) ;
+    METHOD (axb (Context)) ;
 
     // return C to MATLAB
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;

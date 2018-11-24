@@ -15,6 +15,12 @@
 // the size of the workspace does not dominate the computation, in case A and B
 // are hypersparse.
 
+#define GB_DOT_FREE_WORK                                    \
+{                                                           \
+    GB_FREE_MEMORY (Flag, bvlen, sizeof (int8_t)) ;         \
+    GB_FREE_MEMORY (Work, bvlen, bkj_size) ;                \
+}
+
 {
 
     const GB_atype *restrict Ax = A->x ;
@@ -78,5 +84,8 @@
         // C = A'*B via dot products
         #include "GB_AxB_dot_nomask.c"
     }
+
+    GB_DOT_FREE_WORK ;
 }
 
+#undef GB_DOT_FREE_WORK

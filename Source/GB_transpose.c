@@ -35,7 +35,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                                 // ignored if op is present (cast to op->ztype)
     const bool C_is_csc,        // desired CSR/CSC format of C
     const GrB_Matrix A_in,      // input matrix
-    const GrB_UnaryOp op_in     // optional operator to apply to the values
+    const GrB_UnaryOp op_in,    // optional operator to apply to the values
+    GB_Context Context
 )
 {
 
@@ -113,6 +114,15 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     ASSERT_OK_OR_NULL (GB_check (op_in, "op for GB_transpose", GB0)) ;
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;
+
+    //--------------------------------------------------------------------------
+    // free the Sauna, if transposing in place
+    //--------------------------------------------------------------------------
+
+    if (in_place && A != NULL)
+    {
+        GB_Sauna_free (&(A->Sauna)) ;
+    }
 
     //--------------------------------------------------------------------------
     // get A
@@ -864,7 +874,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 anz,        // size of Tx (no duplicates will be found)
                 anz,        // size of Ti and Tj
                 NULL,       // no dup operator needed (input has no duplicates)
-                tcode) ;    // type of Tx
+                tcode,      // type of Tx
+                Context) ;
 
             // GB_builder always frees Tj, and either frees Ti or transplants
             // it in to T->i and sets Ti to NULL.  So Ti and Tj are always NULL
@@ -894,7 +905,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // Transplant T in to the result C.  The matrix T is not shallow
             // and no typecasting is done, so this will always succeed.
-            info = GB_transplant (*Chandle, ctype, &T) ;
+            info = GB_transplant (*Chandle, ctype, &T, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
 
         }
@@ -913,14 +924,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // T is also typecasted to ctype, if not NULL
             GrB_Matrix T ;
-            info = GB_transpose_bucket (&T, ctype, C_is_csc, A, op) ;
+            info = GB_transpose_bucket (&T, ctype, C_is_csc, A, op, Context) ;
 
             // free prior content, if C=A' is being done in place
             if (in_place_A)
             { 
-                // free all content of A, but not the header,
-                // if done in place of A
-                GB_phix_free (A) ;
+                // free all content of A (including the Sauna), but not the
+                // header, if done in place of A
+                GB_CONTENT_FREE (A) ;   // transpose in-place: free the Sauna
             }
             else if (in_place_C)
             { 
@@ -942,7 +953,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 // The header of A has not been freed, since it is used for the
                 // output.  Transplant T back into A and free T.  T is not
                 // shallow and no typecast is done so this will always succeed.
-                info = GB_transplant (A, ctype, &T) ;
+                info = GB_transplant (A, ctype, &T, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
             }
             else
@@ -968,7 +979,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
     ASSERT_OK (GB_check (C, "C to conform in GB_transpose", GB0)) ;
 
-    info = GB_to_hyper_conform (C) ;
+    info = GB_to_hyper_conform (C, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -978,6 +989,6 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
     ASSERT_OK (GB_check (C, "C conformed in GB_transpose", GB0)) ;
     ASSERT_OK (GB_check (*Chandle, "Chandle conformed in GB_transpose", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

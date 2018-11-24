@@ -19,7 +19,10 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const GrB_Desc_Value AxB_method // for auto vs user selection of methods
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    GrB_Desc_Value *AxB_method_used,// method selected
+    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
+    GB_Context Context
 )
 {
 
@@ -30,7 +33,7 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
     // GB_AxB_heap and GB_AxB_Gustavson compute the same thing (C=A*B or
     // C<M>=A*B), and both use the saxpy method.  They differ in the workspace
     // they use.  GB_AxB_heap uses a heap of size O(b), while GB_AxB_Gustavson
-    // uses a gather/scatter workspace of size O(C->vlen).
+    // uses a Sauna (gather/scatter workspace) of size O(C->vlen).
 
     // Let b = max (nnz (B (:,j))), for all j; the maximum number of
     // entries in any column of B.
@@ -48,13 +51,12 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
 
     double heap_memory = GBYTES (b+1, 5 * sizeof (int64_t)) ;
 
-    // GB_AxB_Gustavson uses workspace of m * csize and another workspace of
-    // size m * sizeof (int8_t), where C is m-by-n.
+    // GB_AxB_Gustavson uses a Sauna of size m * csize where C is m-by-n.
 
     int64_t m = A->vlen ;       // A is m-by-k
     int64_t k = B->vlen ;       // B is k-by-n
     size_t csize = semiring->add->op->ztype->size ;
-    double gs_memory = GBYTES (m, csize + sizeof (int8_t)) ;
+    double gs_memory = GBYTES (m, csize + sizeof (int64_t)) ;
 
     bool use_heap ;
     int64_t bnz = GB_NNZ (B) ;
@@ -118,14 +120,15 @@ GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
     { 
         // use saxpy method with a heap; hypersparse matrices will tend to
         // use this option.
-        GB_thread_local.AxB_method = GxB_AxB_HEAP ;
-        return (GB_AxB_heap (Chandle, M, A, B, semiring, flipxy, b)) ;
+        (*AxB_method_used) = GxB_AxB_HEAP ;
+        return (GB_AxB_heap (Chandle, M, A, B, semiring, flipxy, b, Context)) ;
     }
     else
     { 
         // use saxpy method with a gather/scatter workspace.
-        GB_thread_local.AxB_method = GxB_AxB_GUSTAVSON ;
-        return (GB_AxB_Gustavson (Chandle, M, A, B, semiring, flipxy)) ;
+        (*AxB_method_used) = GxB_AxB_GUSTAVSON ;
+        return (GB_AxB_Gustavson (Chandle, M, A, B, semiring, flipxy,
+            Sauna_Handle, Context)) ;
     }
 }
 

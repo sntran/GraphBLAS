@@ -76,6 +76,6 @@ GrB_Info GrB_Semiring_new           // create a semiring
     s->object_kind = GB_USER_RUNTIME ;
 
     ASSERT_OK (GB_check (s, "new semiring", GB0)) ;
-    return (GB_REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 
