@@ -205,8 +205,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         GrB_BinaryOp multiply = semiring->multiply ;
         GrB_Monoid add = semiring->add ;
 
-        GB_binary_function fmult = multiply->function ;
-        GB_binary_function fadd  = add->op->function ;
+        GxB_binary_function fmult = multiply->function ;
+        GxB_binary_function fadd  = add->op->function ;
 
         size_t csize = C->type->size ;
         size_t asize = A->type->size ;
@@ -222,12 +222,12 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         char bkj [flipxy ? xsize : ysize] ;
         char zwork [csize] ;
 
-        const void *Ax = A->x ;
-        const void *Bx = B->x ;
-        void *Cx = C->x ;
-        void *cij = Cx ;        // advances through each entry of C
+        const GB_void *restrict Ax = A->x ;
+        const GB_void *restrict Bx = B->x ;
+        GB_void *restrict Cx = C->x ;
+        GB_void *cij = Cx ;        // advances through each entry of C
 
-        void *identity = add->identity ;
+        GB_void *identity = add->identity ;
 
         GB_cast_function cast_A, cast_B ;
         if (flipxy)
@@ -290,8 +290,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         #define GB_CIJ_SAVE   cij += csize ;
 
         #define GB_HANDLE_FLIPXY true
-        #define GB_XTYPE void
-        #define GB_YTYPE void
+        #define GB_XTYPE GB_void
+        #define GB_YTYPE GB_void
         #include "GB_AxB_heap_flipxy.c"
     }
 

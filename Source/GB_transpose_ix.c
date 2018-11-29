@@ -25,7 +25,7 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
 (
     int64_t *Rp,            // size m+1, input: row pointers, shifted on output
     int64_t *Ri,            // size cnz, output column indices
-    void *Rx,               // size cnz, output numerical values, type R_type
+    GB_void *Rx,            // size cnz, output numerical values, type R_type
     const GrB_Type R_type,  // type of output R (do typecasting into R)
     const GrB_Matrix A      // input matrix
 )
@@ -46,7 +46,7 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     //--------------------------------------------------------------------------
 
     const int64_t *Ai = A->i ;
-    const void    *Ax = A->x ;
+    const GB_void *Ax = A->x ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory

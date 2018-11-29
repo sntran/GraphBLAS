@@ -349,6 +349,9 @@ GrB_Info wathen             // construct a random Wathen matrix
         }
         break ;
 
+        default:
+            CHECK (false, GrB_INVALID_VALUE) ;
+            break ;
     }
 
     //--------------------------------------------------------------------------

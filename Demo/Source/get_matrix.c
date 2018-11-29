@@ -115,8 +115,6 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
             if (no_self_edges)
             {
                 // Mask = speye (nrows) ;
-                double tic [2], t ;
-                simple_tic (tic) ;
                 OK (GrB_Matrix_new (&Mask, GrB_BOOL, nrows, nrows)) ;
                 for (int64_t i = 0 ; i < nrows ; i++)
                 {
@@ -135,7 +133,6 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
                 OK (GrB_transpose (A, Mask, NULL, A, desc)) ;
                 GrB_free (&Mask) ;
                 GrB_free (&desc) ;
-                t = simple_toc (tic) ;
             }
         }
 

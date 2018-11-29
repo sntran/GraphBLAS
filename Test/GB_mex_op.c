@@ -202,7 +202,7 @@ void mexFunction
     if (nargin > 2)
     {
         // Z = f (X,Y)
-        GB_binary_function f_binary = op2->function ;
+        GxB_binary_function f_binary = op2->function ;
 
         GB_cast_function cast_Y = GB_cast_factory (op_ytype->code,Y_type->code);
         for (int64_t k = 0 ; k < nx ; k++)
@@ -216,7 +216,7 @@ void mexFunction
     else
     {
         // Z = f (X)
-        GB_unary_function f_unary = op1->function ;
+        GxB_unary_function f_unary = op1->function ;
         for (int64_t k = 0 ; k < nx ; k++)
         {
             cast_X (xwork, X +(k*X_size), X_size) ;

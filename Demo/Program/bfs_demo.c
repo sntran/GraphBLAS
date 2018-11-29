@@ -118,6 +118,10 @@ int main (int argc, char **argv)
                 simple_tic (tic) ;
                 OK (bfs6_check (&v, A2, s)) ;
                 break ;
+
+            default:
+                CHECK (false, GrB_INVALID_VALUE) ;
+                break ;
         }
 
         //----------------------------------------------------------------------

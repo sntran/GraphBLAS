@@ -15,8 +15,8 @@
 
 GrB_Info GxB_Desc_get           // get a parameter from a descriptor
 (
-    const GrB_Descriptor desc,  // descriptor to query; NULL is ok
-    const GrB_Desc_Field field, // parameter to query
+    GrB_Descriptor desc,        // descriptor to query; NULL is ok
+    GrB_Desc_Field field,       // parameter to query
     ...                         // return value of the descriptor
 )
 {
@@ -87,8 +87,9 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                 "invalid descriptor field [%d], must be one of:\n"
                 "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]"
-                "or GxB_AxB_METHOD [%d]\n", field,
-                GrB_OUTP, GrB_MASK, GrB_INP0, GrB_INP1, GxB_AxB_METHOD))) ;
+                "or GxB_AxB_METHOD [%d]\n", (int) field,
+                (int) GrB_OUTP, (int) GrB_MASK, (int) GrB_INP0,
+                (int) GrB_INP1, (int) GxB_AxB_METHOD))) ;
     }
 
     return (GrB_SUCCESS) ;

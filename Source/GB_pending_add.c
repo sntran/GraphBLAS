@@ -178,7 +178,8 @@ GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
     }
 
     // s_pending [n_pending] = scalar
-    memcpy (A->s_pending +(A->n_pending*ssize), scalar, ssize) ;
+    GB_void *As = A->s_pending ;
+    memcpy (As +(A->n_pending*ssize), scalar, ssize) ;
 
     A->n_pending++ ;
 

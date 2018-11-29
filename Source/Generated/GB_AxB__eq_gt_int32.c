@@ -234,6 +234,7 @@ GrB_Info GB_AheapB__eq_gt_int32
     bool cij ;
     int64_t cvlen = C->vlen ;
     GrB_Info info = GrB_SUCCESS ;
+    GB_CIJ_CLEAR ;
 
     #include "GB_AxB_heap_flipxy.c"
 

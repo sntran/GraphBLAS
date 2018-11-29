@@ -13,12 +13,11 @@
 
 #include "GB.h"
 
-static inline bool is_nonzero (const void *value, int64_t size)
+static inline bool is_nonzero (const GB_void *value, int64_t size)
 {
-    const char *x = value ;
     for (int64_t i = 0 ; i < size ; i++)
     {
-        if (x [i] != 0) return (true) ;
+        if (value [i] != 0) return (true) ;
     }
     return (false) ;
 }
@@ -175,10 +174,10 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     }
 
     int64_t *restrict Ti = T->i ;
-    void    *restrict Tx = T->x ;
+    GB_void *restrict Tx = T->x ;
 
     const int64_t *restrict Ai = A->i ;
-    const void    *restrict Ax = A->x ;
+    const GB_void *restrict Ax = A->x ;
 
     int64_t asize = A->type->size ;
 
@@ -322,7 +321,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         case GB_USER_SELECT_C_opcode:
         case GB_USER_SELECT_R_opcode:
         {
-            GB_select_function select = op->function ;
+            GxB_select_function select = (GxB_select_function) (op->function) ;
             GB_for_each_vector (A)
             {
                 GB_for_each_entry (j, p, pend)
@@ -344,6 +343,11 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
             }
         }
         break ;
+
+        default:
+            ASSERT (false) ;
+            break ;
+
     }
 
     ASSERT (info == GrB_SUCCESS) ;

@@ -40,7 +40,9 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A converting to hypersparse", GB0)) ;
 
+    #ifndef NDEBUG
     GrB_Info info ;
+    #endif
 
     //--------------------------------------------------------------------------
     // convert A to hypersparse form
@@ -105,7 +107,10 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         { 
             anz = Ap_old [j+1] ;
             ASSERT (A->nvec <= A->plen) ;
-            info = GB_jappend (A, j, &jlast, anz, &anz_last, Context) ;
+            #ifndef NDEBUG
+            info = 
+            #endif
+            GB_jappend (A, j, &jlast, anz, &anz_last, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
             ASSERT (A->nvec <= A->plen) ;
         }

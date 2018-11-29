@@ -13,7 +13,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_rdiv (A, B, axb_method)"
+#define USAGE "C = GB_mex_rdiv (A, B, axb_method, cprint)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -31,6 +31,7 @@
 GrB_Info info ;
 bool malloc_debug = false ;
 bool ignore = false ;
+bool cprint = false ;
 GrB_Matrix A = NULL, B = NULL, C = NULL ;
 int64_t anrows = 0 ;
 int64_t ancols = 0 ;
@@ -56,7 +57,7 @@ void my_rdiv
 
 //------------------------------------------------------------------------------
 
-GrB_Info axb (GB_Context Context)
+GrB_Info axb (GB_Context Context, bool cprint)
 {
     #ifndef MY_RDIV
     // create the rdiv operator
@@ -80,6 +81,12 @@ GrB_Info axb (GB_Context Context)
         NULL /* no Mask */,
         A, B, My_plus_rdiv, false, false, false, &ignore,
         AxB_method, &AxB_method_used, &Sauna, Context) ;
+
+    if (C != NULL)
+    {
+        C->AxB_method_used = AxB_method_used ;
+        if (cprint) GxB_print (C, GxB_COMPLETE) ;
+    }
 
     // does nothing if the objects are pre-compiled
     GrB_free (&My_rdiv) ;
@@ -114,7 +121,7 @@ void mexFunction
     GB_WHERE (USAGE) ;
 
     // check inputs
-    if (nargout > 1 || nargin < 2 || nargin > 3)
+    if (nargout > 1 || nargin < 2 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -143,6 +150,9 @@ void mexFunction
     // 1003: dot
     GET_SCALAR (2, GrB_Desc_Value, AxB_method, GxB_DEFAULT) ;
 
+    // get the cprint flag
+    GET_SCALAR (3, bool, cprint, false) ;
+
     if (! ((AxB_method == GxB_DEFAULT) ||
         (AxB_method == GxB_AxB_GUSTAVSON) ||
         (AxB_method == GxB_AxB_HEAP) ||
@@ -162,7 +172,7 @@ void mexFunction
         mexErrMsgTxt ("invalid dimensions") ;
     }
 
-    METHOD (axb (Context)) ;
+    METHOD (axb (Context, cprint)) ;
 
     // return C to MATLAB
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;

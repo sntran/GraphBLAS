@@ -323,13 +323,13 @@ GrB_Info GB_mask                // C<M> = Z
         size_t msize = M->type->size ;
 
         int64_t *Ri = R->i ;
-        void    *Rx = R->x ;
+        GB_void *Rx = R->x ;
 
         int64_t jlast, rnz, rnz_last ;
         GB_jstartup (R, &jlast, &rnz, &rnz_last) ;
 
         const int64_t *Ci = C->i, *Zi = Z->i, *Mi = M->i ;
-        const void    *Cx = C->x, *Zx = Z->x, *Mx = M->x ;
+        const GB_void *Cx = C->x, *Zx = Z->x, *Mx = M->x ;
 
         GB_for_each_vector3 (C, Z, M)
         {

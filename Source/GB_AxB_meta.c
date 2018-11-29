@@ -322,6 +322,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B' via dot product
+            (*AxB_method_used) = GxB_AxB_DOT ;
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
             GB_OK (GB_AxB_dot (Chandle, M, AT, BT, semiring, flipxy, Context)) ;
@@ -345,6 +346,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B via dot product
+            (*AxB_method_used) = GxB_AxB_DOT ;
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
             GB_OK (GB_AxB_dot (Chandle, M, AT, B, semiring, flipxy, Context)) ;
         }

@@ -70,7 +70,7 @@
     (((major)*1000ULL + (minor))*1000ULL + (sub))
 
 // The version of this implementation, and the GraphBLAS API version:
-#define GxB_DATE "Nov 23, 2018 (BETA3)"
+#define GxB_DATE "Nov 28, 2018 (BETA4)"
 #define GxB_IMPLEMENTATION_MAJOR 2
 #define GxB_IMPLEMENTATION_MINOR 2
 #define GxB_IMPLEMENTATION_SUB   0
@@ -183,6 +183,12 @@
 #else // USER_NO_THREADS
 // no user threads
 #endif
+
+//------------------------------------------------------------------------------
+// the GraphBLAS integer
+//------------------------------------------------------------------------------
+
+typedef uint64_t GrB_Index ;
 
 //------------------------------------------------------------------------------
 // GraphBLAS error and informational codes
@@ -497,12 +503,14 @@ extern GrB_UnaryOp
 // of the unary function to be kept in the new operator as a string.  See the
 // discussion of GrB_Type_new above.
 
+typedef void (*GxB_unary_function)  (void *, const void *) ;
+
 #undef GrB_UnaryOp_new
 
 GrB_Info GrB_UnaryOp_new            // create a new user-defined unary operator
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
-    void *function,                 // pointer to the unary function
+    GxB_unary_function function,    // pointer to the unary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype            // type of input x
 ) ;
@@ -514,7 +522,7 @@ GrB_Info GrB_UnaryOp_new            // create a new user-defined unary operator
 GrB_Info GB_UnaryOp_new             // not user-callable; use GrB_UnaryOp_new
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
-    void *function,                 // pointer to the unary function
+    GxB_unary_function function,    // pointer to the unary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype,           // type of input x
     const char *name                // name of the underlying function
@@ -779,12 +787,14 @@ extern GrB_BinaryOp
 // of the unary function to be kept in the new operator as a string.  See the
 // discussion of GrB_Type_new above.
 
+typedef void (*GxB_binary_function) (void *, const void *, const void *) ;
+
 #undef GrB_BinaryOp_new
 
 GrB_Info GrB_BinaryOp_new
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
-    void *function,                 // pointer to the binary function
+    GxB_binary_function function,   // pointer to the binary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype,           // type of input x
     const GrB_Type ytype            // type of input y
@@ -797,7 +807,7 @@ GrB_Info GrB_BinaryOp_new
 GrB_Info GB_BinaryOp_new            // not user-callable; use GrB_BinaryOp_new
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
-    void *function,                 // pointer to the binary function
+    GxB_binary_function function,   // pointer to the binary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype,           // type of input x
     const GrB_Type ytype,           // type of input y
@@ -896,12 +906,22 @@ extern GxB_SelectOp
 // of the select function to be kept in the new operator as a string.  See the
 // discussion of GrB_Type_new above.
 
+typedef bool (*GxB_select_function)      // return true if A(i,j) is kept
+(
+    GrB_Index i,                // row index of A(i,j)
+    GrB_Index j,                // column index of A(i,j)
+    GrB_Index nrows,            // number of rows of A
+    GrB_Index ncols,            // number of columns of A
+    const void *x,              // value of A(i,j)
+    const void *k               // optional input for select function
+) ;
+
 #undef GxB_SelectOp_new
 
 GrB_Info GxB_SelectOp_new       // create a new user-defined select operator
 (
     GxB_SelectOp *selectop,     // handle for the new select operator
-    void *function,             // pointer to the select function
+    GxB_select_function function,// pointer to the select function
     const GrB_Type xtype        // type of input x, or NULL if type-generic
 ) ;
 
@@ -912,7 +932,7 @@ GrB_Info GxB_SelectOp_new       // create a new user-defined select operator
 GrB_Info GB_SelectOp_new        // not user-callable; use GxB_SelectOp_new
 (
     GxB_SelectOp *selectop,     // handle for the new select operator
-    void *function,             // pointer to the select function
+    GxB_select_function function,// pointer to the select function
     const GrB_Type xtype,       // type of input x
     const char *name            // name of the underlying function
 ) ;
@@ -1150,8 +1170,6 @@ GrB_Info GrB_Semiring_free          // free a user-created semiring
 
 // GrB_Index: row or column index, or matrix dimension.  This typedef is used
 // for row and column indices, or matrix and vector dimensions.
-
-typedef uint64_t GrB_Index ;
 
 typedef struct GB_Matrix_opaque *GrB_Matrix ;
 
@@ -2638,14 +2656,14 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
 GrB_Info GxB_Desc_set           // set a parameter in a descriptor
 (
     GrB_Descriptor desc,        // descriptor to modify
-    const GrB_Desc_Field field, // parameter to change
+    GrB_Desc_Field field,       // parameter to change
     ...                         // value to change it to
 ) ;
 
 GrB_Info GxB_Desc_get           // get a parameter from a descriptor
 (
-    const GrB_Descriptor desc,  // descriptor to query; NULL means defaults
-    const GrB_Desc_Field field, // parameter to query
+    GrB_Descriptor desc,        // descriptor to query; NULL means defaults
+    GrB_Desc_Field field,       // parameter to query
     ...                         // value of the parameter
 ) ;
 
@@ -2746,14 +2764,14 @@ extern const double GxB_ALWAYS_HYPER, GxB_NEVER_HYPER ;
 GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
 (
     GrB_Matrix A,                   // matrix to modify
-    const GxB_Option_Field field,   // option to change
+    GxB_Option_Field field,         // option to change
     ...                             // value to change it to
 ) ;
 
 GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 (
-    const GrB_Matrix A,             // matrix to query
-    const GxB_Option_Field field,   // option to query
+    GrB_Matrix A,                   // matrix to query
+    GxB_Option_Field field,         // option to query
     ...                             // return value of the matrix option
 ) ;
 
@@ -2771,13 +2789,13 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 
 GrB_Info GxB_Global_Option_set      // set a global default option
 (
-    const GxB_Option_Field field,   // option to change
+    GxB_Option_Field field,         // option to change
     ...                             // value to change it to
 ) ;
 
 GrB_Info GxB_Global_Option_get      // gets the current global default option
 (
-    const GxB_Option_Field field,   // option to query
+    GxB_Option_Field field,         // option to query
     ...                             // return value of the global option
 ) ;
 

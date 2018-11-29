@@ -27,12 +27,12 @@ extern void GB (ABS_f)      (GB_Z_X_ARGS) ;
 extern void GB (MINV_f)     (GB_Z_X_ARGS) ;
 extern void GB (LNOT_f)     (GB_Z_X_ARGS) ;
 
-GB_UNARY_OP_DEFINE (GxB_, ONE,      "one") ;
-GB_UNARY_OP_DEFINE (GrB_, IDENTITY, "identity") ;
-GB_UNARY_OP_DEFINE (GrB_, AINV,     "ainv") ;
-GB_UNARY_OP_DEFINE (GxB_, ABS,      "abs") ;
-GB_UNARY_OP_DEFINE (GrB_, MINV,     "minv") ;
-GB_UNARY_OP_DEFINE (GxB_, LNOT,     "not") ;
+GB_UNARY_OP_DEFINE (GxB_, ONE,      "one")
+GB_UNARY_OP_DEFINE (GrB_, IDENTITY, "identity")
+GB_UNARY_OP_DEFINE (GrB_, AINV,     "ainv")
+GB_UNARY_OP_DEFINE (GxB_, ABS,      "abs")
+GB_UNARY_OP_DEFINE (GrB_, MINV,     "minv")
+GB_UNARY_OP_DEFINE (GxB_, LNOT,     "not")
 
 //------------------------------------------------------------------------------
 // 8 binary functions z=f(x,y) where x,y,z have the same type
@@ -47,14 +47,14 @@ extern void GB (MINUS_f)  (GB_Z_X_Y_ARGS) ;
 extern void GB (TIMES_f)  (GB_Z_X_Y_ARGS) ;
 extern void GB (DIV_f)    (GB_Z_X_Y_ARGS) ;
 
-GB_BINARY_OP_DEFINE (GrB_, FIRST,  "first") ;
-GB_BINARY_OP_DEFINE (GrB_, SECOND, "second") ;
-GB_BINARY_OP_DEFINE (GrB_, MIN,    "min") ;
-GB_BINARY_OP_DEFINE (GrB_, MAX,    "max") ;
-GB_BINARY_OP_DEFINE (GrB_, PLUS,   "plus") ;
-GB_BINARY_OP_DEFINE (GrB_, MINUS,  "minus") ;
-GB_BINARY_OP_DEFINE (GrB_, TIMES,  "times") ;
-GB_BINARY_OP_DEFINE (GrB_, DIV,    "div") ;
+GB_BINARY_OP_DEFINE (GrB_, FIRST,  "first")
+GB_BINARY_OP_DEFINE (GrB_, SECOND, "second")
+GB_BINARY_OP_DEFINE (GrB_, MIN,    "min")
+GB_BINARY_OP_DEFINE (GrB_, MAX,    "max")
+GB_BINARY_OP_DEFINE (GrB_, PLUS,   "plus")
+GB_BINARY_OP_DEFINE (GrB_, MINUS,  "minus")
+GB_BINARY_OP_DEFINE (GrB_, TIMES,  "times")
+GB_BINARY_OP_DEFINE (GrB_, DIV,    "div")
 
 //------------------------------------------------------------------------------
 // 6 binary comparison functions z=f(x,y), where x,y,z have the same type
@@ -67,12 +67,12 @@ extern void GB (ISLT_f) (GB_Z_X_Y_ARGS) ;
 extern void GB (ISGE_f) (GB_Z_X_Y_ARGS) ;
 extern void GB (ISLE_f) (GB_Z_X_Y_ARGS) ;
 
-GB_BINARY_OP_DEFINE (GxB_, ISEQ,  "iseq") ;
-GB_BINARY_OP_DEFINE (GxB_, ISNE,  "isne") ;
-GB_BINARY_OP_DEFINE (GxB_, ISGT,  "isgt") ;
-GB_BINARY_OP_DEFINE (GxB_, ISLT,  "islt") ;
-GB_BINARY_OP_DEFINE (GxB_, ISGE,  "isge") ;
-GB_BINARY_OP_DEFINE (GxB_, ISLE,  "isle") ;
+GB_BINARY_OP_DEFINE (GxB_, ISEQ,  "iseq")
+GB_BINARY_OP_DEFINE (GxB_, ISNE,  "isne")
+GB_BINARY_OP_DEFINE (GxB_, ISGT,  "isgt")
+GB_BINARY_OP_DEFINE (GxB_, ISLT,  "islt")
+GB_BINARY_OP_DEFINE (GxB_, ISGE,  "isge")
+GB_BINARY_OP_DEFINE (GxB_, ISLE,  "isle")
 
 //------------------------------------------------------------------------------
 // 3 boolean binary functions z=f(x,y), all x,y,z the same type
@@ -82,9 +82,9 @@ extern void GB (LOR_f)  (GB_Z_X_Y_ARGS) ;
 extern void GB (LAND_f) (GB_Z_X_Y_ARGS) ;
 extern void GB (LXOR_f) (GB_Z_X_Y_ARGS) ;
 
-GB_BINARY_OP_DEFINE (GxB_, LOR,  "or") ;
-GB_BINARY_OP_DEFINE (GxB_, LAND, "and") ;
-GB_BINARY_OP_DEFINE (GxB_, LXOR, "xor") ;
+GB_BINARY_OP_DEFINE (GxB_, LOR,  "or")
+GB_BINARY_OP_DEFINE (GxB_, LAND, "and")
+GB_BINARY_OP_DEFINE (GxB_, LXOR, "xor")
 
 //------------------------------------------------------------------------------
 // 6 binary functions z=f(x,y) for any built-in type but return bool
@@ -97,12 +97,12 @@ extern void GB (LT_f) (GB_Zbool_X_Y_ARGS) ;
 extern void GB (GE_f) (GB_Zbool_X_Y_ARGS) ;
 extern void GB (LE_f) (GB_Zbool_X_Y_ARGS) ;
 
-GB_BINARY_BOOL_OP_DEFINE (GrB_, EQ, "eq") ;
-GB_BINARY_BOOL_OP_DEFINE (GrB_, NE, "ne") ;
-GB_BINARY_BOOL_OP_DEFINE (GrB_, GT, "gt") ;
-GB_BINARY_BOOL_OP_DEFINE (GrB_, LT, "lt") ;
-GB_BINARY_BOOL_OP_DEFINE (GrB_, GE, "ge") ;
-GB_BINARY_BOOL_OP_DEFINE (GrB_, LE, "le") ;
+GB_BINARY_BOOL_OP_DEFINE (GrB_, EQ, "eq")
+GB_BINARY_BOOL_OP_DEFINE (GrB_, NE, "ne")
+GB_BINARY_BOOL_OP_DEFINE (GrB_, GT, "gt")
+GB_BINARY_BOOL_OP_DEFINE (GrB_, LT, "lt")
+GB_BINARY_BOOL_OP_DEFINE (GrB_, GE, "ge")
+GB_BINARY_BOOL_OP_DEFINE (GrB_, LE, "le")
 
 //------------------------------------------------------------------------------
 // unary typecast operators, used in GB_cast_factory.c

@@ -16,7 +16,7 @@
     if ((i) < 0 || (i) >= (limit))                                      \
     {                                                                   \
         return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,             \
-        "index "GBu" out of bounds, must be < "GBd, (i), (limit)))) ;   \
+        "index "GBd" out of bounds, must be < "GBd, (i), (limit)))) ;   \
     }                                                                   \
 }
 

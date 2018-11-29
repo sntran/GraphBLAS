@@ -1,7 +1,7 @@
 SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-VERSION 2.2.0, Nov 23, 2018 (BETA3)
+VERSION 2.2.0, Nov 28, 2018 (BETA4)
 
 SuiteSparse:GraphBLAS is an full implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -70,6 +70,12 @@ build           build directory, intially empty
 Config          version-dependent files used by CMake
 
 User            user-defined objects at compile-time (*.m4 files)
+
+Extras          parallel methods: triangle counting, k-truss, and a
+                massively parallel (MPI) Kronecker product matrix generator.
+                These are stand-along package that rely on GraphBLAS.  They
+                are not compiled by the cmake script.  See Extras/README.txt
+                for more details.
 
 --------------------------------------------------------------------------------
 

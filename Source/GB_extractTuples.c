@@ -65,11 +65,11 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     int64_t nvals = *p_nvals ;          // size of I,J,X on input
 
-    if (nvals < anz && (I_out != NULL || J_out != NULL | X != NULL))
+    if (nvals < anz && (I_out != NULL || J_out != NULL || X != NULL))
     { 
         // output arrays are not big enough
         return (GB_ERROR (GrB_INSUFFICIENT_SPACE, (GB_LOG,
-            "output arrays I,J,X are not big enough: nvals "GBu" < "
+            "output arrays I,J,X are not big enough: nvals "GBd" < "
             "number of entries "GBd, nvals, anz))) ;
     }
 

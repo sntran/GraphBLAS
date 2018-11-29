@@ -134,10 +134,10 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         GBPR ("last method used for GrB_mxm, vxm, or mxv: ") ;
         switch (A->AxB_method_used)
         {
-            case GxB_AxB_GUSTAVSON: GBPR ("Gustavson") ;
-            case GxB_AxB_HEAP     : GBPR ("heap") ;
-            case GxB_AxB_DOT      : GBPR ("dot") ;
-            default               : ;
+            case GxB_AxB_GUSTAVSON : GBPR ("Gustavson") ; break ;
+            case GxB_AxB_HEAP      : GBPR ("heap")      ; break ;
+            case GxB_AxB_DOT       : GBPR ("dot")       ; break ;
+            default: ;
         }
         GBPR ("\n") ;
     }
@@ -345,8 +345,9 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
                 }
                 else if (A->x != NULL)
                 { 
+                    GB_void *Ax = A->x ;
                     info = GB_entry_check (A->type,
-                        A->x + (p * (A->type->size)), f, Context) ;
+                        Ax +(p * (A->type->size)), f, Context) ;
                     if (info != GrB_SUCCESS) return (info) ;
                 }
             }
@@ -458,8 +459,9 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             if ((pr > 1 && k < GB_NZBRIEF) || pr > 2)
             { 
                 GBPR ("row: "GBd" col: "GBd" ", row, col) ;
+                GB_void *As = A->s_pending ;
                 info = GB_entry_check (A->type_pending,
-                    A->s_pending +(k * A->type_pending->size), f, Context) ;
+                    As +(k * A->type_pending->size), f, Context) ;
                 if (info != GrB_SUCCESS) return (info) ;
                 GBPR ("\n") ;
             }

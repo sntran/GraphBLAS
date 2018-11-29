@@ -28,7 +28,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
 (
     int64_t *Rp,            // size m+1, input: row pointers, shifted on output
     int64_t *Ri,            // size cnz, output column indices
-    void *Rx,               // size cnz, output values, type op->ztype
+    GB_void *Rx,            // size cnz, output values, type op->ztype
     const GrB_UnaryOp op,   // operator to apply, NULL if no operator
     const GrB_Matrix A      // input matrix
 )
@@ -51,11 +51,15 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     //--------------------------------------------------------------------------
 
     const int64_t *Ai = A->i ;
-    const void    *Ax = A->x ;
+    const GB_void *Ax = A->x ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
+
+    // Some unary operators z=f(x) do not use the value x, like z=1.  This is
+    // intentional, so the gcc warning is ignored.
+    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
     // For built-in types only, thus xtype == ztype, but A->type can differ
     #define GB_WORKER(ztype,atype)                              \
@@ -104,6 +108,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x) 1
                 #define GB_FOP(x) 1
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_IDENTITY_opcode :  // z = x
 
@@ -111,6 +116,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x) x
                 #define GB_FOP(x) x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_AINV_opcode :      // z = -x
 
@@ -118,6 +124,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x) -x
                 #define GB_FOP(x) -x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_ABS_opcode :       // z = abs(x)
 
@@ -125,6 +132,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x)  GB_IABS(x)
                 #define GB_FOP(x)  GB_FABS(x)
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_MINV_opcode :      // z = 1/x
 
@@ -133,6 +141,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x) GB_IMINV(x)
                 #define GB_FOP(x) 1./x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_LNOT_opcode :      // z = ! (x != 0)
 
@@ -140,6 +149,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_IOP(x) (!(x != 0))
                 #define GB_FOP(x) (!(x != 0))
                 #include "GB_2type_template.c"
+                break ;
 
             default: ;
         }
@@ -161,7 +171,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     int64_t zsize = op->ztype->size ;
     GB_cast_function
         cast_A_to_X = GB_cast_factory (op->xtype->code, A->type->code) ;
-    GB_unary_function fop = op->function ;
+    GxB_unary_function fop = op->function ;
 
     // scalar workspace
     char xwork [op->xtype->size] ;

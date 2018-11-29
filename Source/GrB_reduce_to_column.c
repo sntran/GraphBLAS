@@ -27,6 +27,6 @@ GrB_Info GrB_Matrix_reduce_ ## kind /* w<mask> = accum (w,reduce(A))       */ \
         reduceop, A, desc, Context)) ;                                        \
 }
 
-GB_REDUCE (BinaryOp, reduce    ) ;
-GB_REDUCE (Monoid  , reduce->op) ;
+GB_REDUCE (BinaryOp, reduce    )
+GB_REDUCE (Monoid  , reduce->op)
 

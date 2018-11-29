@@ -11,7 +11,7 @@
 
 GrB_Info GxB_Global_Option_set      // set a global default option
 (
-    const GxB_Option_Field field,   // option to change
+    GxB_Option_Field field,         // option to change
     ...                             // value to change it to
 )
 {
@@ -50,7 +50,7 @@ GrB_Info GxB_Global_Option_set      // set a global default option
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
-                    field, GxB_HYPER, GxB_FORMAT))) ;
+                    (int) field, (int) GxB_HYPER, (int) GxB_FORMAT))) ;
 
     }
 

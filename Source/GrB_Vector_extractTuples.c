@@ -36,16 +36,16 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
         (GrB_Matrix) v, Context)) ;                                           \
 }
 
-GB_EXTRACT (bool     , BOOL   ) ;
-GB_EXTRACT (int8_t   , INT8   ) ;
-GB_EXTRACT (uint8_t  , UINT8  ) ;
-GB_EXTRACT (int16_t  , INT16  ) ;
-GB_EXTRACT (uint16_t , UINT16 ) ;
-GB_EXTRACT (int32_t  , INT32  ) ;
-GB_EXTRACT (uint32_t , UINT32 ) ;
-GB_EXTRACT (int64_t  , INT64  ) ;
-GB_EXTRACT (uint64_t , UINT64 ) ;
-GB_EXTRACT (float    , FP32   ) ;
-GB_EXTRACT (double   , FP64   ) ;
-GB_EXTRACT (void     , UDT    ) ;
+GB_EXTRACT (bool     , BOOL   )
+GB_EXTRACT (int8_t   , INT8   )
+GB_EXTRACT (uint8_t  , UINT8  )
+GB_EXTRACT (int16_t  , INT16  )
+GB_EXTRACT (uint16_t , UINT16 )
+GB_EXTRACT (int32_t  , INT32  )
+GB_EXTRACT (uint32_t , UINT32 )
+GB_EXTRACT (int64_t  , INT64  )
+GB_EXTRACT (uint64_t , UINT64 )
+GB_EXTRACT (float    , FP32   )
+GB_EXTRACT (double   , FP64   )
+GB_EXTRACT (void     , UDT    )
 

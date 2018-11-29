@@ -36,16 +36,16 @@ GrB_Info GrB_Vector_assign_ ## T    /* w<mask>(Rows) = accum (w(Rows),x)    */ \
         Context)) ;                                                            \
 }
 
-GB_ASSIGN (bool     , BOOL   , &) ;
-GB_ASSIGN (int8_t   , INT8   , &) ;
-GB_ASSIGN (uint8_t  , UINT8  , &) ;
-GB_ASSIGN (int16_t  , INT16  , &) ;
-GB_ASSIGN (uint16_t , UINT16 , &) ;
-GB_ASSIGN (int32_t  , INT32  , &) ;
-GB_ASSIGN (uint32_t , UINT32 , &) ;
-GB_ASSIGN (int64_t  , INT64  , &) ;
-GB_ASSIGN (uint64_t , UINT64 , &) ;
-GB_ASSIGN (float    , FP32   , &) ;
-GB_ASSIGN (double   , FP64   , &) ;
-GB_ASSIGN (void *   , UDT    ,  ) ;
+GB_ASSIGN (bool     , BOOL   , &)
+GB_ASSIGN (int8_t   , INT8   , &)
+GB_ASSIGN (uint8_t  , UINT8  , &)
+GB_ASSIGN (int16_t  , INT16  , &)
+GB_ASSIGN (uint16_t , UINT16 , &)
+GB_ASSIGN (int32_t  , INT32  , &)
+GB_ASSIGN (uint32_t , UINT32 , &)
+GB_ASSIGN (int64_t  , INT64  , &)
+GB_ASSIGN (uint64_t , UINT64 , &)
+GB_ASSIGN (float    , FP32   , &)
+GB_ASSIGN (double   , FP64   , &)
+GB_ASSIGN (void *   , UDT    ,  )
 

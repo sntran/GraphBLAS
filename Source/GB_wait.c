@@ -249,14 +249,14 @@ GrB_Info GB_wait                // finish all pending computations
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ap = A->p ;
     int64_t *restrict Ai = A->i ;
-    void    *restrict Ax = A->x ;
+    GB_void *restrict Ax = A->x ;
     int64_t anvec = A->nvec ;
     int64_t anvec_new = anvec ;
 
     const int64_t *restrict Th = T->h ;
     const int64_t *restrict Tp = T->p ;
     const int64_t *restrict Ti = T->i ;
-    const void    *restrict Tx = T->x ;
+    const GB_void *restrict Tx = T->x ;
     int64_t tnvec = T->nvec ;
 
     int64_t ak, tk ;

@@ -11,7 +11,7 @@
 
 GrB_Info GxB_Global_Option_get      // gets the current global option
 (
-    const GxB_Option_Field field,   // option to query
+    GxB_Option_Field field,         // option to query
     ...                             // return value of the global option
 )
 {
@@ -123,9 +123,10 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d], GxB_FORMAT [%d], GxB_MODE [%d],"
-                    "GxB_THREAD_SAFETY [%d], or GxB_THREADING [%d]", field,
-                    GxB_HYPER, GxB_FORMAT, GxB_MODE,
-                    GxB_THREAD_SAFETY, GxB_THREADING))) ;
+                    "GxB_THREAD_SAFETY [%d], or GxB_THREADING [%d]",
+                    (int) field, (int) GxB_HYPER, (int) GxB_FORMAT,
+                    (int) GxB_MODE, (int) GxB_THREAD_SAFETY,
+                    (int) GxB_THREADING))) ;
 
     }
 

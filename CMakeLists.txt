@@ -1,6 +1,10 @@
+#-------------------------------------------------------------------------------
+# GraphBLAS/CMakeLists.txt:  cmake script for GraphBLAS
+#-------------------------------------------------------------------------------
+
 # SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
-#
+
 # CMakeLists.txt: instructions for cmake to build GraphBLAS.
 # An ANSI C11 compiler is required.
 #
@@ -38,6 +42,10 @@
 #
 #   make distclean
 
+#-------------------------------------------------------------------------------
+# get the version
+#-------------------------------------------------------------------------------
+
 # cmake 3.0 is preferred.
 cmake_minimum_required ( VERSION 2.8.12 )
 
@@ -46,13 +54,8 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
     cmake_policy ( SET CMP0048 NEW )
 endif ( )
 
-find_program ( M4EXISTS m4 )
-if ( NOT M4EXISTS )
-    message ( FATAL_ERROR "m4 not found, but is required.  Install via your system package manager, or download at http://www.gnu.org/software/m4/m4.html or http://gnuwin32.sourceforge.net for Windows" )
-endif ( )
-
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Nov 23, 2018 (BETA3)" )
+set ( GraphBLAS_DATE "Nov 28, 2018 (BETA4)" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
 set ( GraphBLAS_VERSION_MINOR 2 )
 set ( GraphBLAS_VERSION_SUB   0 )
@@ -70,6 +73,10 @@ else ( )
     project ( graphblas )
 endif ( )
 
+#-------------------------------------------------------------------------------
+# determine build type
+#-------------------------------------------------------------------------------
+
 include ( GNUInstallDirs )
 
 # For development only, not for end-users:
@@ -77,6 +84,15 @@ include ( GNUInstallDirs )
 
 if ( NOT CMAKE_BUILD_TYPE )
     set ( CMAKE_BUILD_TYPE Release )
+endif ( )
+
+#-------------------------------------------------------------------------------
+# find m4 and configure GraphBLAS with user-defined objects (if any)
+#-------------------------------------------------------------------------------
+
+find_program ( M4EXISTS m4 )
+if ( NOT M4EXISTS )
+    message ( FATAL_ERROR "m4 not found, but is required.  Install via your system package manager, or download at http://www.gnu.org/software/m4/m4.html or http://gnuwin32.sourceforge.net for Windows" )
 endif ( )
 
 # configure user-defined objects defined in User/*.m4
@@ -98,7 +114,10 @@ execute_process (
     OUTPUT_FILE "Config/GraphBLAS.h.tmp"
 )
 
+#-------------------------------------------------------------------------------
 # Configure Include/GraphBLAS.h and documentation with version number
+#-------------------------------------------------------------------------------
+
 configure_file (
     "Config/GraphBLAS.h.tmp" 
     "${PROJECT_SOURCE_DIR}/Include/GraphBLAS.h" 
@@ -116,32 +135,59 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/README.txt"
 )
 
+#-------------------------------------------------------------------------------
 # determine what user threading model to use
+#-------------------------------------------------------------------------------
+
 include ( FindOpenMP  )
 include ( FindThreads )
 
+#-------------------------------------------------------------------------------
+# report status
+#-------------------------------------------------------------------------------
+
+message ( STATUS "CMAKE build type:          " ${CMAKE_BUILD_TYPE} )
+
+if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message ( STATUS "CMAKE C Flags debug:       " ${CMAKE_C_FLAGS_DEBUG} )
+else ( )
+    message ( STATUS "CMAKE C Flags release:     " ${CMAKE_C_FLAGS_RELEASE} )
+endif ( )
+
+message ( STATUS "CMAKE compiler ID:         " ${CMAKE_C_COMPILER_ID} )
 message ( STATUS "CMAKE thread library:      " ${CMAKE_THREAD_LIBS_INIT} )
 message ( STATUS "CMAKE have pthreads:       " ${CMAKE_USE_PTHREADS_INIT}  )
 message ( STATUS "CMAKE have Win32 pthreads: " ${CMAKE_USE_WIN32_THREADS_INIT} )
 message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
 
+#-------------------------------------------------------------------------------
+# include directories for both graphblas and graphblasdemo libraries
+#-------------------------------------------------------------------------------
+
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
-# include directories for both graphblas and graphblasdemo libraries
 include_directories ( Source/Template Source Source/Generated Source/Generator Include Demo/Include )
+
+#-------------------------------------------------------------------------------
+# compiler options
+#-------------------------------------------------------------------------------
 
 # check which compiler is being used.  If you need to make
 # compiler-specific modifications, here is the place to do it.
 if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm " )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas " )
+    # check all warnings:
+#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -Werror " )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9 )
         message ( FATAL_ERROR "gcc version must be at least 4.9" )
     endif ( )
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Intel" )
     # options for icc: also needs -std=c11
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 " )
+    # check all warnings:
+#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -w3 " )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 18.0 )
         message ( FATAL_ERROR "icc version must be at least 18.0" )
     endif ( )
@@ -154,7 +200,37 @@ elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
     # options for MicroSoft Visual Studio
 endif ( )
 
-# create the dynamic graphblas library.  Requires ANSI C11
+if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}" )
+else ( )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}" )
+endif ( )
+
+#-------------------------------------------------------------------------------
+# dynamic graphblas library properties
+#-------------------------------------------------------------------------------
+
+# Notes from Sebastien Villemot (sebastien@debian.org):
+# SOVERSION policy: if a binary compiled against the old version of the shared
+# library needs recompiling in order to work with the new version, then a
+# SO_VERSION increase # is needed. Otherwise not.  Examples of the changes that
+# require a SO_VERSION increase:
+#
+#   - a public function or static variable is removed
+#   - the prototype of a public function changes
+#   - the integer value attached to a public #define or enum changes
+#   - the fields of a public structure are modified
+#
+# Examples of changes that do not require a SO_VERSION increase:
+#
+#   - a new public function or static variable is added
+#   - a private function or static variable is removed or modified
+#   - changes in the internals of a structure that is opaque to the calling
+#       program (i.e. is only a pointer manipulated through public functions of
+#       the library)
+#   - a public enum is extended (by adding a new item at the end, but without
+#       changing the already existing items)
+
 file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated/*.c" )
 add_library ( graphblas SHARED ${GRAPHBLAS_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblas PROPERTIES
@@ -164,7 +240,10 @@ SET_TARGET_PROPERTIES ( graphblas PROPERTIES
     PUBLIC_HEADER "Include/GraphBLAS.h" )
 set_property ( TARGET graphblas PROPERTY C_STANDARD 11 )
 
-# create the static graphblas library.  Requires ANSI C11
+#-------------------------------------------------------------------------------
+# static graphblas library properties
+#-------------------------------------------------------------------------------
+
 add_library ( graphblas_static STATIC ${GRAPHBLAS_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES
     VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
@@ -175,7 +254,10 @@ SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES
     PUBLIC_HEADER "Include/GraphBLAS.h" )
 set_property ( TARGET graphblas_static PROPERTY C_STANDARD 11 )
 
+#-------------------------------------------------------------------------------
 # select the threading library 
+#-------------------------------------------------------------------------------
+
 if ( USER_OPENMP )
     # user insists on OpenMP synchronization inside GraphBLAS
     message ( STATUS "cmake -DUSER_OPENMP=1: insisting on using OpenMP" )
@@ -231,42 +313,34 @@ if ( CMAKE_USE_WIN32_THREADS_INIT )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DHAVE_WINDOWS_THREADS " )
 endif ( )
 
+#-------------------------------------------------------------------------------
 # determine the default matrix format
+#-------------------------------------------------------------------------------
+
 if ( BYCOL )
     message ( STATUS "cmake -DBYCOL=1: default matrix format: GxB_BY_COL" )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DBYCOL  " )
 endif ( )
 
+#-------------------------------------------------------------------------------
+# print final C flags
+#-------------------------------------------------------------------------------
+
 message ( STATUS "CMAKE C flags: " ${CMAKE_C_FLAGS} )
 
-# Notes from Sebastien Villemot (sebastien@debian.org):
-# SOVERSION policy: if a binary compiled against the old version of the shared
-# library needs recompiling in order to work with the new version, then a
-# SO_VERSION increase # is needed. Otherwise not.  Examples of the changes that
-# require a SO_VERSION increase:
-#
-#   - a public function or static variable is removed
-#   - the prototype of a public function changes
-#   - the integer value attached to a public #define or enum changes
-#   - the fields of a public structure are modified
-#
-# Examples of changes that do not require a SO_VERSION increase:
-#
-#   - a new public function or static variable is added
-#   - a private function or static variable is removed or modified
-#   - changes in the internals of a structure that is opaque to the calling
-#       program (i.e. is only a pointer manipulated through public functions of
-#       the library)
-#   - a public enum is extended (by adding a new item at the end, but without
-#       changing the already existing items)
-
+#-------------------------------------------------------------------------------
 # graphblas installation location
+#-------------------------------------------------------------------------------
+
 install ( TARGETS graphblas graphblas_static
     LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
+#-------------------------------------------------------------------------------
 # Demo library
+#-------------------------------------------------------------------------------
+
 file ( GLOB DEMO_SOURCES "Demo/Source/*.c" )
 add_library ( graphblasdemo SHARED ${DEMO_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblasdemo PROPERTIES
@@ -281,7 +355,10 @@ set_property ( TARGET graphblasdemo_static PROPERTY C_STANDARD 11 )
 target_link_libraries ( graphblasdemo         m graphblas )
 target_link_libraries ( graphblasdemo_static  graphblas_static )
 
+#-------------------------------------------------------------------------------
 # Demo programs
+#-------------------------------------------------------------------------------
+
 add_executable ( pagerank_demo "Demo/Program/pagerank_demo.c" )
 add_executable ( bfs_demo      "Demo/Program/bfs_demo.c" )
 add_executable ( tri_demo      "Demo/Program/tri_demo.c" )

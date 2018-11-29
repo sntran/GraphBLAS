@@ -121,7 +121,7 @@ GrB_Info GB_emult           // C = A.*B
     // GB_copy_user_user, which requires the size of the type.  No typecast is
     // done.
 
-    GB_binary_function fmult = op->function ;
+    GxB_binary_function fmult = op->function ;
 
     size_t xsize = op->xtype->size ;
     size_t ysize = op->ytype->size ;
@@ -146,13 +146,13 @@ GrB_Info GB_emult           // C = A.*B
     //--------------------------------------------------------------------------
 
     int64_t *Ci = C->i ;
-    void    *Cx = C->x ;
+    GB_void *Cx = C->x ;
 
     int64_t jlast, cnz, cnz_last ;
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
 
     const int64_t *Ai = A->i, *Bi = B->i ;
-    const void    *Ax = A->x, *Bx = B->x ;
+    const GB_void *Ax = A->x, *Bx = B->x ;
 
     GB_for_each_vector2 (A, B)
     {

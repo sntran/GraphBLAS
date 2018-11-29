@@ -198,7 +198,7 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     C->x_shallow = false ;
 
     // Sauna_Work has size cvlen, each entry of size zsize.  Not initialized.
-    void *restrict Sauna_Work = Sauna->Sauna_Work ;
+    GB_void *restrict Sauna_Work = Sauna->Sauna_Work ;
 
     if (M != NULL)
     { 
@@ -352,16 +352,16 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     char bkj [bsize] ;
 
-    GB_binary_function fmult = mult->function ;
-    GB_binary_function fadd  = add->op->function ;
+    GxB_binary_function fmult = mult->function ;
+    GxB_binary_function fadd  = add->op->function ;
 
-    void *restrict identity = add->identity ;
+    GB_void *restrict identity = add->identity ;
 
-    void *restrict Cx = C->x ;
+    GB_void *restrict Cx = C->x ;
 
     #define GB_HANDLE_FLIPXY true
-    #define GB_XTYPE void
-    #define GB_YTYPE void
+    #define GB_XTYPE GB_void
+    #define GB_YTYPE GB_void
     #include "GB_AxB_Gustavson_flipxy.c"
 
     //--------------------------------------------------------------------------

@@ -15,9 +15,9 @@
 
 void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
 (
-    void *Cx,               // output array, of type op->ztype
+    GB_void *Cx,            // output array, of type op->ztype
     const GrB_UnaryOp op,   // operator to apply
-    const void *Ax,         // input array, of type atype
+    const GB_void *Ax,      // input array, of type atype
     const GrB_Type atype,   // type of Ax
     const int64_t anz       // size of Ax and Cx
 )
@@ -36,6 +36,10 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
+
+    // Some unary operators z=f(x) do not use the value x, like z=1.  This is
+    // intentional, so the gcc warning is ignored.
+    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
     // For built-in types only, thus xtype == ztype, but atype can differ
     #define GB_WORKER(ztype,atype)                              \
@@ -73,6 +77,12 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
         // GB_BOP(x) is for boolean x, GB_IOP(x) for integer (int* and uint*),
         // and GB_FOP(x) is for floating-point
 
+        // NOTE: some of these operators z=f(x) do not depend on x, like z=1.
+        // x is read anyway, but the compiler can remove that as dead code if
+        // it is able to.  gcc with -Wunused-but-set-variable will complain,
+        // but there's no simple way to silence this spurious warning.
+        // Ignore it.
+
         switch (op->opcode)
         {
 
@@ -82,6 +92,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x) 1
                 #define GB_FOP(x) 1
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_IDENTITY_opcode :  // z = x
 
@@ -93,6 +104,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x) x
                 #define GB_FOP(x) x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_AINV_opcode :      // z = -x
 
@@ -100,6 +112,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x) -x
                 #define GB_FOP(x) -x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_ABS_opcode :       // z = abs(x)
 
@@ -107,6 +120,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x)  GB_IABS(x)
                 #define GB_FOP(x)  GB_FABS(x)
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_MINV_opcode :      // z = 1/x
 
@@ -115,6 +129,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x) GB_IMINV(x)
                 #define GB_FOP(x) 1./x
                 #include "GB_2type_template.c"
+                break ;
 
             case GB_LNOT_opcode :      // z = ! (x != 0)
 
@@ -122,6 +137,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_IOP(x) (!(x != 0))
                 #define GB_FOP(x) (!(x != 0))
                 #include "GB_2type_template.c"
+                break ;
 
             default: ;
         }
@@ -143,7 +159,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     int64_t zsize = op->ztype->size ;
     GB_cast_function
         cast_A_to_X = GB_cast_factory (op->xtype->code, atype->code) ;
-    GB_unary_function fop = op->function ;
+    GxB_unary_function fop = op->function ;
 
     // scalar workspace
     char xwork [op->xtype->size] ;

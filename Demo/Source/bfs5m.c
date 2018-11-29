@@ -35,7 +35,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     // set up the semiring and initialize the vector v
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector

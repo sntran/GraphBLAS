@@ -12,7 +12,7 @@
 GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 (
     GrB_Matrix A,                   // matrix to query
-    const GxB_Option_Field field,   // option to query
+    GxB_Option_Field field,         // option to query
     ...                             // return value of the matrix option
 )
 {
@@ -65,7 +65,7 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
                     "GxB_HYPER [%d] or GxB_FORMAT [%d]",
-                    field, GxB_HYPER, GxB_FORMAT))) ;
+                    (int) field, (int) GxB_HYPER, (int) GxB_FORMAT))) ;
 
     }
     return (GrB_SUCCESS) ;

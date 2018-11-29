@@ -4576,6 +4576,7 @@ void mexFunction
             OK (GxB_set (F, GxB_FORMAT, GxB_BY_COL)) ;
             umask = (GrB_Vector) F ;
             F = NULL ;
+            default:
             break ;
         }
 

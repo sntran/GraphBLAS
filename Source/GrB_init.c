@@ -57,8 +57,8 @@ _Thread_local char GB_thread_local_report [GB_RLEN+1] = "" ;
 
 #else // USER_OPENMP_THREADS, or USER_NO_THREADS
 // OpenMP user threads, or no user threads: this is the default
-char GB_thread_local_report [GB_RLEN+1] = "" ;
 #pragma omp threadprivate (GB_thread_local_report)
+char GB_thread_local_report [GB_RLEN+1] = "" ;
 #endif
 
 //------------------------------------------------------------------------------
@@ -131,7 +131,8 @@ GrB_Info GrB_init           // start up GraphBLAS
         // mode is invalid; also report the error for GrB_error.
         return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "Unknown mode: %d; must be %d (GrB_NONBLOCKING) or %d"
-            " (GrB_BLOCKING)", mode, GrB_NONBLOCKING, GrB_BLOCKING))) ;
+            " (GrB_BLOCKING)", (int) mode, (int) GrB_NONBLOCKING,
+            (int) GrB_BLOCKING))) ;
     }
 
     bool I_was_first ;

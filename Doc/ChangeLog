@@ -1,3 +1,19 @@
+Version 2.2.0 (BETA4), Nov 28, 2018
+
+    * minor change to GxB_get, GxB_set (all functions using va_arg):
+        const removed from parameter definitions to silence spurious warnings
+        from clang version 10.0.0, Mac OSX 10.14.
+    * added Doc/CONTRIBUTOR-LICENSE.txt
+    * added Doc/README_Doc.txt: includes instructions for OpenMP on the Mac
+    * minor changes to comments of GB_subref_template: to match the ACM TOMS
+        paper discussion of GrB_extract
+    * included the GraphBLAS Extras: triangle counting, k-truss, and
+        Kronecker matrix generator
+    * minor changes for gcc -Wall -Wpedantic -Wextra, and icc -w3: to fix or
+        silence warnings.  In a few cases, prior versions were relying on
+        extensions to the ANSI C11 standard in gcc, clang, xlc.  The extensions
+        are widely supported but best avoided anway.
+
 Version 2.2.0 (BETA3), Nov 23, 2018
 
     * removed persistent thread-local O(n) workspace:  the Mark,

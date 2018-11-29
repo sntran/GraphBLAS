@@ -167,8 +167,8 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         if (!done)
         {
             // the switch factory didn't handle this case
-            GB_binary_function freduce = reduce->op->function ;
-            const void *Ax = A->x ;
+            GxB_binary_function freduce = reduce->op->function ;
+            const GB_void *Ax = A->x ;
             if (A->nzombies == 0)
             {
                 for (int64_t p = 0 ; p < anz ; p++)
@@ -200,11 +200,11 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
         // generic worker: sum up the entries, with typecasting
         //----------------------------------------------------------------------
 
-        GB_binary_function freduce = reduce->op->function ;
+        GxB_binary_function freduce = reduce->op->function ;
         GB_cast_function
             cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
 
-        const void *Ax = A->x ;
+        const GB_void *Ax = A->x ;
         if (A->nzombies == 0)
         {
             for (int64_t p = 0 ; p < anz ; p++)
@@ -250,7 +250,7 @@ GrB_Info GB_reduce_to_scalar    // twork = reduce_to_scalar (A)
     }
     else
     { 
-        GB_binary_function faccum = accum->function ;
+        GxB_binary_function faccum = accum->function ;
 
         GB_cast_function cast_C_to_xaccum, cast_Z_to_yaccum, cast_zaccum_to_C ;
         cast_C_to_xaccum = GB_cast_factory (accum->xtype->code, ctype->code) ;

@@ -11,6 +11,12 @@
 
 #include <pthread.h>
 
+#if defined __INTEL_COMPILER
+#pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
+#elif defined __GNUC__
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 #define NTHREADS 8
 #define NTRIALS 10
 #define N 6
@@ -180,7 +186,7 @@ int main (int argc, char **argv)
 
     // print an error message
     printf ("\n\n---- Master thread prints an error message:\n") ;
-    GrB_Info info = GrB_Matrix_new (NULL, GrB_FP64, 1, 1) ;
+    GrB_Matrix_new (NULL, GrB_FP64, 1, 1) ;
     printf ("master %d : Error: %s\n", id, GrB_error ( )) ;
 
     // finish GraphBLAS

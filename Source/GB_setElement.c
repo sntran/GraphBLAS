@@ -136,15 +136,16 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
         // found C (i,j), assign its value
         size_t csize = ctype->size ;
+        GB_void *Cx = C->x ;
         if (scalar_code >= GB_UCT_code || scalar_code == ccode)
         { 
             // copy the values without typecasting
-            memcpy (C->x +(pleft*csize), scalar, csize) ;
+            memcpy (Cx +(pleft*csize), scalar, csize) ;
         }
         else
         { 
             // typecast scalar into C
-            GB_cast_array (C->x +(pleft*csize), ccode, scalar, scalar_code, 1) ;
+            GB_cast_array (Cx +(pleft*csize), ccode, scalar, scalar_code, 1) ;
         }
 
         if (is_zombie)

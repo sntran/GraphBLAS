@@ -414,6 +414,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // scalar expansion: sort I and J and remove duplicates
     //--------------------------------------------------------------------------
 
+    // NOTE: gcc with -Wunused-but-set-variable may complain about I2_size
+    // and J2_size, but this is spurious.  The values are used when malloc
+    // tracking is enabled (see GB_FREE_ALL defined above).  Ignore the
+    // spurious gcc warnings.
+    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
     int64_t I2_size = 0, J2_size = 0 ;
 
     if (scalar_expansion)
@@ -790,7 +795,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         const int64_t *Mh = M->h ;
         const int64_t *Mp = M->p ;
         const int64_t *Mi = M->i ;
-        const void *Mx = M->x ;
+        const GB_void *Mx = M->x ;
         size_t msize = M->type->size ;
         GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code);
 

@@ -150,7 +150,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     int64_t *restrict Ap = A->p ;
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ai = A->i ;
-    int64_t *restrict Ax = A->x ;
+    GB_void *restrict Ax = A->x ;
 
     bool Ap_shallow = A->p_shallow ;
     bool Ah_shallow = A->h_shallow ;
@@ -306,7 +306,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         }
 
         // allocate new space for the values and pattern
-        void *restrict Cx = NULL ;
+        GB_void *restrict Cx = NULL ;
         int64_t *restrict Cp ;
         int64_t *restrict Ci ;
         double memory = GBYTES (2*anz+1, sizeof (int64_t)) ;
@@ -424,7 +424,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         }
 
         // allocate new space for the values and pattern
-        void *restrict Cx = NULL ;
+        GB_void *restrict Cx = NULL ;
         int64_t *restrict Cp ;
         int64_t *restrict Ci = NULL ;
         double memory = GBYTES (3, sizeof (int64_t)) ;
@@ -777,7 +777,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             int64_t *Tj = NULL ;
             GB_Type_code tcode ;
-            void *Tx = NULL ;
+            GB_void *Tx = NULL ;
 
             if (!recycle_Ai)
             { 

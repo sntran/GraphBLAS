@@ -283,7 +283,7 @@ nrows: 10 ncols: 10 max # entries: 4
 format: standard CSR vlen: 10 nvec_nonempty: 2 nvec: 10 plen: 10 vdim: 10
 hyper_ratio 0.0625
 GraphBLAS type:  user-defined: [wildtype] size: 128
-last method used for GrB_mxm, vxm, or mxv: heapdot
+last method used for GrB_mxm, vxm, or mxv: heap
 number of entries: 4 
 row: 2 : 2 entries [0:1]
     column 2: [user-defined value]

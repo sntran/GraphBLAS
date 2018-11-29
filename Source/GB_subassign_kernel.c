@@ -1172,7 +1172,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     const int64_t *Ch = C->h ;
     const int64_t *Cp = C->p ;
     int64_t *Ci = C->i ;
-    void    *Cx = C->x ;
+    GB_void *Cx = C->x ;
     const size_t csize = C->type->size ;
     const GB_Type_code ccode = C->type->code ;
     int64_t cnvec = C->nvec ;
@@ -1394,7 +1394,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     //--------------------------------------------------------------------------
 
     const int64_t *Ai = NULL ;
-    const void    *Ax = NULL ;
+    const GB_void *Ax = NULL ;
 
     size_t xsize = 1, ysize = 1, zsize = 1 ;
     if (accum != NULL)
@@ -1425,7 +1425,7 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     GB_cast_function cast_A_to_C, cast_A_to_Y, cast_C_to_X, cast_Z_to_C ;
     cast_A_to_C = GB_cast_factory (ccode, acode) ;
 
-    GB_binary_function faccum = NULL ;
+    GxB_binary_function faccum = NULL ;
 
     cast_A_to_Y = NULL ;
     cast_C_to_X = NULL ;
@@ -1454,10 +1454,9 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
     //--------------------------------------------------------------------------
 
     const int64_t *Mi = NULL ;
-    const void    *Mx = NULL ;
+    const GB_void *Mx = NULL ;
     size_t msize = 0 ;
     GB_cast_function cast_M = NULL ;
-    bool M_is_hyper = false ;
 
     if (M != NULL)
     { 
@@ -1466,7 +1465,6 @@ GrB_Info GB_subassign_kernel        // C(I,J)<M> = A or accum (C (I,J), A)
         msize = M->type->size ;
         cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
         ASSERT_OK (GB_check (M, "M for assign", GB0)) ;
-        M_is_hyper = M->is_hyper ;
     }
 
     //==========================================================================

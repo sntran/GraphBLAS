@@ -110,16 +110,19 @@ GrB_Info GB_add             // C = A+B
     // If types are user-defined, the cast* function is just GB_copy_user_user,
     // which requires the size of the type.  No typecast is done.
 
-    GB_binary_function fadd = op->function ;
+    GxB_binary_function fadd = op->function ;
 
-    int64_t *Ci = C->i ;
-    void    *Cx = C->x ;
+    int64_t *restrict Ci = C->i ;
+    GB_void *restrict Cx = C->x ;
 
     int64_t jlast, cnz, cnz_last ;
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
 
-    const int64_t *Ai = A->i, *Bi = B->i ;
-    const void    *Ax = A->x, *Bx = B->x ;
+    const int64_t *restrict Ai = A->i ;
+    const int64_t *restrict Bi = B->i ;
+
+    const GB_void *restrict Ax = A->x ;
+    const GB_void *restrict Bx = B->x ;
 
     // check if no typecasting is needed for the operator
     bool nocasting =

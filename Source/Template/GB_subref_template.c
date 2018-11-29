@@ -205,7 +205,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ap = A->p ;
     const int64_t *restrict Ai = A->i ;
-    const void *restrict Ax = A->x ;
+    const GB_void *restrict Ax = A->x ;
     const int64_t asize = A->type->size ;
     int64_t anvec = A->nvec ;
 
@@ -355,7 +355,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     #ifdef GB_SYMBOLIC
     int64_t *Cx = C->x ;        // extract the pattern
     #else
-    void    *Cx = C->x ;        // extract the values
+    GB_void *Cx = C->x ;        // extract the values
     #endif
     int64_t *Ci = C->i ;
 
@@ -641,7 +641,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         // only O(1) time if I is ":" (because in that case imin = 0).
 
         // if A(:,j) is dense, skip the binary search; cases 10 or 11 will be
-        // used.  They are like case 4, but no binary search.  Like case 4, no
+        // used.  They are like Case 6, but no binary search.  Like Case 6, no
         // sort needed even if I is unsorted.
 
         if (!aj_dense && (GB_Ai (pstart) < imin))
@@ -692,48 +692,48 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
             // A(:,j) is dense
             if I is ":"
-                // case 10: C(:,j) = A(:,j)
+                // Case 1: C(:,j) = A(:,j)
             else
-                // case 11: C(I,j) = A(I,j)
+                // Case 2: C(I,j) = A(I,j)
             // time: O(nI) which is optimal since nI == nnz (C (I,jnew))
         }
         else if (nI == 1)
         {
-            // case 1: one index
+            // Case 3: one index
             // C (:,jnew) = A (i,j)
             // time: O(log(ajnz)), optimal given the data structure
         }
         else if (I == ":")
         {
-            // case 2: I is ":"
+            // Case 4: I is ":"
             // C (:,jnew) = A (:,j)
-            // time: O(ajnz), optimal
+            // time: O(ajnz), optimal since cjnz == ajnz
         }
         else if (I_contig)
         {
-            // case 3: I_contig I = ibegin:iend
+            // Case 5: I_contig I = ibegin:iend
             // C (:,jnew) = A (ibegin:iend,j)
             // time: O(log(ajnz) + cjnz), optimal given the data structure
         }
         else if (
-            (Ikind == GB_LIST && !I_inverse) || // must do case 4
-            (need_qsort  && nI < ajnz2) ||      // case 4 faster than case 5
-            (!need_qsort && 32 * nI < ajnz2))   // case 4 faster than case 6, 7
+            (Ikind == GB_LIST && !I_inverse) || // must do Case 6
+            (need_qsort  && nI < ajnz2) ||      // Case 6 faster than 9
+            (!need_qsort && 32 * nI < ajnz2))   // Case 6 faster than 10, 11
         {
-            // case 4: nI not large
+            // Case 6: nI not large
             // C (:,jnew) = A (I,j)
             // time: O(nI*log(ajnz3))
         }
         else if (Ikind == GB_STRIDE && Icolon [GxB_INC] >= 0)
         {
-            // case 8: I = ibegin:iinc:iend with iinc >= 0
+            // Case 7: I = ibegin:iinc:iend with iinc >= 0
             // iinc will not be = 0 since it implies nI==0 and thus this
             // whole phase is skipped.
             // time: O(ajnz3)
         }
         else if (Ikind == GB_STRIDE && Icolon [GxB_INC] < 0)
         {
-            // case 9: I = ibegin:iinc:iend with iinc < 0
+            // Case 8: I = ibegin:iinc:iend with iinc < 0
             // time: O(ajnz3)
         }
         else // I inverse buckets will be used
@@ -741,19 +741,19 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             // construct the I inverse buckets
             if (need_qsort)
             {
-                // case 5: nI large, need qsort
+                // Case 9: nI large, need qsort
                 // C (:,jnew) = A (I,j)
                 // time: O(cjnz*log(cjnz) + ajnz3)
             }
             else if (nduplicates > 0)
             {
-                // case 6: nI large, no qsort, with duplicates
+                // Case 10: nI large, no qsort, with duplicates
                 // C (:,jnew) = A (I,j)
                 // time: O(cjnz + ajnz3)
             }
             else
             {
-                // case 7: nI large, no qsort, no dupl
+                // Case 11: nI large, no qsort, no dupl
                 // C (:,jnew) = A (I,j)
                 // time: O(ajnz3)
             }
@@ -768,7 +768,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASES 10 and 11: A(:,j) is dense
+            // Case 1 and Case 2: A(:,j) is dense
             //------------------------------------------------------------------
 
             // A(:,j) is entirely dense, so C(I,jnew) = A (I,j) will have
@@ -782,7 +782,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {
 
                 //--------------------------------------------------------------
-                // CASE 10:  C(:,jnew) = A(:,j) where A(:,j) is dense
+                // Case 1:  C(:,jnew) = A(:,j) where A(:,j) is dense
                 //--------------------------------------------------------------
 
                 ASSERT (nI == avlen) ;
@@ -814,7 +814,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {
 
                 //--------------------------------------------------------------
-                // CASE 11:  C(I,jnew) = A(I,j) where A(I,j) is dense
+                // Case 2:  C(I,jnew) = A(I,j) where A(I,j) is dense
                 //--------------------------------------------------------------
 
                 // scan I and get the entry in A(:,j) via direct lookup
@@ -848,7 +848,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASE 1: the list I has a single index, ibegin
+            // Case 3: the list I has a single index, ibegin
             //------------------------------------------------------------------
 
             // binary search has already found imin. Time is O(1) for this
@@ -881,7 +881,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASE 2: I = 0:avlen-1, thus C(:,jnew) = A (:,j)
+            // Case 4: I = 0:avlen-1, thus C(:,jnew) = A (:,j)
             //------------------------------------------------------------------
 
             // Total time is O(ajnz), but that entire time is required since
@@ -917,7 +917,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASE 3: I is a contiguous list, imin:imax
+            // Case 5: I is a contiguous list, imin:imax
             //------------------------------------------------------------------
 
             // Total time is O(C(:,jnew) + log(ajnz)), which is nearly optimal
@@ -957,13 +957,13 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
 
         }
         else if (
-            (Ikind == GB_LIST && !I_inverse) || // must do case 4
-            (need_qsort  && nI < ajnz2) ||      // case 4 faster than case 5
-            (!need_qsort && 32 * nI < ajnz2))   // case 4 faster than case 6, 7
+            (Ikind == GB_LIST && !I_inverse) || // must do Case 6
+            (need_qsort  && nI < ajnz2) ||      // Case 6 faster than 9
+            (!need_qsort && 32 * nI < ajnz2))   // Case 6 faster than 10, 11
         {
 
             //------------------------------------------------------------------
-            // CASE 4: I is short compared with nnz (A (:,j)), use binary search
+            // Case 6: I is short compared with nnz (A (:,j)), use binary search
             //------------------------------------------------------------------
 
             // If I_inverse is false then the I bucket inverse has not been
@@ -1045,7 +1045,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASE 8: I is ibegin:iinc:iend with iinc >= 0
+            // Case 7: I is ibegin:iinc:iend with iinc >= 0
             //------------------------------------------------------------------
 
             int64_t ibegin = Icolon [GxB_BEGIN] ;
@@ -1088,10 +1088,10 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASE 9: I is ibegin:iinc:iend with iinc < 0
+            // Case 8: I is ibegin:iinc:iend with iinc < 0
             //------------------------------------------------------------------
 
-            // trim the end of A(:,j).  see case 4.
+            // trim the end of A(:,j).  see Case 6.
             int64_t pleft = pstart ;
             int64_t pright = pend ;
             #ifdef GB_SYMBOLIC
@@ -1189,11 +1189,11 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
         {
 
             //------------------------------------------------------------------
-            // CASES 5,6,7: using the I inverse buckets
+            // Case 9 to 11: using the I inverse buckets
             //------------------------------------------------------------------
 
             // None of the above cases use the I inverse buckets.  From here on
-            // case 5 and all the following cases below all require the I
+            // Case 9 and all the following cases below all require the I
             // inverse buckets.
 
             ASSERT (Ikind == GB_LIST) ;     // I is an explicit list
@@ -1225,10 +1225,10 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {
 
                 //--------------------------------------------------------------
-                // CASE 5: I unsorted, and C needs qsort, duplicates OK
+                // Case 9: I unsorted, and C needs qsort, duplicates OK
                 //--------------------------------------------------------------
 
-                // Case 5 works well when I has many entries and A(:,j) has few
+                // Case 9 works well when I has many entries and A(:,j) has few
                 // entries.  Time taken is O(cjnz*log(cjnz)+ajnz3) in the worst
                 // case, where cjnz <= nI.  cjnz and ajnz3 are not comparable
                 // because of duplicates.
@@ -1300,10 +1300,10 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {
 
                 //--------------------------------------------------------------
-                // CASE 6: I not contiguous, with duplicates.  No qsort needed.
+                // Case 10: I not contiguous, with duplicates.  No qsort needed.
                 //--------------------------------------------------------------
 
-                // Case 6 works well when I has many entries and A(:,j) has few
+                // Case 10 works well when I has many entries and A(:,j) has few
                 // entries.  Time taken is O(cjnz+ajnz3) in the worst case,
                 // where cjnz = nnz (C (:,jnew)) and ajnz3 < nnz (A (:,j)).
 
@@ -1343,10 +1343,10 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             {
 
                 //--------------------------------------------------------------
-                // CASE 7: I not contiguous, no duplicates.  No qsort needed.
+                // Case 11: I not contiguous, no duplicates.  No qsort needed.
                 //--------------------------------------------------------------
 
-                // Identical to case 6, except GB_for_each_entry_in_bucket
+                // Identical to Case 10, except GB_for_each_entry_in_bucket
                 // (...) just needs to iterate 0 or 1 times.  Works well when I
                 // has many entries and A(:,j) has few entries.  Time taken is
                 // O(ajnz3)

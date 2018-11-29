@@ -7,6 +7,13 @@
 
 #include "GraphBLAS.h"
 
+#if defined __INTEL_COMPILER
+#pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
+#elif defined __GNUC__
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+#endif
+
 //------------------------------------------------------------------------------
 // the wildtype
 //------------------------------------------------------------------------------
@@ -63,9 +70,9 @@ void wildtype_print_matrix (GrB_Matrix A, char *name)
     GrB_Matrix_ncols (&ncols, A) ;
     printf ("\n============= printing the WildType matrix: %s (%d-by-%d"
         " with %d entries)\n", name, (int) nrows, (int) ncols, (int) nvals) ;
-    for (int i = 0 ; i < nrows ; i++)
+    for (int i = 0 ; i < (int) nrows ; i++)
     {
-        for (int j = 0 ; j < ncols ; j++)
+        for (int j = 0 ; j < (int) ncols ; j++)
         {
             wildtype scalar ;
             GrB_Info info = GrB_Matrix_extractElement_UDT (&scalar, A, i, j) ;

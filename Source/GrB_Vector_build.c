@@ -28,16 +28,16 @@ GrB_Info GrB_Vector_build_ ## T     /* build a vector from (I,X) tuples   */  \
     return (info) ;                                                           \
 }
 
-GB_BUILD (bool     , BOOL   ) ;
-GB_BUILD (int8_t   , INT8   ) ;
-GB_BUILD (uint8_t  , UINT8  ) ;
-GB_BUILD (int16_t  , INT16  ) ;
-GB_BUILD (uint16_t , UINT16 ) ;
-GB_BUILD (int32_t  , INT32  ) ;
-GB_BUILD (uint32_t , UINT32 ) ;
-GB_BUILD (int64_t  , INT64  ) ;
-GB_BUILD (uint64_t , UINT64 ) ;
-GB_BUILD (float    , FP32   ) ;
-GB_BUILD (double   , FP64   ) ;
-GB_BUILD (void     , UDT    ) ;
+GB_BUILD (bool     , BOOL   )
+GB_BUILD (int8_t   , INT8   )
+GB_BUILD (uint8_t  , UINT8  )
+GB_BUILD (int16_t  , INT16  )
+GB_BUILD (uint16_t , UINT16 )
+GB_BUILD (int32_t  , INT32  )
+GB_BUILD (uint32_t , UINT32 )
+GB_BUILD (int64_t  , INT64  )
+GB_BUILD (uint64_t , UINT64 )
+GB_BUILD (float    , FP32   )
+GB_BUILD (double   , FP64   )
+GB_BUILD (void     , UDT    )
 

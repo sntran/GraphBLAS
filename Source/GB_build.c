@@ -219,7 +219,7 @@ GrB_Info GB_build               // build matrix
                 int64_t row = C_is_csc ? i : j ;
                 int64_t col = C_is_csc ? j : i ;
                 return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
-                    "index ("GBu","GBu") out of bounds,"
+                    "index ("GBd","GBd") out of bounds,"
                     " must be < ("GBd", "GBd")", row, col, nrows, ncols))) ;
             }
 
@@ -269,7 +269,7 @@ GrB_Info GB_build               // build matrix
                     GB_FREE_MEMORY (iwork, len, sizeof (int64_t)) ;
                     GB_FREE_MEMORY (jwork, len, sizeof (int64_t)) ;
                     return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
-                        "index ("GBu") out of bounds, must be < ("GBd")",
+                        "index ("GBd") out of bounds, must be < ("GBd")",
                         i, vlen))) ;
                 }
 

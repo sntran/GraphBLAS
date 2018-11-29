@@ -45,11 +45,11 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     (*Chandle) = NULL ;
 
     const int64_t *restrict Ai = A->i ;
-    const void    *restrict Ax = A->x ;
+    const GB_void *restrict Ax = A->x ;
     const int64_t asize = A->type->size ;
 
     const int64_t *restrict Bi = B->i ;
-    const void    *restrict Bx = B->x ;
+    const GB_void *restrict Bx = B->x ;
     const int64_t bsize = B->type->size ;
     const int64_t bvlen = B->vlen ;
     const int64_t bvdim = B->vdim ;
@@ -85,13 +85,13 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     //--------------------------------------------------------------------------
 
     int64_t *restrict Ci = C->i ;
-    void    *restrict Cx = C->x ;
+    GB_void *restrict Cx = C->x ;
     const int64_t csize = C->type->size ;
 
     char awork [asize] ;
     char bwork [bsize] ;
 
-    GB_binary_function fmult = op->function ;
+    GxB_binary_function fmult = op->function ;
 
     GB_cast_function
         cast_A = GB_cast_factory (op->xtype->code, A->type->code),
@@ -125,18 +125,18 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
                 // awork = A(ai,aj), typecasted to op->xtype
                 int64_t ai = Ai [pa] ;
                 int64_t aiblock = ai * bvlen ;
-                cast_A (awork, Ax + (pa*asize), asize) ;
+                cast_A (awork, Ax +(pa*asize), asize) ;
 
                 for (int64_t pb = pB_start ; pb < pB_end ; pb++)
                 { 
                     // bwork = B(bi,bj), typecasted to op->ytype
                     int64_t bi = Bi [pb] ;
-                    cast_B (bwork, Bx + (pb*bsize), bsize) ;
+                    cast_B (bwork, Bx +(pb*bsize), bsize) ;
 
                     // C(ci,cj) = A(ai,aj) * B(bi,bj)
                     int64_t ci = aiblock + bi ;
                     Ci [cnz] = ci ;
-                    fmult (Cx + (cnz*csize), awork, bwork) ;
+                    fmult (Cx +(cnz*csize), awork, bwork) ;
                     cnz++ ;
                 }
             }

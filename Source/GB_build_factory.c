@@ -53,7 +53,7 @@ GrB_Info GB_build_factory           // build a matrix
     const int64_t tnz0,             // final nnz(T)
     int64_t **iwork_handle,         // for (i,k) or (j,i,k) tuples
     int64_t **kwork_handle,         // for (i,k) or (j,i,k) tuples
-    const void *S,                  // array of values of tuples
+    const GB_void *S,               // array of values of tuples
     const int64_t len,              // number of tuples and size of kwork
     const int64_t ijlen,            // size of iwork array
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
@@ -96,7 +96,7 @@ GrB_Info GB_build_factory           // build a matrix
     //          operator, with all three types equal to T->type
 
     GrB_Type ttype = T->type, xtype, ytype, ztype ;
-    GB_binary_function fdup ;
+    GxB_binary_function fdup ;
     GB_Opcode opcode ;
 
     GB_Type_code tcode = ttype->code ;
@@ -177,7 +177,7 @@ GrB_Info GB_build_factory           // build a matrix
         return (GB_OUT_OF_MEMORY (memory)) ;
     }
 
-    void *restrict Tx = T->x ;
+    GB_void *restrict Tx = T->x ;
 
     //--------------------------------------------------------------------------
     // assemble the output
@@ -308,7 +308,7 @@ GrB_Info GB_build_factory           // build a matrix
                     { 
                         // duplicate entry: assemble it with the dup operator
                         // Tx [tnz-1] '+=' S [k]
-                        void *restrict txt = Tx +((tnz-1)*size) ;
+                        GB_void *restrict txt = Tx +((tnz-1)*size) ;
                         fdup (txt, txt, S +(k*size)) ;  // (z x alias)
                     }
                     else

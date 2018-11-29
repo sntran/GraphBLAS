@@ -18,7 +18,7 @@
 GrB_Info GB_UnaryOp_new             // create a new user-defined unary operator
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
-    void *function,                 // pointer to the unary function
+    GxB_unary_function function,    // pointer to the unary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype,           // type of input x
     const char *name                // name of the function

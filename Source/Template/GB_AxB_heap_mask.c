@@ -23,7 +23,7 @@
 
     #ifdef GB_MASK_CASE
     const int64_t *restrict Mi = M->i ;
-    const void    *restrict Mx = M->x ;
+    const GB_void *restrict Mx = M->x ;
     GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
     size_t msize = M->type->size ;
     #endif

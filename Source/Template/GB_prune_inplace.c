@@ -21,7 +21,7 @@
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ap = A->p ;
     int64_t *restrict Ai = A->i ;
-    void    *restrict Ax = A->x ;
+    GB_void *restrict Ax = A->x ;
 
     int64_t p = 0 ;
     int64_t vdim = A->vdim ;

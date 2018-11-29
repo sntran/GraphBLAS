@@ -28,6 +28,57 @@
 // #define USER_ANSI_THREADS            not yet supported
 
 //------------------------------------------------------------------------------
+// manage compiler warnings
+//------------------------------------------------------------------------------
+
+// These warnings are spurious.  SuiteSparse:GraphBLAS uses many template-style
+// code generation mechanisms, and these can generate unused results that an
+// optimizing compiler can safely discard as dead code.
+
+#if defined __INTEL_COMPILER
+// disable icc warnings
+//  58:   sign compare
+//  167:  incompatible pointer
+//  144:  initialize with incompatible pointer
+//  177:  declared but unused
+//  181:  format
+//  186:  useless comparison
+//  188:  mixing enum types
+//  589:  bypass initialization
+//  593:  set but not used
+//  869:  unused parameters
+//  981:  unspecified order
+//  1418: no external declaration
+//  1419: external declaration in source file
+//  1572: floating point comparisons
+//  1599: shadow
+//  2259: typecasting
+//  2282: unrecognized pragma
+//  2557: sign compare
+//  2547: remark about include files
+//  3280: shadow
+#pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
+
+#elif defined __GNUC__
+
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wformat-truncation="
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-result"
+#pragma GCC diagnostic ignored "-Wint-in-bool-context"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+
+// enable these warnings as errors
+#pragma GCC diagnostic error "-Wmisleading-indentation"
+#pragma GCC diagnostic error "-Wswitch-default"
+
+#endif
+
+//------------------------------------------------------------------------------
 // include GraphBLAS.h (depends on user threading model)
 //------------------------------------------------------------------------------
 
@@ -78,6 +129,10 @@ extern int GB_cover_max ;
 // opaque content of GraphBLAS objects
 //------------------------------------------------------------------------------
 
+typedef unsigned char GB_void ;
+
+typedef void (*GB_cast_function)   (void *, const void *, size_t) ;
+
 #define GB_LEN 128
 
 struct GB_Sauna_opaque      // sparse accumulator (matrix and vector component)
@@ -105,7 +160,7 @@ struct GB_UnaryOp_opaque    // content of GrB_UnaryOp
     int64_t magic ;         // for detecting uninitialized objects
     GrB_Type xtype ;        // type of x
     GrB_Type ztype ;        // type of z
-    void *function ;        // a pointer to the unary function
+    GxB_unary_function function ;        // a pointer to the unary function
     char name [GB_LEN] ;    // name of the unary operator
     int opcode ;            // operator opcode
 } ;
@@ -116,7 +171,7 @@ struct GB_BinaryOp_opaque   // content of GrB_BinaryOp
     GrB_Type xtype ;        // type of x
     GrB_Type ytype ;        // type of y
     GrB_Type ztype ;        // type of z
-    void *function ;        // a pointer to the binary function
+    GxB_binary_function function ;        // a pointer to the binary function
     char name [GB_LEN] ;    // name of the binary operator
     int opcode ;            // operator opcode
 } ;
@@ -125,7 +180,7 @@ struct GB_SelectOp_opaque   // content of GxB_SelectOp
 {
     int64_t magic ;         // for detecting uninitialized objects
     GrB_Type xtype ;        // type of x, or NULL if generic
-    void *function ;        // a pointer to the select function
+    GxB_select_function function ;        // a pointer to the select function
     char name [GB_LEN] ;    // name of the select operator
     int opcode ;            // operator opcode
 } ;
@@ -632,6 +687,13 @@ extern struct GB_SelectOp_opaque
 // error logging
 //------------------------------------------------------------------------------
 
+// Error messages are logged in GB_DLEN, on the stack, and then copied into
+// thread-local storage of size GB_RLEN.  If the user-defined data types,
+// operators, etc have really long names, the error messages are safely
+// truncated (via snprintf).  This is intentional, but gcc with
+// -Wformat-truncation will print a warning (see pragmas above).  Ignore the
+// warning.
+
 #define GB_RLEN 384
 #define GB_DLEN 256
 
@@ -1069,7 +1131,7 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
 (
     int64_t *Rp,            // size m+1, input: row pointers, shifted on output
     int64_t *Ri,            // size cnz, output column indices
-    void *Rx,               // size cnz, output numerical values, type R_type
+    GB_void *Rx,            // size cnz, output numerical values, type R_type
     const GrB_Type R_type,  // type of output R (do typecasting into R)
     const GrB_Matrix A      // input matrix
 ) ;
@@ -1078,7 +1140,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
 (
     int64_t *Rp,            // size m+1, input: row pointers, shifted on output
     int64_t *Ri,            // size cnz, output column indices
-    void *Rx,               // size cnz, output values, type op->ztype
+    GB_void *Rx,            // size cnz, output values, type op->ztype
     const GrB_UnaryOp op,   // operator to apply, NULL if no operator
     const GrB_Matrix A      // input matrix
 ) ;
@@ -1136,22 +1198,6 @@ void GB_cast_array              // typecast an array
     const GB_Type_code code2,   // type code for A
     const int64_t n             // number of entries in C and A
 ) ;
-
-typedef void (*GB_binary_function) (void *, const void *, const void *) ;
-
-typedef void (*GB_unary_function)  (void *, const void *) ;
-
-typedef bool (*GB_select_function)      // return true if A(i,j) is kept
-(
-    GrB_Index i,                // row index of A(i,j)
-    GrB_Index j,                // column index of A(i,j)
-    GrB_Index nrows,            // number of rows of A
-    GrB_Index ncols,            // number of columns of A
-    const void *x,              // value of A(i,j)
-    const void *k               // optional input for select function
-) ;
-
-typedef void (*GB_cast_function)   (void *, const void *, size_t) ;
 
 GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
 (
@@ -1815,7 +1861,7 @@ GrB_Info GB_build_factory           // build a matrix
     const int64_t tnz0,             // final nnz(T)
     int64_t **iwork_handle,         // for (i,k) or (j,i,k) tuples
     int64_t **kwork_handle,         // for (i,k) or (j,i,k) tuples
-    const void *S,                  // array of values of tuples
+    const GB_void *S,               // array of values of tuples
     const int64_t len,              // number of tuples and size of kwork
     const int64_t ijlen,            // size of iwork array
     const GrB_BinaryOp dup,         // binary function to assemble duplicates,
@@ -2049,9 +2095,9 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
 
 void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
 (
-    void *Cx,               // output array, of type op->ztype
+    GB_void *Cx,            // output array, of type op->ztype
     const GrB_UnaryOp op,   // operator to apply
-    const void *Ax,         // input array, of type atype
+    const GB_void *Ax,      // input array, of type atype
     const GrB_Type atype,   // type of Ax
     const int64_t anz       // size of Ax and Cx
 ) ;
@@ -2694,16 +2740,14 @@ static inline GrB_Index GB_rand (uint64_t *seed)
     {                                                                       \
         switch (fpclassify ((double) (x)))                                  \
         {                                                                   \
-            case FP_ZERO:                                                   \
-            case FP_NORMAL:                                                 \
-            case FP_SUBNORMAL:                                              \
-                z = (x) ;                                                   \
-                break ;                                                     \
             case FP_NAN:                                                    \
                 z = 0 ;                                                     \
                 break ;                                                     \
             case FP_INFINITE:                                               \
                 z = ((x) > 0) ? GB_PLUS_INF (z) : GB_MINUS_INF (z) ;        \
+                break ;                                                     \
+            default:                                                        \
+                z = (x) ;                                                   \
                 break ;                                                     \
         }                                                                   \
     }                                                                       \

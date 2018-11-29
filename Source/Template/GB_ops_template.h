@@ -26,7 +26,7 @@ inline void GB (IDENTITY_f) (GB_Z_X_ARGS) { (*z) = (*x) ; }
 // floating-point
 inline void GB (AINV_f)     (GB_Z_X_ARGS) { (*z) = -(*x) ; }
 inline void GB (ABS_f)      (GB_Z_X_ARGS) { (*z) = GB_FABS ((*x)) ; }
-inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = 1. / ((*x)) ; }
+inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = 1 / ((*x)) ; }
 #else
 #ifdef GB_BOOLEAN
 // boolean

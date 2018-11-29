@@ -54,7 +54,6 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_Vector degrees = NULL ;
 
     GrB_Index n ;
-    GrB_Info info ;
 
     GrB_Matrix_nrows (&n, A) ;                 // n = # of nodes in graph
 

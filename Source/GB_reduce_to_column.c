@@ -154,7 +154,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     size_t asize = A->type->size ;
     int    acode = A->type->code ;
     const int64_t *restrict Ai = A->i ;
-    const void    *restrict Ax = A->x ;
+    const GB_void *restrict Ax = A->x ;
     int64_t anz = GB_NNZ (A) ;
 
     size_t zsize = reduce->ztype->size ;
@@ -166,7 +166,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
     // T = reduce(A) or reduce(A')
     //--------------------------------------------------------------------------
 
-    GB_binary_function freduce = reduce->function ;
+    GxB_binary_function freduce = reduce->function ;
     GB_cast_function cast_A_to_Z = GB_cast_factory (zcode, acode) ;
     int64_t tnz = 0 ;
     bool nocasting = (A->type == reduce->ztype) ;
@@ -203,7 +203,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
         T->p [0] = 0 ;
         T->p [1] = tnz ;
         int64_t *restrict Ti = T->i ;
-        void    *restrict Tx = T->x ;
+        GB_void *restrict Tx = T->x ;
         T->nvec_nonempty = (tnz > 0) ? 1 : 0 ;
 
         //----------------------------------------------------------------------
@@ -362,7 +362,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             bool *restrict mark = NULL ;
             GB_CALLOC_MEMORY (mark, wlen + 1, sizeof (bool)) ;
 
-            void *restrict work = NULL ;
+            GB_void *restrict work = NULL ;
             GB_MALLOC_MEMORY (work, wlen + 1, zsize) ;
 
             #define GB_REDUCE_FREE_WORK                                     \
@@ -455,7 +455,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
                         // awork = (ztype) Ax [p]
                         cast_A_to_Z (awork, Ax +(p*asize), zsize) ;
                         // work [i] += awork
-                        void *restrict worki = work +(i*zsize) ;
+                        GB_void *restrict worki = work +(i*zsize) ;
                         freduce (worki, worki, awork) ;     // (z x alias)
                     }
                 }
@@ -507,7 +507,7 @@ GrB_Info GB_reduce_to_column        // w<mask> = accum (w,reduce(A))
             else
             {
                 // gather T from mark and work
-                void *restrict Tx = T->x ;
+                GB_void *restrict Tx = T->x ;
                 int64_t p = 0 ;
                 for (int64_t i = 0 ; i < wlen ; i++)
                 {

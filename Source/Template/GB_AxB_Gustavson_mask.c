@@ -40,7 +40,7 @@
     //--------------------------------------------------------------------------
 
     const int64_t *restrict Mi = M->i ;
-    const void    *restrict Mx = M->x ;
+    const GB_void *restrict Mx = M->x ;
     GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
     size_t msize = M->type->size ;
 
@@ -55,7 +55,7 @@
     #ifdef GB_HYPER_CASE
     const int64_t *restrict Ah = A->h ;
     int64_t anvec = A->nvec ;
-    int64_t pleft, pright ;
+    int64_t pleft = 0, pright = anvec-1 ;
     #endif
 
     //--------------------------------------------------------------------------

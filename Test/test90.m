@@ -8,13 +8,13 @@ fprintf ('\n -------------- GB_AxB_meta with pre-compiled semiring\n') ;
 
 rng ('default') ;
 
-for n = [10 100 1000]
+for N = [10 100 1000]
 
-    n
+    N
 
     % create the problem
-    A = sprand (4*n, 5*n, 0.01) ;
-    B = sprand (5*n, 3*n, 0.01) ;
+    A = sprand (4*N, 5*N, 0.01) ;
+    B = sprand (5*N, 3*N, 0.01) ;
 
     [i j x] = find (A) ;
     [m n] = size (A) ;
@@ -30,12 +30,14 @@ for n = [10 100 1000]
     tic
     C2 = GB_mex_rdiv (A, B) ;
     toc
+    t = gbresults ; fprintf ('GB time %g\n', t) ;
     assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
 
     for method = 1001:1003
         fprintf ('method: %d\n', method) ;
+        cprint = (N <= 10) ;
         tic
-        C2 = GB_mex_rdiv (A, B, method) ;
+        C2 = GB_mex_rdiv (A, B, method, cprint) ;
         toc
         t = gbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
