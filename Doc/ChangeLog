@@ -1,3 +1,8 @@
+Version 2.2.0, Nov 29, 2018
+
+    * identical to 2.2.0 (BETA4): date changed, and "BETA4" removed.
+        Demo/choldemo removed (testing artifact, not needed).
+
 Version 2.2.0 (BETA4), Nov 28, 2018
 
     * minor change to GxB_get, GxB_set (all functions using va_arg):
