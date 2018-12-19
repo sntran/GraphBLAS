@@ -42,7 +42,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     switch (monoid->object_kind)
     {
         case GB_BUILTIN:
-            if (pr > 0) GBPR ("(user-defined at compile-time)") ;
+            if (pr > 0) GBPR ("(built-in)") ;
             break ;
 
         case GB_USER_COMPILED:

@@ -185,8 +185,12 @@ GrB_Info GB_build_factory           // build a matrix
 
     int64_t tnz = 0 ;
 
+    // so that tcode can match scode
+    GB_Type_code tcode2 = (tcode == GB_UCT_code) ? GB_UDT_code : tcode ;
+    GB_Type_code scode2 = (scode == GB_UCT_code) ? GB_UDT_code : scode ;
+
     // no typecasting if all 5 types are the same
-    bool nocasting = (tcode == scode) &&
+    bool nocasting = (tcode2 == scode2) &&
         (ttype == xtype) && (ttype == ytype) && (ttype == ztype) ;
 
     if (nocasting)

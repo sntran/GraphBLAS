@@ -35,8 +35,8 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_ix", GB0)) ;
-    ASSERT_OK (GB_check (R_type, "R type for transpose_ix", GB0)) ;
+    ASSERT (A != NULL) ;
+    ASSERT (R_type != NULL) ;
     ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
     ASSERT (GB_Type_compatible (A->type, R_type)) ;
     ASSERT (!GB_ZOMBIES (A)) ;

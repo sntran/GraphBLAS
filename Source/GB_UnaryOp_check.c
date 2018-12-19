@@ -39,9 +39,20 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
 
     GB_CHECK_MAGIC (op, "UnaryOp") ;
 
-    if (pr > 0 && op->opcode >= GB_USER_C_opcode)
-    {
-        GBPR ("(user-defined) ") ;
+    if (pr > 0)
+    { 
+        if (op->opcode == GB_USER_C_opcode)
+        {
+            GBPR ("(compile-time user-defined) ") ;
+        }
+        else if (op->opcode == GB_USER_R_opcode)
+        {
+            GBPR ("(run-time user-defined) ") ;
+        }
+        else
+        {
+            GBPR ("(built-in) ") ;
+        }
     }
 
     if (pr > 0) GBPR ("z=%s(x)\n", op->name) ;

@@ -514,7 +514,7 @@ extern struct GB_Type_opaque
     GB_opaque_GrB_FP32   ,
     GB_opaque_GrB_FP64   ;
 
-// operator codes used in GrB_BinaryOp, GrB_UnaryOp, and GxB_SelectOp
+// operator codes used in GrB_BinaryOp and GrB_UnaryOp
 typedef enum
 {
     //--------------------------------------------------------------------------
@@ -576,7 +576,7 @@ typedef enum
     GB_LE_opcode,       // 29: z = (x <= y)
 
     //--------------------------------------------------------------------------
-    // user-defined: unary, binary, and select operators
+    // user-defined: unary and binary operators
     //--------------------------------------------------------------------------
 
     GB_USER_C_opcode,   // 30: compile-time user-defined operator
@@ -5797,6 +5797,12 @@ inline void GB_copy_user_user (void *z, const void *x, size_t s)
 #define GB_DEF_GxB_TIMES_UINT64_MONOID_add GB_TIMES_f_UINT64
 #define GB_DEF_GxB_TIMES_FP32_MONOID_add GB_TIMES_f_FP32
 #define GB_DEF_GxB_TIMES_FP64_MONOID_add GB_TIMES_f_FP64
+
+// op: Boolean
+#define GB_DEF_GxB_LOR_BOOL_MONOID_add   GB_LOR_f_BOOL
+#define GB_DEF_GxB_LAND_BOOL_MONOID_add  GB_LAND_f_BOOL
+#define GB_DEF_GxB_LXOR_BOOL_MONOID_add  GB_LXOR_f_BOOL
+#define GB_DEF_GxB_EQ_BOOL_MONOID_add    GB_EQ_f_BOOL
 
 #define GB_DEF_GxB_MIN_INT8_MONOID_identity   INT8_MAX
 #define GB_DEF_GxB_MIN_UINT8_MONOID_identity  UINT8_MAX

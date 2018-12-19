@@ -1,5 +1,5 @@
 WildType size: 128
-GraphBLAS type: WildType user-defined: [wildtype] size: 128
+GraphBLAS type: WildType run-time user-defined: [wildtype] size: 128
 
 a wildtype scalar: scalar1 [this is from scalar1]
        0.0        1.0        2.0        3.0 
@@ -27,16 +27,16 @@ a wildtype scalar: scalar_identity for the monoid [identity]
 
 GraphBLAS Semiring: InTheWild (user-defined at run-time)
 GraphBLAS Monoid: semiring->add (user-defined at run-time)
-GraphBLAS BinaryOp: monoid->op (user-defined) z=wildtype_add(x,y)
-GraphBLAS type: ztype user-defined: [wildtype] size: 128
-GraphBLAS type: xtype user-defined: [wildtype] size: 128
-GraphBLAS type: ytype user-defined: [wildtype] size: 128
+GraphBLAS BinaryOp: monoid->op (run-time user-defined) z=wildtype_add(x,y)
+GraphBLAS type: ztype run-time user-defined: [wildtype] size: 128
+GraphBLAS type: xtype run-time user-defined: [wildtype] size: 128
+GraphBLAS type: ytype run-time user-defined: [wildtype] size: 128
 identity: [ [user-defined value] ]
 
-GraphBLAS BinaryOp: semiring->multiply (user-defined) z=wildtype_mult(x,y)
-GraphBLAS type: ztype user-defined: [wildtype] size: 128
-GraphBLAS type: xtype user-defined: [wildtype] size: 128
-GraphBLAS type: ytype user-defined: [wildtype] size: 128
+GraphBLAS BinaryOp: semiring->multiply (run-time user-defined) z=wildtype_mult(x,y)
+GraphBLAS type: ztype run-time user-defined: [wildtype] size: 128
+GraphBLAS type: xtype run-time user-defined: [wildtype] size: 128
+GraphBLAS type: ytype run-time user-defined: [wildtype] size: 128
 
 multiplication C=A*B InTheWild semiring:
 
@@ -46,7 +46,7 @@ GraphBLAS matrix: input A
 nrows: 10 ncols: 10 max # entries: 3
 format: standard CSR vlen: 10 nvec_nonempty: 2 nvec: 10 plen: 10 vdim: 10
 hyper_ratio 0.0625
-GraphBLAS type:  user-defined: [wildtype] size: 128
+GraphBLAS type:  run-time user-defined: [wildtype] size: 128
 number of entries: 3 
 row: 2 : 2 entries [0:1]
     column 4: [user-defined value]
@@ -89,12 +89,12 @@ GraphBLAS matrix: input B
 nrows: 10 ncols: 10 max # entries: 0
 format: hypersparse CSR vlen: 10 nvec_nonempty: 0 nvec: 0 plen: 1 vdim: 10
 hyper_ratio 0.0625
-GraphBLAS type:  user-defined: [wildtype] size: 128
+GraphBLAS type:  run-time user-defined: [wildtype] size: 128
 empty
 number of entries: 0 
 pending tuples: 3 max pending: 256 zombies: 0
 pending tuples:
-GraphBLAS type:  user-defined: [wildtype] size: 128
+GraphBLAS type:  run-time user-defined: [wildtype] size: 128
 row: 7 col: 2 [user-defined value]
 row: 7 col: 5 [user-defined value]
 row: 4 col: 2 [user-defined value]
@@ -282,7 +282,7 @@ GraphBLAS matrix: output C
 nrows: 10 ncols: 10 max # entries: 4
 format: standard CSR vlen: 10 nvec_nonempty: 2 nvec: 10 plen: 10 vdim: 10
 hyper_ratio 0.0625
-GraphBLAS type:  user-defined: [wildtype] size: 128
+GraphBLAS type:  run-time user-defined: [wildtype] size: 128
 last method used for GrB_mxm, vxm, or mxv: heap
 number of entries: 4 
 row: 2 : 2 entries [0:1]
@@ -339,7 +339,7 @@ GraphBLAS matrix: output C
 nrows: 10 ncols: 10 max # entries: 4
 format: standard CSC vlen: 10 nvec_nonempty: 2 nvec: 10 plen: 10 vdim: 10
 hyper_ratio 0.0625
-GraphBLAS type:  user-defined: [wildtype] size: 128
+GraphBLAS type:  run-time user-defined: [wildtype] size: 128
 number of entries: 4 
 column: 2 : 2 entries [0:1]
     row 2: [user-defined value]

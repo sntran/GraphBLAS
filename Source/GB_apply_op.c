@@ -30,8 +30,8 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     ASSERT (Cx != NULL) ;
     ASSERT (Ax != NULL) ;
     ASSERT (anz >= 0) ;
-    ASSERT_OK (GB_check (atype, "atype for GB_apply_op", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_apply_op", GB0)) ;
+    ASSERT (atype != NULL) ;
+    ASSERT (op != NULL) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory

@@ -1,3 +1,10 @@
+Version 2.2.2, Dec 18, 2018
+
+    * GxB_print: better output for compile-time user objects
+    * bug fix: for GxB_Type_define, for GrB_*_build.
+    * bug fix: for GxB_Semiring_define, which was unable to access
+        the predefined GxB_*_BOOL_MONOIDs.
+
 Version 2.2.0, Nov 29, 2018
 
     * identical to 2.2.0 (BETA4): date changed, and "BETA4" removed.

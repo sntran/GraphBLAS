@@ -30,6 +30,7 @@ GrB_Info GB_Monoid_new          // create a monoid
 
     ASSERT_OK (GB_check (op, "op for monoid", GB0)) ;
     ASSERT (idcode <= GB_UDT_code) ;
+    ASSERT (idcode != GB_UCT_code) ;
 
     // check operator types; all must be identical
     if (op->xtype != op->ztype || op->ytype != op->ztype)
@@ -47,7 +48,13 @@ GrB_Info GB_Monoid_new          // create a monoid
     // GB_UDT_code or GB_UCT_code, can be checked to see if it matches.  In
     // that case, all that is known is that identity is a void * pointer that
     // points to something, hopefully a scalar of the proper user-defined type.
-    if (idcode != op->ztype->code)
+
+    // UCT code is treated as UDT, since GB_Monoid_new is never called with
+    // an idcode of UCT.
+    GB_Type_code zcode = op->ztype->code ;
+    if (zcode == GB_UCT_code) zcode = GB_UDT_code ;
+
+    if (idcode != zcode)
     { 
         return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "Identity type [%s]\n"

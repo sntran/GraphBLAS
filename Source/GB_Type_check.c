@@ -59,8 +59,10 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
         case GB_FP32_code   : if (pr > 0) GBPR ("float"    ) ; break ;
         case GB_FP64_code   : if (pr > 0) GBPR ("double"   ) ; break ;
         case GB_UCT_code    :
+            if (pr > 0) GBPR ("compile-time user-defined: [%s]", type->name) ;
+            break ;
         case GB_UDT_code    :
-            if (pr > 0) GBPR ("user-defined: [%s]", type->name) ;
+            if (pr > 0) GBPR ("run-time user-defined: [%s]", type->name) ;
             break ;
         default             : if (pr > 0) GBPR ("unknown type\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,

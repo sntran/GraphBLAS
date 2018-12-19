@@ -38,8 +38,8 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_op", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for transpose_op", GB0)) ;
+    ASSERT (A != NULL) ;
+    ASSERT (op != NULL) ;
     ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
     ASSERT (op != NULL) ;
     ASSERT (GB_Type_compatible (A->type, op->xtype)) ;

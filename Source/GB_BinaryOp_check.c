@@ -39,9 +39,20 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     GB_CHECK_MAGIC (op, "BinaryOp") ;
 
-    if (pr > 0 && op->opcode >= GB_USER_C_opcode)
+    if (pr > 0)
     { 
-        GBPR ("(user-defined) ") ;
+        if (op->opcode == GB_USER_C_opcode)
+        {
+            GBPR ("(compile-time user-defined) ") ;
+        }
+        else if (op->opcode == GB_USER_R_opcode)
+        {
+            GBPR ("(run-time user-defined) ") ;
+        }
+        else
+        {
+            GBPR ("(built-in) ") ;
+        }
     }
 
     if (pr > 0) GBPR ("z=%s(x,y)\n", op->name) ;

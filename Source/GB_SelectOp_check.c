@@ -39,9 +39,20 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 
     GB_CHECK_MAGIC (op, "SelectOp") ;
 
-    if (pr > 0 && op->opcode >= GB_USER_SELECT_C_opcode)
+    if (pr > 0)
     { 
-        GBPR ("user-defined: ") ;
+        if (op->opcode == GB_USER_SELECT_C_opcode)
+        {
+            GBPR ("(compile-time user-defined) ") ;
+        }
+        else if (op->opcode == GB_USER_SELECT_R_opcode)
+        {
+            GBPR ("(run-time user-defined) ") ;
+        }
+        else
+        {
+            GBPR ("(built-in) ") ;
+        }
     }
 
     if (pr > 0) GBPR ("C=%s(A,k)\n", op->name) ;
