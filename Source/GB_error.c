@@ -11,14 +11,19 @@
 // storage so that it is accessible to GrB_error.  A GrB_PANIC is not logged
 // to the error string since the panic may mean the string is not available.
 
+// This function is called via the GB_ERROR(info,args) macro.
+
 // SuiteSparse:GraphBLAS can generate a GrB_PANIC in the following ways:
 
 //  (1) a failure to create the critical section or the POSIX thread-local
 //      storage key in GrB_init.
+
 //  (2) a failure in the critical section (see GB_CRITICAL, GB_queue_*, and
 //      Template/GB_critical_section).
+
 //  (3) a failure to allocate thread-local storage for GrB_error
 //      (see GB_thread_local_access).
+
 //  (4) a failure to destroy the critical section in GrB_finalize.
 
 #include "GB.h"

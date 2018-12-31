@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_calloc_memory: wrapper for calloc
+// GB_calloc_memory: wrapper for calloc (used via the GB_CALLOC_MEMORY macro)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -8,6 +8,8 @@
 //------------------------------------------------------------------------------
 
 // A wrapper for calloc.  Space is set to zero.
+
+// This function is called via the GB_CALLOC_MEMORY(p,n,s) macro.
 
 // Parameters are the same as the POSIX calloc, except that asking to allocate
 // a block of zero size causes a block of size 1 to be allocated instead.  This

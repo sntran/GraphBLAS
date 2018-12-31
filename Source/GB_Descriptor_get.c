@@ -7,8 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-// A descriptor modifies how the behavoir of a GraphBLAS operation.  In the
-// current GraphBLAS spec, the following descriptor fields may be set.
+// A descriptor modifies the behavoir of a GraphBLAS operation.
+
+// This function is called via the GB_DESCRIPTOR_GET_(...) macro.
 
 //  Descriptor field:           Descriptor value:
 
@@ -56,8 +57,11 @@
 //  desc->axb                   see GraphBLAS.h; can be:
 
 //      GrB_DEFAULT         automatic selection
+
 //      GxB_AxB_GUSTAVSON   gather-scatter saxpy method
+
 //      GxB_AxB_HEAP        heap-based saxpy method
+
 //      GxB_AxB_DOT         dot product
 
 #include "GB.h"

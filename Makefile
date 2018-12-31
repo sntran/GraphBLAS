@@ -37,6 +37,10 @@ install:
 docs:
 	( cd Doc ; $(MAKE) )
 
+# create the doxygen documentation in Doc/html
+dox:
+	doxygen
+
 # remove any installed libraries and #include files
 uninstall:
 	- xargs rm < build/install_manifest.txt
@@ -49,6 +53,7 @@ purge: distclean
 distclean:
 	rm -rf build/* Demo/*_demo.out Demo/complex_demo_out.m Tcov/log.txt
 	rm -rf Config/*.tmp Source/control.m4
+	rm -rf Doc/html/* Doc/*.tmp
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )

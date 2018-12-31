@@ -8,10 +8,12 @@
 //------------------------------------------------------------------------------
 
 // Assigns a single scalar to a submatrix:
+
 // C<Mask>(Rows,Cols) = accum (C(Rows,Cols),x)
+
 // This function does the work for GrB_Matrix_assign_TYPE and
 // GrB_Vector_assign_[type], where [type] is one of the 11 types, or the
-// type-generic macro suffix, "_scalar".
+// type-generic macro suffix, "_UDT".
 
 // Compare with GB_subassign_scalar, which uses Mask and C_replace differently
 

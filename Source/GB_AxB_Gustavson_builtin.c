@@ -17,7 +17,6 @@
 
 #ifndef GBCOMPACT
 
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 
 // A semiring is defined by a binary "multiply" operator, and an associative

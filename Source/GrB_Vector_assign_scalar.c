@@ -11,6 +11,8 @@
 // The scalar x is implicitly expanded into a vector u of size nRows-by-1,
 // with each entry in u equal to x.
 
+// The actual work is done in GB_assign_scalar.c.
+
 #include "GB.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \

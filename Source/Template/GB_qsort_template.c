@@ -15,6 +15,7 @@
 // All of these functions are static; there will be versions of them in each
 // variant of GB_qsort*, with the same names.  They are called only by the
 // GB_qsort* function in the #include'ing file.
+ 
 
 //------------------------------------------------------------------------------
 // GB_partition: use a pivot to partition an array

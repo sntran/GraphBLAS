@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 // C<Mask> = accum (C,A*B) and variations.
-//
+
 // The input matrices A and B are optionally transposed, as determined by the
 // Descriptor desc.
 

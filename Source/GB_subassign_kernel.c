@@ -13,18 +13,18 @@
 // operations in the spec, and the GxB_*_subassign operations that are a
 // SuiteSparse:GraphBLAS extension to the spec:
 
-// GrB_Matrix_assign
-// GrB_Matrix_assign_TYPE
-// GrB_Vector_assign
-// GrB_Vector_assign_TYPE
-// GrB_Row_assign
+// GrB_Matrix_assign,
+// GrB_Matrix_assign_TYPE,
+// GrB_Vector_assign,
+// GrB_Vector_assign_TYPE,
+// GrB_Row_assign,
 // GrB_Col_assign
 
-// GxB_Matrix_subassign
-// GxB_Matrix_subassign_TYPE
-// GxB_Vector_subassign
-// GxB_Vector_subassign_TYPE
-// GxB_Row_subassign
+// GxB_Matrix_subassign,
+// GxB_Matrix_subassign_TYPE,
+// GxB_Vector_subassign,
+// GxB_Vector_subassign_TYPE,
+// GxB_Row_subassign,
 // GxB_Col_subassign
 
 // This function handles the accumulator, and the mask M, and the C_replace

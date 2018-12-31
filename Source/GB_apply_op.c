@@ -96,10 +96,6 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
 
             case GB_IDENTITY_opcode :  // z = x
 
-                // Do not create workers when the two codes are the same,
-                // C is a pure shallow copy of A, and the function has already
-                // returned the result C.
-                #define GB_NOT_SAME
                 #define GB_BOP(x) x
                 #define GB_IOP(x) x
                 #define GB_FOP(x) x

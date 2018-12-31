@@ -7,6 +7,9 @@
 
 //------------------------------------------------------------------------------
 
+// This function is typically called via the GB_WAIT(A) macro, except for
+// GB_assign and GB_subassign.
+
 // The matrix A has zombies and/or pending tuples placed there by
 // GrB_setElement and GrB_*assign.  Zombies must now be deleted, and pending
 // tuples must now be assembled together and added into the matrix.

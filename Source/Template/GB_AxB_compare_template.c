@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_compare_template.c
+// GB_AxB_compare_template.c: switch factory for C=A*B with comparator ops
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.

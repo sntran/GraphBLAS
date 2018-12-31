@@ -5,8 +5,9 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-// This file is #include'd in GB_AxB_heap.c, and Template/GB_AxB.c, the
-// latter of which expands into Generated/GB_AxB__* for all built-in semirings.
+//------------------------------------------------------------------------------
+
+// This file is #include'd in GB_AxB_heap_meta.c.
 
 // if GB_MASK_CASE is defined, then the mask matrix M is present.  Otherwise it
 // is not present.

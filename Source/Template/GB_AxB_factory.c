@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_factory
+// GB_AxB_factory: switch factory for built-in methods for C=A*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.

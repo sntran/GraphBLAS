@@ -7,13 +7,13 @@
 
 //------------------------------------------------------------------------------
 
-#include "GB.h"
-
-// a binary operator: z = f (x,y).  The binary function signature must be
-// void f (void *z, const void *x, const void *y), and then it must recast its
-// input and output arguments internally as needed.
+// Create a new a binary operator: z = f (x,y).  The binary function signature
+// must be void f (void *z, const void *x, const void *y), and then it must
+// recast its input and output arguments internally as needed.
 
 // This function is not directly user-callable.  Use GrB_BinaryOp_new instead.
+
+#include "GB.h"
 
 GrB_Info GB_BinaryOp_new
 (

@@ -7,9 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// uncomment this line to add extra diagnostics (for the developer only)
-// #define GB_DEVELOPER
-
 #include "GB.h"
 
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector

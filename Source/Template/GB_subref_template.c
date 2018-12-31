@@ -28,13 +28,18 @@
 //      in the output matrix C in Ci [pc] and Cx [pc].  Then the two methods
 //      differ as follows:
 
-//          // this is the same:
+//          this is the same:
+
 //          i = Ai [pa] ;           // index i of entry A(i,j)
+
 //          aij = Ax [pa] ;         // value of the entry A(i,j)
+
 //          Ci [pc] = inew ;        // index inew of C(inew,jnew)
 
-//          // this is different:
+//          this is different:
+
 //          Cx [pc] = aij ;         // for numeric extraction
+
 //          Cx [pc] = pa ;          // for symbolic extraction
 
 //      GB_subref_symolic is created if GB_SYMBOLIC is defined.  The function

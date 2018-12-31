@@ -9,27 +9,29 @@
 
 // GB_emult (C, A, B, op), applies an operator C = op (A,B)
 // element-wise on the matrices A and B.  The result is typecasted as needed.
-//
+
 // Let the op be z=f(x,y) where x, y, and z have type xtype, ytype, and ztype.
 // If both A(i,j) and B(i,j) are present, then:
-//
+
 //      C(i,j) = (ctype) op ((xtype) A(i,j), (ytype) B(i,j))
-//
+
 // If just A(i,j) is present but not B(i,j), then:
-//
+
 //      C(i,j) is not present, and is implicitly 'zero'
-//
+
 // If just B(i,j) is present but not A(i,j), then:
-//
+
 //      C(i,j) is not present, and is implicitly 'zero'
-//
+
 // ctype is the type of matrix C.  Its pattern is the intersection of A and B.
-//
+
 // This function should not be called by the end user.  It is a helper function
 // for user-callable routines.  No error checking is performed except for
 // out-of-memory conditions.
 
 // FUTURE: this could be faster with built-in operators and types.
+
+#include "GB.h"
 
 // C (i,j) = fmult (A (i,j), B (i,j))
 #define GB_EMULT                                                    \
@@ -54,8 +56,6 @@
     pb++ ;                                                          \
     cnz++ ;                                                         \
 }
-
-#include "GB.h"
 
 GrB_Info GB_emult           // C = A.*B
 (

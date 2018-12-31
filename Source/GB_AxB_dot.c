@@ -28,7 +28,6 @@
 
 #include "GB.h"
 #ifndef GBCOMPACT
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 #endif
 

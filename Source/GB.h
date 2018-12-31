@@ -3786,9 +3786,7 @@ static inline void GBI1_next
 //------------------------------------------------------------------------------
 
 // Get the column at the current iteration, and the start/end pointers
-// of column j in the three matrices A, B, and C.  These macros are used
-// in the for (GB_each_entry (...)) loop, and also at the start of the
-// body of the for (GB_each_vector (...)) loops, outside of this file.
+// of column j in the three matrices A, B, and C.
 
 #define GBI3_initj(Iter,j_,pstart0,pend0,pstart1,pend1,pstart2,pend2)  \
     j_      = Iter.j,                                                  \
@@ -3837,16 +3835,6 @@ static inline void GBI1_next
     GBI_iterator Iter ;                                                     \
     for (GB_each_vector2 (Iter, A, B))
 
-// iterate the union of one or two matrices A and B.  B may be NULL.
-#define GB_each_vector2m(Iter,A,B)                                             \
-    (B == NULL) ? GBI1_init  (&Iter,A) : GBI2_init  (&Iter,A,B) ;           \
-    (B == NULL) ? GBI1_while (&Iter)   : GBI2_while (&Iter)    ;            \
-    (B == NULL) ? GBI1_next  (&Iter)   : GBI2_next  (&Iter)
-
-#define GB_for_each_vector2m(A,B)                                              \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector2m (Iter, A, B))
-
 // iterate the union of three matrices A, B, and C
 #define GB_each_vector3(Iter,A,B,C)                                            \
     GBI3_init (&Iter,A,B,C) ; GBI3_while (&Iter)  ; GBI3_next (&Iter)
@@ -3872,9 +3860,6 @@ static inline void GBI1_next
     for (GB_each_vector3s (Iter, A, B))
 
 // iterate over a vector of a single matrix
-#define GB_each_entry(Iter,j,p,pend)                                           \
-    int64_t GBI1_initj (Iter, j, p, pend) ; (p) < (pend) ; (p)++
-
 #define GB_for_each_entry(j,p,pend)                                            \
     int64_t GBI1_initj (Iter, j, p, pend) ;                                 \
     for ( ; (p) < (pend) ; (p)++)

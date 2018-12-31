@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_realloc_memory: wrapper for realloc
+// GB_realloc_memory: wrapper for realloc (used via the GB_REALLOC_MEMORY macro)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -7,7 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-// A wrapper for realloc
+// A wrapper for realloc.
+
+// This function is called via the GB_REALLOC_MEMORY(p,nnew,nold,s,ok) macro.
 
 // If p is non-NULL on input, it points to a previously allocated object of
 // size nitems_old * size_of_item.  The object is reallocated to be of size
@@ -17,13 +19,17 @@
 // pointer to the old (unmodified) object is returned.
 
 // Usage:
-//
+
 //      p = GB_realloc_memory (nnew, nold, size, p, &ok)
+
 //      if (ok)
+
 //          p points to a space of size at least nnew*size, and the first
 //          part, of size min(nnew,nold)*size, has the same content as
 //          the old memory space if it was present.
+
 //      else
+
 //          p points to the old space of size nold*size, which is left
 //          unchanged.  This case never occurs if nnew < nold.
 

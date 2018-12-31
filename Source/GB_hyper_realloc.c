@@ -5,6 +5,8 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 // Change the size of the A->h and A->p hyperlist.
 // No change is made if A is not hypersparse.
 

@@ -59,6 +59,8 @@ Tcov/gbstat.mat
 Tcov/fprint.txt
 Test/fprint.txt
 
+Doc/html
+
 # Do not ignore this file
 !.gitignore
 

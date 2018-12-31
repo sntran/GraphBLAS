@@ -7,9 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-#include "GB.h"
-
 // GB_status_code: convert GrB_Info enum into a string
+
+#include "GB.h"
 
 const char *GB_status_code (GrB_Info info)
 {

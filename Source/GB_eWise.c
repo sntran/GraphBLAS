@@ -11,9 +11,8 @@
 
 // The input matrices A and B are optionally transposed.
 
-// Not user-callable.  Does the work for four user-callable functions:
-//      GrB_eWiseAdd_*_BinaryOp
-//      GrB_eWiseMult_*_BinaryOp
+// Not user-callable.  Does the work for all user-callable functions of
+// the form GrB_eWiseAdd_* and GrB_eWiseMult_*
 
 #include "GB.h"
 

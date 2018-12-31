@@ -7,7 +7,10 @@
 
 //------------------------------------------------------------------------------
 
-// free all the content of a matrix.  After GB_free (&A), A is set to NULL.
+// Free all the content of a matrix.  After GB_free (&A), A is set to NULL.
+
+// This function is called via the GB_MATRIX_FREE(A) and GB_VECTOR_FREE(v)
+// macros.
 
 #include "GB.h"
 

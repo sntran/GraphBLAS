@@ -5,15 +5,14 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 // If this filename has a double underscore in its name ("__") then it has been
 // automatically constructed from Generator/GB_AxB.c, via the Source/axb*.m
 // scripts, and should not be editted.  Edit the original source file instead.
 
-//------------------------------------------------------------------------------
-
 #include "GB.h"
 #ifndef GBCOMPACT
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 
 // The C=A*B semiring is defined by the following types and operators:
@@ -179,6 +178,8 @@ GrB_Info GB_AdotB
 //------------------------------------------------------------------------------
 // C<M>=A*B and C=A*B: heap saxpy-based method
 //------------------------------------------------------------------------------
+
+#include "GB_heap.h"
 
 #define GB_CIJ_GETB(pB)                                \
     GB_btype bkj = Bx [pB] ;

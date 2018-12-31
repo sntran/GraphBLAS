@@ -16,12 +16,14 @@
 // (which is valid and memory-leak free):
 
 //  B = A ;
+
 //  GrB_dup (&A, A) ;
+
 //  GrB_free (&A) ;
+
 //  GrB_free (&B) ;
 
 // A is the new copy and B is the old copy.  Each should be freed when done.
-
 
 #include "GB.h"
 

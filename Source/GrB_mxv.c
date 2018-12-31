@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 // w<mask> = accum (w,t) where t = A*u or A'*u (u is never transposed)
-//
+
 // The input matrix A is optionally transposed, as determined by the
 // Descriptor desc.
 

@@ -8,6 +8,7 @@
 //------------------------------------------------------------------------------
 
 // w'<mask'> = accum (w',t) where t = u'*A or u'*A'
+
 // Rows w', u', and mask' are simply columns w, u, and mask.  Thus:
 // w<mask> = accum (w,t) where t = A'*u or A*u, but with the multiply operator
 // flipped.  The input descriptor for A, inp1, is also negated.

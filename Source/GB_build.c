@@ -30,8 +30,11 @@
 // then the following operations will occur in order:
 
 //      T (i,j) = S (k1) ;
+
 //      T (i,j) = dup (T (i,j), S (k2)) ;
+
 //      T (i,j) = dup (T (i,j), S (k3)) ;
+
 //      T (i,j) = dup (T (i,j), S (k4)) ;
 
 // This is a well-defined order but the user should not depend upon it since

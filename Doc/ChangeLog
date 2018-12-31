@@ -1,3 +1,8 @@
+Version 2.2.3, Dec 30, 2018
+
+    * added doxygen documentation: minor changes to the code
+        comments to accomodate doxygen.  Added Doxyfile settings file.
+
 Version 2.2.2, Dec 18, 2018
 
     * GxB_print: better output for compile-time user objects

@@ -5,8 +5,12 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 // Creates a matrix (with GB_new), then allocates a given space for indices and
 // values.
+
+// This function is called via the GB_CREATE(...) macro.
 
 // Ahandle must be non-NULL on input.
 

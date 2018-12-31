@@ -10,6 +10,8 @@
 // Creates a new matrix but does not allocate space for A->i and A->x.
 // See GB_create instead.
 
+// This function is called via the GB_NEW(...) macro.
+
 // If the Ap_option is GB_Ap_calloc, the A->p and A->h are allocated and
 // initialized, and A->magic is set to GB_MAGIC to denote a valid matrix.
 // Otherwise, the matrix has not yet been fully initialized, and A->magic is

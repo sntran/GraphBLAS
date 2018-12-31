@@ -5,6 +5,8 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 // This file is #include'd in GB_AxB_Gustavson.c, and Template/GB_AxB.c, the
 // latter of which expands into Generated/GB_AxB__* for all built-in semirings.
 

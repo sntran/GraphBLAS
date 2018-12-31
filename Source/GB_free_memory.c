@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_free_memory: wrapper for free
+// GB_free_memory: wrapper for free (used via the GB_FREE_MEMORY macro)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -8,6 +8,8 @@
 //------------------------------------------------------------------------------
 
 // A wrapper for free.  If p is NULL on input, it is not freed.
+
+// This function is called via the GB_FREE_MEMORY(p,n,s) macro.
 
 // By default, GB_FREE is defined in GB.h as free.  For a MATLAB mexFunction,
 // it is mxFree.  It can also be defined at compile time with

@@ -29,9 +29,7 @@ switch (code1)
         switch (code2)
         {
             //                            code1 code2
-            #ifndef GB_NOT_SAME
             case GB_BOOL_code   : GB_WORKER (bool, bool)
-            #endif
             case GB_INT8_code   : GB_WORKER (bool, int8_t)
             case GB_UINT8_code  : GB_WORKER (bool, uint8_t)
             case GB_INT16_code  : GB_WORKER (bool, int16_t)
@@ -54,9 +52,7 @@ switch (code1)
         {
             //                            code1   code2
             case GB_BOOL_code   : GB_WORKER (int8_t, bool)
-            #ifndef GB_NOT_SAME
             case GB_INT8_code   : GB_WORKER (int8_t, int8_t)
-            #endif
             case GB_UINT8_code  : GB_WORKER (int8_t, uint8_t)
             case GB_INT16_code  : GB_WORKER (int8_t, int16_t)
             case GB_UINT16_code : GB_WORKER (int8_t, uint16_t)
@@ -77,9 +73,7 @@ switch (code1)
             //                            code1    code2
             case GB_BOOL_code   : GB_WORKER (uint8_t, bool)
             case GB_INT8_code   : GB_WORKER (uint8_t, int8_t)
-            #ifndef GB_NOT_SAME
             case GB_UINT8_code  : GB_WORKER (uint8_t, uint8_t)
-            #endif
             case GB_INT16_code  : GB_WORKER (uint8_t, int16_t)
             case GB_UINT16_code : GB_WORKER (uint8_t, uint16_t)
             case GB_INT32_code  : GB_WORKER (uint8_t, int32_t)
@@ -100,9 +94,7 @@ switch (code1)
             case GB_BOOL_code   : GB_WORKER (int16_t, bool)
             case GB_INT8_code   : GB_WORKER (int16_t, int8_t)
             case GB_UINT8_code  : GB_WORKER (int16_t, uint8_t)
-            #ifndef GB_NOT_SAME
             case GB_INT16_code  : GB_WORKER (int16_t, int16_t)
-            #endif
             case GB_UINT16_code : GB_WORKER (int16_t, uint16_t)
             case GB_INT32_code  : GB_WORKER (int16_t, int32_t)
             case GB_UINT32_code : GB_WORKER (int16_t, uint32_t)
@@ -123,9 +115,7 @@ switch (code1)
             case GB_INT8_code   : GB_WORKER (uint16_t, int8_t)
             case GB_UINT8_code  : GB_WORKER (uint16_t, uint8_t)
             case GB_INT16_code  : GB_WORKER (uint16_t, int16_t)
-            #ifndef GB_NOT_SAME
             case GB_UINT16_code : GB_WORKER (uint16_t, uint16_t)
-            #endif
             case GB_INT32_code  : GB_WORKER (uint16_t, int32_t)
             case GB_UINT32_code : GB_WORKER (uint16_t, uint32_t)
             case GB_INT64_code  : GB_WORKER (uint16_t, int64_t)
@@ -146,9 +136,7 @@ switch (code1)
             case GB_UINT8_code  : GB_WORKER (int32_t, uint8_t)
             case GB_INT16_code  : GB_WORKER (int32_t, int16_t)
             case GB_UINT16_code : GB_WORKER (int32_t, uint16_t)
-            #ifndef GB_NOT_SAME
             case GB_INT32_code  : GB_WORKER (int32_t, int32_t)
-            #endif
             case GB_UINT32_code : GB_WORKER (int32_t, uint32_t)
             case GB_INT64_code  : GB_WORKER (int32_t, int64_t)
             case GB_UINT64_code : GB_WORKER (int32_t, uint64_t)
@@ -169,9 +157,7 @@ switch (code1)
             case GB_INT16_code  : GB_WORKER (uint32_t, int16_t)
             case GB_UINT16_code : GB_WORKER (uint32_t, uint16_t)
             case GB_INT32_code  : GB_WORKER (uint32_t, int32_t)
-            #ifndef GB_NOT_SAME
             case GB_UINT32_code : GB_WORKER (uint32_t, uint32_t)
-            #endif
             case GB_INT64_code  : GB_WORKER (uint32_t, int64_t)
             case GB_UINT64_code : GB_WORKER (uint32_t, uint64_t)
             case GB_FP32_code   : GB_WORKER (uint32_t, float)
@@ -192,9 +178,7 @@ switch (code1)
             case GB_UINT16_code : GB_WORKER (int64_t, uint16_t)
             case GB_INT32_code  : GB_WORKER (int64_t, int32_t)
             case GB_UINT32_code : GB_WORKER (int64_t, uint32_t)
-            #ifndef GB_NOT_SAME
             case GB_INT64_code  : GB_WORKER (int64_t, int64_t)
-            #endif
             case GB_UINT64_code : GB_WORKER (int64_t, uint64_t)
             case GB_FP32_code   : GB_WORKER (int64_t, float)
             case GB_FP64_code   : GB_WORKER (int64_t, double)
@@ -215,9 +199,7 @@ switch (code1)
             case GB_INT32_code  : GB_WORKER (uint64_t, int32_t)
             case GB_UINT32_code : GB_WORKER (uint64_t, uint32_t)
             case GB_INT64_code  : GB_WORKER (uint64_t, int64_t)
-            #ifndef GB_NOT_SAME
             case GB_UINT64_code : GB_WORKER (uint64_t, uint64_t)
-            #endif
             case GB_FP32_code   : GB_WORKER (uint64_t, float)
             case GB_FP64_code   : GB_WORKER (uint64_t, double)
             default: ;
@@ -240,9 +222,7 @@ switch (code1)
             case GB_UINT32_code : GB_WORKER (float, uint32_t)
             case GB_INT64_code  : GB_WORKER (float, int64_t)
             case GB_UINT64_code : GB_WORKER (float, uint64_t)
-            #ifndef GB_NOT_SAME
             case GB_FP32_code   : GB_WORKER (float, float)
-            #endif
             case GB_FP64_code   : GB_WORKER (float, double)
             default: ;
         }
@@ -263,9 +243,7 @@ switch (code1)
             case GB_INT64_code  : GB_WORKER (double, int64_t)
             case GB_UINT64_code : GB_WORKER (double, uint64_t)
             case GB_FP32_code   : GB_WORKER (double, float)
-            #ifndef GB_NOT_SAME
             case GB_FP64_code   : GB_WORKER (double, double)
-            #endif
             default: ;
         }
         break ;
@@ -278,5 +256,4 @@ switch (code1)
 #undef GB_IOP
 #undef GB_FOP
 #undef GB_BOP
-#undef GB_NOT_SAME
 

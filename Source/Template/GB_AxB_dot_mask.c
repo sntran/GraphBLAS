@@ -5,6 +5,8 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 {
 
     //--------------------------------------------------------------------------
@@ -107,7 +109,7 @@
                     // C(i,j) = A(:,i)*B(:,j)
                     int64_t pA_start = Ap [ka] ;
                     int64_t pA_end   = Ap [ka+1] ;
-                    #include "GB_cij_dot_product.c"
+                    #include "GB_AxB_dot_cij.c"
                 }
 
                 ASSERT (Mi [pM] == Ah [ka]) ;
@@ -135,7 +137,7 @@
                     // C(i,j) = A(:,i)'*B(:,j)
                     int64_t pA_start = Ap [i] ;
                     int64_t pA_end   = Ap [i+1] ;
-                    #include "GB_cij_dot_product.c"
+                    #include "GB_AxB_dot_cij.c"
                 }
             }
         }

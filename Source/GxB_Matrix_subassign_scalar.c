@@ -8,12 +8,16 @@
 //------------------------------------------------------------------------------
 
 // Assigns a single scalar to a submatrix:
+
 // C(Rows,Cols)<Mask> = accum(C(Rows,Cols),x)
+
 // The scalar x is implicitly expanded into a matrix A of size nRows-by-nCols,
 // with each entry in A equal to x.
 
 // Compare with GrB_Matrix_assign_scalar,
-// which uses Mask and C_Replace differently
+// which uses Mask and C_Replace differently.
+
+// The actual work is done in GB_subassign_scalar.c.
 
 #include "GB.h"
 

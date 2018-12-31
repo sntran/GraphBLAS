@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_assoc_template.c
+// GB_assoc_template.c: switch factory for associative operators
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.

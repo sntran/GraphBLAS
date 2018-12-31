@@ -13,7 +13,7 @@
 
 #include "GB.h"
 
-static inline bool is_nonzero (const GB_void *value, int64_t size)
+static inline bool GB_is_nonzero (const GB_void *value, int64_t size)
 {
     for (int64_t i = 0 ; i < size ; i++)
     {
@@ -306,7 +306,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
                 GB_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
-                    GB_KEEP_IF (is_nonzero (Ax +(p*asize), asize)) ;
+                    GB_KEEP_IF (GB_is_nonzero (Ax +(p*asize), asize)) ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;

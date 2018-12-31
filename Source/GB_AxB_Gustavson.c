@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_Gustavson: C=A*B or C<M>=A*B, gather/scatter-based saxpy method
+// GB_AxB_Gustavson: C=A*B or C<M>=A*B, gather/scatter-based saxpy method.
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -14,7 +14,6 @@
 
 #include "GB.h"
 #ifndef GBCOMPACT
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 #endif
 

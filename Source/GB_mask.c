@@ -22,6 +22,8 @@
 // CSC, then this is row i and column j.  If the matrices are all CSR, then it
 // is row j and column i.
 
+#include "GB.h"
+
 /*
 
     function R = GB_spec_mask (C, M, Z, C_replace, Mask_complement,identity)
@@ -123,8 +125,6 @@
 #define GB_NEXT(X) (p ## X)++ ;
 
 //------------------------------------------------------------------------------
-
-#include "GB.h"
 
 GrB_Info GB_mask                // C<M> = Z
 (

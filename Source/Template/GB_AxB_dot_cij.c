@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_cij_dot_product: compute C(i,j) = A(:,i)'*B(:,j)
+// GB_AxB_dot_cij: compute C(i,j) = A(:,i)'*B(:,j)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -17,6 +17,10 @@
 // If the add operator is SECOND, of any type, then the loop to accumuate cij
 // could be down backwards, and the loop would terminate after the first
 // assignment.
+
+#undef GB_DOT_MULTADD
+#undef GB_DOT_ACCUM
+#undef GB_DOT_MERGE
 
 // cij += A(k,i) * B(k,j)
 #define GB_DOT_MULTADD(pA,pB)                                   \
@@ -311,6 +315,6 @@
 }
 
 #undef GB_DOT_MULTADD
-#undef GB_DOT_MERGE
 #undef GB_DOT_ACCUM
+#undef GB_DOT_MERGE
 

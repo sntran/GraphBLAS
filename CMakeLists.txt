@@ -55,10 +55,10 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Dec 18, 2018" )
+set ( GraphBLAS_DATE "Dec 30, 2018" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
 set ( GraphBLAS_VERSION_MINOR 2 )
-set ( GraphBLAS_VERSION_SUB   2 )
+set ( GraphBLAS_VERSION_SUB   3 )
 
 # GraphBLAS C API Specification version, at graphblas.org
 set ( GraphBLAS_API_DATE "May 18, 2018" )
@@ -131,8 +131,8 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_API_version.tex"
 )
 configure_file (
-    "Config/README.txt.in"
-    "${PROJECT_SOURCE_DIR}/README.txt"
+    "Config/README.md.in"
+    "${PROJECT_SOURCE_DIR}/README.md"
 )
 
 #-------------------------------------------------------------------------------

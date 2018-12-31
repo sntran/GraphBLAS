@@ -5,6 +5,8 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+//------------------------------------------------------------------------------
+
 // This file is #include'd into GB_AxB_dot.c for the generic case, and in the
 // hard-coded semirings, Generated/GB_AxB__*_*_.c.  It constructs the
 // dot-product variant of sparse matrix multiplication, C=A'*B, without

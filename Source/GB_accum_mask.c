@@ -27,7 +27,32 @@
 // Z(i,j)=C(i,j).  If C(i,j) is not present but T(i,j) is present, then
 // Z(i,j)=T(i,j).  The pattern of Z = accum(C,T) is the union of C and T.
 
-// The Z = accum (C,T) phase is mimiced by the GB_spec_accum.m MATLAB script:
+// The Z = accum (C,T) phase is mimiced by the GB_spec_accum.m MATLAB script.
+
+// The next step is C<M> = Z.
+
+// This denotes how the matrix Z is written into C, under the control of the
+// mask (or ~M if Mask_complement is true), and the C_replace flag (which
+// indicates that C should be set to zero first.  This is C<M>=Z in
+// GraphBLAS notation.  See GB_mask.c, or GB_spec_mask.m for a MATLAB script
+// that describes this step.
+
+// If M is not present, C = Z is returned. Otherwise, M defines what
+// values of C are modified. If M(i,j) is present and nonzero, then
+// C(i,j)=Z(i,j) is done.  Otherwise, C(i,j) is left unchanged.
+
+// The descriptor affects how C and M are handled.  If the descriptor is
+// NULL, defaults are used.
+
+// desc [GB_MASK] = GxB_DEFAULT means to use M as-is
+
+// desc [GB_MASK] = GrB_SCMP means to use the logical negation of M
+
+// desc [GB_OUTP] = GxB_DEFAULT means to use C as-is.
+
+// desc [GB_OUTP] = GrB_REPLACE means to clear C before writing Z into C.
+
+#include "GB.h"
 
 /* -----------------------------------------------------------------------------
 
@@ -88,29 +113,6 @@
     end
 
 ----------------------------------------------------------------------------- */
-
-// The next step is C<M> = Z.
-
-// This denotes how the matrix Z is written into C, under the control of the
-// mask (or ~M if Mask_complement is true), and the C_replace flag (which
-// indicates that C should be set to zero first.  This is C<M>=Z in
-// GraphBLAS notation.  See GB_mask.c, or GB_spec_mask.m for a MATLAB script
-// that describes this step.
-
-// If M is not present, C = Z is returned. Otherwise, M defines what
-// values of C are modified. If M(i,j) is present and nonzero, then
-// C(i,j)=Z(i,j) is done.  Otherwise, C(i,j) is left unchanged.
-
-// The descriptor affects how C and M are handled.  If the descriptor is
-// NULL, defaults are used.
-
-// desc [GB_MASK] = GxB_DEFAULT means to use M as-is
-// desc [GB_MASK] = GrB_SCMP means to use the logical negation of M
-
-// desc [GB_OUTP] = GxB_DEFAULT means to use C as-is.
-// desc [GB_OUTP] = GrB_REPLACE means to clear C before writing Z into C.
-
-#include "GB.h"
 
 GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 (

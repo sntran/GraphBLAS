@@ -5,11 +5,16 @@
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-#ifndef GB_HEAP
-#define GB_HEAP
+//------------------------------------------------------------------------------
 
 // The Heap is an array of GB_Elements: Heap [1..nheap].  Each entry in the
 // Heap is a GB_Element, with a key and name.
+
+// These functions are only used by the heap method for C=A*B.
+// See Source/Template/GB_AxB_heap_mask.c.
+
+#ifndef GB_HEAP
+#define GB_HEAP
 
 #ifndef NDEBUG
 

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_template.c
+// GB_AxB_template.c: switch factory for each built-in monoid for C=A*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.

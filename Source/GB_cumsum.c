@@ -9,11 +9,13 @@
 
 // Compute the cumulative sum of an array count[0:n], of size n+1
 // in pseudo-MATLAB notation:
-//
+
 //      k = sum (count [0:n] != 0) ;
+
 //      count = cumsum ([0 count[0:n-1]]) ;
+
 //      p = count ;
-//
+
 // Note that count [n] does not appear in the output count, although it does
 // appear in s.  GraphBLAS uses this function to compute row and column
 // pointers.  On input, count [j] is the number of nonzeros in column j of a

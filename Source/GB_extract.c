@@ -8,13 +8,15 @@
 //------------------------------------------------------------------------------
 
 // Not user-callable.  Implements the user-callable GrB_*_extract functions.
-//
+
 // C<M> = accum (C, A (Rows,Cols)) or
+
 // C<M> = accum (C, AT(Rows,Cols)) where AT = A'
-//
+
 // equivalently:
-//
+
 // C<M> = accum (C, A(Rows,Cols) )
+
 // C<M> = accum (C, A(Cols,Rows)')
 
 #include "GB.h"

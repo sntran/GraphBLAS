@@ -16,21 +16,6 @@
 // and it doubles the space if no space is available.  It also augments the
 // matrix dimension as needed, which GB_pending_add does not do.
 
-// cs_entry (c)2006-2016, T. A. Davis, included here with the GraphBLAS license
-
-//  /* add an entry to a triplet matrix; return 1 if ok, 0 otherwise */
-//  int cs_entry (cs *T, int64_t i, int64_t j, double scalar)
-//  {
-//      if (!CS_TRIPLET (T) || i < 0 || j < 0) return (0) ;
-//      if (T->nz >= T->nzmax && !cs_sprealloc (T,2*(T->nzmax))) return (0) ;
-//      if (T->x) T->x [T->nz] = scalar ;
-//      T->i [T->nz] = i ;
-//      T->p [T->nz++] = j ;
-//      T->m = CS_MAX (T->m, i+1) ;
-//      T->n = CS_MAX (T->n, j+1) ;
-//      return (1) ;
-//  }
-
 // This function starts with an initial list that is larger than cs_entry
 // (which starts with a list of size 1), and it quadruples the size as needed
 // instead of doubling it.  If A has a single column then the column index is
@@ -58,6 +43,21 @@
 // hypersparse or not.
 
 #include "GB.h"
+
+// cs_entry (c)2006-2016, T. A. Davis, included here with the GraphBLAS license
+
+//  /* add an entry to a triplet matrix; return 1 if ok, 0 otherwise */
+//  int cs_entry (cs *T, int64_t i, int64_t j, double scalar)
+//  {
+//      if (!CS_TRIPLET (T) || i < 0 || j < 0) return (0) ;
+//      if (T->nz >= T->nzmax && !cs_sprealloc (T,2*(T->nzmax))) return (0) ;
+//      if (T->x) T->x [T->nz] = scalar ;
+//      T->i [T->nz] = i ;
+//      T->p [T->nz++] = j ;
+//      T->m = CS_MAX (T->m, i+1) ;
+//      T->n = CS_MAX (T->n, j+1) ;
+//      return (1) ;
+//  }
 
 GrB_Info GB_pending_add             // add a pending tuple A(i,j) to a matrix
 (
