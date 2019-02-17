@@ -1,3 +1,22 @@
+Version 2.3.0 (BETA1), Feb 16, 2019
+
+    * simplified GBI_*_iterators
+    * towards OpenMP: PARALLEL comments added to most files (all upper case)
+        where parallelism will be added in the future.
+    * early exit: for monoids: MIN, MAX, AND, OR
+    * Demo/bfs*: much faster (prior versions had performance bug)
+    * GrB_assign for accum/mask step: faster, zombies and pending tuples
+        exploited by C<M>=accum(C,T) for any GraphBLAS method, when either the
+        mask M or accum are present.
+    * moved persistent thread-workspace from the matrix to a global array
+    * added isequal function to Demos/
+    * added import/export method
+    * added nthreads: to descriptor, the matrix, and a global nthreads
+        for GrB_wait, and added Context as parameter in many internal
+        functions, to pass in Context->nthreads for future parallelism
+    * defined all enum constants explicitly: no change to their values,
+        this just ensures they remain fixed in future versions
+
 Version 2.2.3, Dec 30, 2018
 
     * added doxygen documentation: minor changes to the code

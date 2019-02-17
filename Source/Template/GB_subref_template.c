@@ -2,7 +2,7 @@
 // GB_subref_template: C = A(I,J), C = (A(J,I))', or C = pattern (A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -75,6 +75,9 @@
 // which is the requested format of the output matrix C (either CSR or CSC).
 // It is assigned to C->is_csc but otherwise has no effect on this function.
 
+// PARALLEL: the list J can be partitioned, and the subref can be done in
+// parallel and the results concatenated.
+
 #ifdef GB_SYMBOLIC
 GrB_Info GB_subref_symbolic     // C = A (I,J), extract the pattern
 #else
@@ -134,6 +137,12 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     int64_t avdim = A->vdim ;
 
     GrB_Info info ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // check the properties of I and J
@@ -309,7 +318,8 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
     // is determined by the caller, but is otherwise unused here.
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, C_type, nI, nJ, GB_Ap_malloc, C_is_csc,
-        GB_SAME_HYPER_AS (A_is_hyper), A->hyper_ratio, cplen, cnz_init, true) ;
+        GB_SAME_HYPER_AS (A_is_hyper), A->hyper_ratio, cplen, cnz_init, true,
+        Context) ;
     if (info != GrB_SUCCESS)
     {
         // out of memory
@@ -1222,7 +1232,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
             ASSERT (Inext != NULL) ;
 
             // to iterate across all entries in a bucket:
-            #define GB_for_each_entry_in_bucket(inew,i) \
+            #define GB_for_each_index_in_bucket(inew,i) \
                 for (int64_t inew = Mark[i]-flag ; inew >= 0 ; \
                     inew = Inext [inew])
 
@@ -1258,7 +1268,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
                     }
                     // traverse bucket i for all indices inew where
                     // i == I [inew] or where i is from a colon expression
-                    GB_for_each_entry_in_bucket (inew, i)
+                    GB_for_each_index_in_bucket (inew, i)
                     { 
                         GB_C_REALLOC (cnz + cjnz) ;
                         ASSERT (inew >= 0 && inew < nI) ;
@@ -1281,13 +1291,13 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
                 #ifdef GB_SYMBOLIC
                 { 
                     // sort the indices and pointers in-place in [Ci,Cx]
-                    GB_qsort_2a (Ci + cnz, Cx + cnz, cjnz) ;
+                    GB_qsort_2a (Ci + cnz, Cx + cnz, cjnz, NULL) ;
                     cnz += cjnz ;
                 }
                 #else
                 {
                     // sort the indices in-place and the pointers in Iwork1
-                    GB_qsort_2a (Ci + cnz, Iwork1, cjnz) ;
+                    GB_qsort_2a (Ci + cnz, Iwork1, cjnz, NULL) ;
                     // copy into C (:,jnew) using Iwork1 pointers
                     for (int64_t k = 0 ; k < cjnz ; k++)
                     { 
@@ -1322,7 +1332,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
                         break ;
                     }
                     // traverse bucket i for all indices inew where i == I[inew]
-                    GB_for_each_entry_in_bucket (inew, i)
+                    GB_for_each_index_in_bucket (inew, i)
                     {
                         ASSERT (inew >= 0 && inew < nI) ;
                         ASSERT (i == GB_ijlist (I, inew, Ikind, Icolon)) ;
@@ -1351,7 +1361,7 @@ GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
                 // Case 11: I not contiguous, no duplicates.  No qsort needed.
                 //--------------------------------------------------------------
 
-                // Identical to Case 10, except GB_for_each_entry_in_bucket
+                // Identical to Case 10, except GB_for_each_index_in_bucket
                 // (...) just needs to iterate 0 or 1 times.  Works well when I
                 // has many entries and A(:,j) has few entries.  Time taken is
                 // O(ajnz3)

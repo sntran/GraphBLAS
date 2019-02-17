@@ -2,7 +2,7 @@
 // GB.h: definitions visible only inside GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -126,7 +126,7 @@ extern int GB_cover_max ;
 #endif
 
 //------------------------------------------------------------------------------
-// opaque content of GraphBLAS objects
+// internal typedefs, not visible at all to the GraphBLAS user
 //------------------------------------------------------------------------------
 
 typedef unsigned char GB_void ;
@@ -135,17 +135,21 @@ typedef void (*GB_cast_function)   (void *, const void *, size_t) ;
 
 #define GB_LEN 128
 
-struct GB_Sauna_opaque      // sparse accumulator (matrix and vector component)
+struct GB_Sauna_struct      // sparse accumulator
 {
     int64_t Sauna_hiwater ; // Sauna_Mark [0..Sauna_n-1] < hiwater holds when
                             // the Sauna_Mark is clear.
     int64_t Sauna_n ;       // size of Sauna_Mark and Sauna_Work
     int64_t *Sauna_Mark ;   // array of size Sauna_n
-    void *Sauna_Work ;      // array of size Sauna_n, each entry Sauna_size
+    void    *Sauna_Work ;   // array of size Sauna_n, each entry Sauna_size
     size_t Sauna_size ;     // size of each entry in Sauna_Work
 } ;
 
-typedef struct GB_Sauna_opaque *GB_Sauna ;
+typedef struct GB_Sauna_struct *GB_Sauna ;
+
+//------------------------------------------------------------------------------
+// opaque content of GraphBLAS objects
+//------------------------------------------------------------------------------
 
 struct GB_Type_opaque       // content of GrB_Type
 {
@@ -201,6 +205,7 @@ struct GB_Monoid_opaque     // content of GrB_Monoid
     void *identity ;        // identity of the monoid
     size_t op_ztype_size ;  // size of the type (also is op->ztype->size)
     GB_object_code object_kind ;   // built-in, user pre-compiled, or run-time
+    void *terminal ;        // value that triggers early-exit (NULL if no value)
 } ;
 
 struct GB_Semiring_opaque   // content of GrB_Semiring
@@ -229,6 +234,7 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
     GrB_Desc_Value in0 ;    // first input descriptor (A for C=A*B, for example)
     GrB_Desc_Value in1 ;    // second input descriptor (B for C=A*B)
     GrB_Desc_Value axb ;    // for selecting the method for C=A*B
+    int nthreads ;          // # threads to use in this call to GraphBLAS
 } ;
 
 //------------------------------------------------------------------------------
@@ -272,14 +278,16 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 // macros for matrices and vectors
 //------------------------------------------------------------------------------
 
-// If A->nzmax is zero, then A->p might not be allocated.
-// Note that this function does not count pending tuples;
-// use GB_WAIT(A) first, if needed.
-#define GB_NNZ(A) (((A)->nzmax > 0) ? (A)->p [(A)->nvec] : 0)
+// If A->nzmax is zero, then A->p might not be allocated.  Note that this
+// function does not count pending tuples; use GB_WAIT(A) first, if needed.
+// For sparse or hypersparse matrix, Ap [0] == 0.  For a slice or hyperslice,
+// Ap [0] >= 0 points to the first entry in the slice.  For all 4 cases
+// (sparse, hypersparse, slice, hyperslice), nnz(A) = Ap [nvec] - Ap [0].
+#define GB_NNZ(A) (((A)->nzmax > 0) ? ((A)->p [(A)->nvec] - (A)->p [0]) : 0 )
 
 // A is nrows-by-ncols, in either CSR or CSC format
-#define GB_NROWS(A) (A->is_csc ? A->vlen : A->vdim)
-#define GB_NCOLS(A) (A->is_csc ? A->vdim : A->vlen)
+#define GB_NROWS(A) ((A)->is_csc ? (A)->vlen : (A)->vdim)
+#define GB_NCOLS(A) ((A)->is_csc ? (A)->vdim : (A)->vlen)
 
 // The internal content of a GrB_Matrix and GrB_Vector are identical, and
 // inside SuiteSparse:GraphBLAS, they can be typecasted between each other.
@@ -414,6 +422,12 @@ mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 #endif
 
 #define GB_HERE printf (" Here: %s line: %d\n",  __FILE__, __LINE__) ;
+
+// ASSERT (GB_DEAD_CODE) marks code that is intentionally dead, leftover from
+// prior versions of SuiteSparse:GraphBLAS but no longer used in the current
+// version.  The code is kept in case it is required for future versions (in
+// which case, the ASSERT (GB_DEAD_CODE) statement would be removed).
+#define GB_DEAD_CODE 0
 
 //------------------------------------------------------------------------------
 // aliased objects
@@ -684,7 +698,7 @@ extern struct GB_SelectOp_opaque
     GB_opaque_GxB_NONZERO ;
 
 //------------------------------------------------------------------------------
-// error logging
+// error logging and parallel thread control
 //------------------------------------------------------------------------------
 
 // Error messages are logged in GB_DLEN, on the stack, and then copied into
@@ -694,11 +708,26 @@ extern struct GB_SelectOp_opaque
 // -Wformat-truncation will print a warning (see pragmas above).  Ignore the
 // warning.
 
+// The Context also contains the number of threads to use in the operation.  It
+// is normally determined from the user's descriptor, with a default of
+// nthreads = GxB_DEFAULT (that is, zero).  The default rule is to let
+// GraphBLAS determine the number of threads automatically by selecting a
+// number of threads between 1 and GB_Global.nthreads_max.  GrB_init
+// initializes GB_Global.nthreads_max to omp_get_max_threads ( ).  Both the
+// global value and the value in a descriptor can set/queried by GxB_set /
+// GxB_get.
+
+// Some GrB_Matrix and GrB_Vector methods do not take a descriptor, however
+// (GrB_*_dup, _build, _exportTuples, _clear, _nvals, _wait, and GxB_*_resize).
+// For those methods the default rule is always used (nthreads = GxB_DEFAULT),
+// which then relies on the GB_Global.nthreads_max.
+
 #define GB_RLEN 384
 #define GB_DLEN 256
 
 typedef struct
 {
+    int nthreads ;              // number of threads to use
     const char *where ;         // GraphBLAS function where error occurred
     char details [GB_DLEN] ;    // error report
 }
@@ -721,7 +750,31 @@ typedef GB_Context_struct *GB_Context ;
 #define GB_WHERE(where_string)                      \
     GB_Context_struct Context_struct ;              \
     GB_Context Context = &Context_struct ;          \
-    Context->where = where_string ;
+    Context->where = where_string ;                 \
+    Context->nthreads = GB_Global.nthreads_max ;
+
+// GB_GET_NTHREADS:  determine number of threads for OpenMP parallelism.
+//
+//      GB_GET_NTHREADS obtains the # of threads to use, from the Context.  If
+//      Context is NULL then a single thread *must* be used (this is only used
+//      for GB_qsort_*, calloc, and realloc, for problems that are small or
+//      where the calling function is already being done by one thread in a
+//      larger parallel construct).  If Context->nthreads is <= GxB_DEFAULT,
+//      then select automatically: between 1 and GB_Global.nthreads_max,
+//      depending on the problem size.  Below is the default rule.  Any
+//      function can use its own rule instead, based on Context,
+//      GB_Global.nthreads_max, and the problem size.  No rule can exceed
+//      GB_Global.nthreads_max.
+
+#if defined ( _OPENMP )
+    #define GB_GET_NTHREADS(nthreads,Context)                               \
+        int nthreads = (Context == NULL) ? 1 : Context->nthreads ;          \
+        if (nthreads <= GxB_DEFAULT) nthreads = GB_Global.nthreads_max ;
+#else
+    // OpenMP is not available; SuiteSparse:GraphBLAS is sequential.
+    #define GB_GET_NTHREADS(nthreads,Context)                               \
+        int nthreads = 1 ;
+#endif
 
 // The GB_ERROR and GB_LOG macros work together.  If an error occurs, the
 // GB_ERROR macro records the details in the Context.details, and returns the
@@ -750,22 +803,18 @@ GrB_Info GB_error           // log an error in thread-local-storage
     GB_Context Context      // pointer to a Context struct, on the stack
 ) ;
 
+// GB_LOG becomes the snprintf_args for GB_ERROR.  Unused if Context is NULL.
 #define GB_LOG Context->details, GB_DLEN
 
+// if Context is NULL, do not log the error string in Context->details
 #define GB_ERROR(info,snprintf_args)                                \
 (                                                                   \
-    snprintf snprintf_args,                                         \
+    ((Context == NULL) ? 0 : snprintf snprintf_args),               \
     GB_error (info, Context)                                        \
 )
 
-// return (GB_OUT_OF_MEMORY (mem)) ; reports an out-of-memory error, including
-// the amount of memory needed for this phase of computation
-#define GB_OUT_OF_MEMORY(mem) GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG,  \
-    "out of memory, %g GBytes required", (double) (mem)))
-
-// return (GB_NO_MEMORY) ; reports an out-of-memory error, but does not print
-// the memory needed (normally very small)
-#define GB_NO_MEMORY GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG, "out of memory"))
+// return (GB_OUT_OF_MEMORY) ; reports an out-of-memory error
+#define GB_OUT_OF_MEMORY GB_ERROR (GrB_OUT_OF_MEMORY, (GB_LOG, "out of memory"))
 
 //------------------------------------------------------------------------------
 // GraphBLAS check functions: check and optionally print an object
@@ -1066,10 +1115,14 @@ GrB_Info GB_ix_resize           // resize a matrix
     GB_Context Context
 ) ;
 
+#ifndef GB_PANIC
+#define GB_PANIC return (GrB_PANIC)
+#endif
+
 // free A->i and A->x and return if critical section fails
 #define GB_IX_FREE(A)                                                       \
 {                                                                           \
-    if (GB_ix_free (A) == GrB_PANIC) return (GrB_PANIC) ;                   \
+    if (GB_ix_free (A) == GrB_PANIC) GB_PANIC ;                             \
 }
 
 GrB_Info GB_ix_free             // free A->i and A->x of a matrix
@@ -1082,22 +1135,15 @@ void GB_ph_free                 // free A->p and A->h of a matrix
     GrB_Matrix A                // matrix with content to free
 ) ;
 
-// free all content, including the Sauna, and return if critical section fails
-#define GB_CONTENT_FREE(A)                                                  \
-{                                                                           \
-    if (GB_phix_free (A, true) == GrB_PANIC) return (GrB_PANIC) ;           \
-}
-
-// free all content, but not the Sauna, and return if critical section fails
+// free all content, and return if critical section fails
 #define GB_PHIX_FREE(A)                                                     \
 {                                                                           \
-    if (GB_phix_free (A, false) == GrB_PANIC) return (GrB_PANIC) ;          \
+    if (GB_phix_free (A) == GrB_PANIC) GB_PANIC ;                           \
 }
 
 GrB_Info GB_phix_free           // free all content of a matrix
 (
-    GrB_Matrix A,               // matrix with content to free
-    bool free_sauna             // if true, also free the Sauna
+    GrB_Matrix A                // matrix with content to free
 ) ;
 
 GrB_Info GB_free                // free a matrix
@@ -1133,7 +1179,8 @@ void GB_transpose_ix        // transpose the pattern and values of a matrix
     int64_t *Ri,            // size cnz, output column indices
     GB_void *Rx,            // size cnz, output numerical values, type R_type
     const GrB_Type R_type,  // type of output R (do typecasting into R)
-    const GrB_Matrix A      // input matrix
+    const GrB_Matrix A,     // input matrix
+    GB_Context Context
 ) ;
 
 void GB_transpose_op        // transpose and apply an operator to a matrix
@@ -1142,7 +1189,8 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     int64_t *Ri,            // size cnz, output column indices
     GB_void *Rx,            // size cnz, output values, type op->ztype
     const GrB_UnaryOp op,   // operator to apply, NULL if no operator
-    const GrB_Matrix A      // input matrix
+    const GrB_Matrix A,     // input matrix
+    GB_Context Context
 ) ;
 
 GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
@@ -1196,7 +1244,8 @@ void GB_cast_array              // typecast an array
     const GB_Type_code code1,   // type code for C
     const void *A,              // input array
     const GB_Type_code code2,   // type code for A
-    const int64_t n             // number of entries in C and A
+    const int64_t n,            // number of entries in C and A
+    GB_Context Context
 ) ;
 
 GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
@@ -1252,7 +1301,8 @@ size_t GB_code_size             // return the size of a type, given its code
 void *GB_calloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
-    size_t size_of_item     // sizeof each item
+    size_t size_of_item,    // sizeof each item
+    GB_Context Context
 ) ;
 
 void *GB_malloc_memory      // pointer to allocated block of memory
@@ -1268,7 +1318,8 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
     size_t nitems_old,      // old number of items in the object
     size_t size_of_item,    // sizeof each item
     void *p,                // old object to reallocate
-    bool *ok                // true if successful, false otherwise
+    bool *ok,               // true if successful, false otherwise
+    GB_Context Context
 ) ;
 
 void GB_free_memory
@@ -1287,13 +1338,9 @@ void GB_free_memory
 // if GB_PRINT_MALLOC is define above, these macros print diagnostic
 // information, meant for development of SuiteSparse:GraphBLAS only
 
-#ifndef GB_PANIC
-#define GB_PANIC return (GrB_PANIC)
-#endif
-
 #ifdef GB_PRINT_MALLOC
 
-#define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen)                 \
+#define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,Context)         \
 {                                                                             \
     printf ("\nmatrix new:                   %s = new (%s, vlen = "GBd        \
         ", vdim = "GBd", Ap:%d, csc:%d, hyper:%d %g, plen:"GBd")"             \
@@ -1304,7 +1351,7 @@ void GB_free_memory
         Context) ;                                                            \
 }
 
-#define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric)  \
+#define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric,Context)  \
 {                                                                             \
     printf ("\nmatrix create:                %s = new (%s, vlen = "GBd        \
         ", vdim = "GBd", Ap:%d, csc:%d, hyper:%d %g, plen:"GBd", anz:"GBd     \
@@ -1331,12 +1378,12 @@ void GB_free_memory
     if (GB_free ((GrB_Matrix *) v) == GrB_PANIC) GB_PANIC ;                   \
 }
 
-#define GB_CALLOC_MEMORY(p,n,s)                                               \
+#define GB_CALLOC_MEMORY(p,n,s,Context)                                        \
     printf ("\ncalloc:                       "                                \
     "%s = calloc (%s = "GBd", %s = "GBd") line %d file %s\n",                 \
     GB_STR(p), GB_STR(n), (int64_t) n, GB_STR(s), (int64_t) s,                \
     __LINE__,__FILE__) ;                                                      \
-    p = GB_calloc_memory (n, s) ;
+    p = GB_calloc_memory (n, s, Context) ;
 
 #define GB_MALLOC_MEMORY(p,n,s)                                               \
     printf ("\nmalloc:                       "                                \
@@ -1345,13 +1392,13 @@ void GB_free_memory
     __LINE__,__FILE__) ;                                                      \
     p = GB_malloc_memory (n, s) ;
 
-#define GB_REALLOC_MEMORY(p,nnew,nold,s,ok)                                   \
+#define GB_REALLOC_MEMORY(p,nnew,nold,s,ok,Context)                            \
 {                                                                             \
     printf ("\nrealloc: %14p       "                                          \
     "%s = realloc (%s = "GBd", %s = "GBd", %s = "GBd") line %d file %s\n",    \
     p, GB_STR(p), GB_STR(nnew), (int64_t) nnew, GB_STR(nold), (int64_t) nold, \
     GB_STR(s), (int64_t) s, __LINE__,__FILE__) ;                              \
-    p = GB_realloc_memory (nnew, nold, s, p, ok) ;                            \
+    p = GB_realloc_memory (nnew, nold, s, p, ok, Context) ;                   \
 }
 
 #define GB_FREE_MEMORY(p,n,s)                                                 \
@@ -1367,13 +1414,13 @@ void GB_free_memory
 
 #else
 
-#define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen)                 \
+#define GB_NEW(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,Context)         \
 {                                                                             \
     info = GB_new (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,     \
         Context) ;                                                            \
 }
 
-#define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric)  \
+#define GB_CREATE(A,type,vlen,vdim,Ap_option,is_csc,hopt,h,plen,anz,numeric,Context)  \
 {                                                                             \
     info = GB_create (A, type, vlen, vdim, Ap_option, is_csc, hopt, h, plen,  \
         anz, numeric, Context) ;                                              \
@@ -1386,16 +1433,14 @@ void GB_free_memory
 
 #define GB_VECTOR_FREE(v) GB_MATRIX_FREE ((GrB_Matrix *) v)
 
-#define GB_CALLOC_MEMORY(p,n,s)                                               \
-    p = GB_calloc_memory (n, s) ;
+#define GB_CALLOC_MEMORY(p,n,s,Context)                                       \
+    p = GB_calloc_memory (n, s ,Context) ;
 
 #define GB_MALLOC_MEMORY(p,n,s)                                               \
     p = GB_malloc_memory (n, s) ;
 
-#define GB_REALLOC_MEMORY(p,nnew,nold,s,ok)                                   \
-{                                                                             \
-    p = GB_realloc_memory (nnew, nold, s, p, ok) ;                            \
-}
+#define GB_REALLOC_MEMORY(p,nnew,nold,s,ok,Context)                           \
+    p = GB_realloc_memory (nnew, nold, s, p, ok, Context) ;
 
 #ifdef GB_MALLOC_TRACKING
     // free memory, with malloc tracking
@@ -1433,20 +1478,20 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess,  // rough estimate of nnz(C)
-    GB_Context Context
+    const int64_t rough_guess   // rough estimate of nnz(C)
 ) ;
 
 GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // optional matrix
-    const GrB_Matrix A_in,          // input matrix A
-    const GrB_Matrix B_in,          // input matrix B
+    const GrB_Matrix M_in,          // optional matrix
+    const bool Mask_comp,           // if true, use ~M
+    const GrB_Matrix A,             // input matrix A
+    const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
-    GB_Context Context
+    bool *mask_applied,             // if true, mask was applied
+    const int Sauna_id              // Sauna to use
 ) ;
 
 // used in GB_AxB_heap for temporary workspace
@@ -1469,27 +1514,26 @@ GB_Element ;
 GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<M>=A*B
+    const GrB_Matrix M_in,          // mask matrix for C<M>=A*B
+    const bool Mask_comp,           // if true, use ~M
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const int64_t bjnz_max,         // max # entries in any vector of B
-    GB_Context Context
+    bool *mask_applied,             // if true, mask was applied
+    const int64_t bjnz_max          // max # entries in any vector of B
 ) ;
 
-GrB_Info GB_AxB_saxpy               // C=A*B or C<M>=A*B, gather/scatter or heap
+void GB_AxB_select                  // select method for A*B or A'*B
 (
-    GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // optional matrix
     const GrB_Matrix A,             // input matrix A
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
-    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    const bool do_adotb,            // if true then do A'*B
     const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
-    GrB_Desc_Value *AxB_method_used,// method selected
-    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
-    GB_Context Context
+    // output
+    GrB_Desc_Value *AxB_method_used,        // method to use
+    int64_t *bjnz_max                       // # entries in densest col of B
 ) ;
 
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
@@ -1498,6 +1542,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     const bool C_is_csc,            // desired CSR/CSC format of C
     GrB_Matrix *MT_handle,          // return MT = M' to caller, if computed
     const GrB_Matrix M_in,          // mask for C<M> (not complemented)
+    const bool Mask_comp,           // if true, use ~M
     const GrB_Matrix A_in,          // input matrix
     const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
@@ -1507,8 +1552,39 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     bool *mask_applied,             // if true, mask was applied
     const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
     GrB_Desc_Value *AxB_method_used,// method selected
-    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
     GB_Context Context
+) ;
+
+GrB_Info GB_AxB_parallel            // parallel matrix-matrix multiply
+(
+    GrB_Matrix *Chandle,            // output matrix, NULL on input
+    GrB_Matrix M,                   // optional mask matrix
+    const bool Mask_comp,           // if true, use ~M
+    const GrB_Matrix A,             // input matrix A
+    const GrB_Matrix B,             // input matrix B
+    const GrB_Semiring semiring,    // semiring that defines C=A*B
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    const bool do_adotb,            // if true, do A'*B via dot products
+    const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+//  const GrB_Desc_Value AxB_slice, // how to slice B or A'
+    GrB_Desc_Value *AxB_method_used,// method selected
+    bool *mask_applied,             // if true, mask was applied
+    GB_Context Context
+) ;
+
+GrB_Info GB_AxB_sequential          // single-threaded matrix-matrix multiply
+(
+    GrB_Matrix *Chandle,            // output matrix, NULL on input
+    GrB_Matrix M,                   // optional mask matrix
+    const bool Mask_comp,           // if true, use ~M
+    const GrB_Matrix A,             // input matrix A
+    const GrB_Matrix B,             // input matrix B
+    const GrB_Semiring semiring,    // semiring that defines C=A*B
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    const GrB_Desc_Value AxB_method,// already chosen
+    const int64_t bjnz_max,         // for heap method only
+    bool *mask_applied,             // if true, mask was applied
+    const int Sauna_id              // Sauna to use, for Gustavson method only
 ) ;
 
 bool GB_semiring_builtin            // true if semiring is builtin
@@ -1534,18 +1610,28 @@ GrB_Info GB_AxB_Gustavson_builtin
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *done,                     // true if C=A*B has been computed
-    GB_Sauna Sauna,                 // sparse accumulator
-    GB_Context Context
+    GB_Sauna Sauna                  // sparse accumulator
 ) ;
 
 GrB_Info GB_AxB_dot                 // C = A'*B using dot product method
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<M>=A'*B
+    const GrB_Matrix M_in,          // mask matrix for C<M>=A'*B
+    const bool Mask_comp,           // if true, use ~M
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    bool *mask_applied              // if true, mask was applied
+) ;
+
+bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
+(
+    int64_t *Bflops,            // size B->nvec+1, if present
+    GrB_Matrix M,               // optional mask matrix
+    GrB_Matrix A,
+    GrB_Matrix B,
+    int64_t floplimit,          // maximumm flops to compute if Bflops NULL
     GB_Context Context
 ) ;
 
@@ -1566,11 +1652,12 @@ GrB_Info GB_mxm                     // C<M> = A*B
     GB_Context Context
 ) ;
 
-int64_t GB_cumsum               // compute the cumulative sum of an array
+void GB_cumsum                  // compute the cumulative sum of an array
 (
-    int64_t *p,                 // size n+1, undefined on input
     int64_t *count,             // size n+1, input/output
-    const int64_t n
+    const int64_t n,
+    int64_t *kresult,           // return k, if needed by the caller
+    GB_Context Context
 ) ;
 
 GrB_Info GB_mask                // C<M> = Z
@@ -1640,21 +1727,24 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
 void GB_qsort_1         // sort array A of size 1-by-n
 (
     int64_t A_0 [ ],    // size-n array
-    const int64_t n
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 ) ;
 
 void GB_qsort_2a        // sort array A of size 2-by-n, using 1 key (A [0][])
 (
     int64_t A_0 [ ],    // size n array
     int64_t A_1 [ ],    // size n array
-    const int64_t n
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 ) ;
 
 void GB_qsort_2b        // sort array A of size 2-by-n, using 2 keys (A [0:1][])
 (
     int64_t A_0 [ ],    // size n array
     int64_t A_1 [ ],    // size n array
-    const int64_t n
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 ) ;
 
 void GB_qsort_3         // sort array A of size 3-by-n, using 3 keys (A [0:2][])
@@ -1662,7 +1752,8 @@ void GB_qsort_3         // sort array A of size 3-by-n, using 3 keys (A [0:2][])
     int64_t A_0 [ ],    // size n array
     int64_t A_1 [ ],    // size n array
     int64_t A_2 [ ],    // size n array
-    const int64_t n
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 ) ;
 
 GrB_Info GB_subref_numeric      // C = A (I,J), extract the values
@@ -1902,7 +1993,7 @@ void GB_pending_free            // free all pending tuples
 // via the GB_CRITICAL macro.  GrB_init uses GB_CRITICAL as well.
 
 // GB_CRITICAL: GB_queue_* inside a critical section, which 'cannot' fail
-#define GB_CRITICAL(op) if (!(op)) return (GrB_PANIC) ;
+#define GB_CRITICAL(op) if (!(op)) GB_PANIC ;
 
 bool GB_queue_create ( ) ;      // create the queue and thread-local storage
 
@@ -2099,7 +2190,8 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     const GrB_UnaryOp op,   // operator to apply
     const GB_void *Ax,      // input array, of type atype
     const GrB_Type atype,   // type of Ax
-    const int64_t anz       // size of Ax and Cx
+    const int64_t anz,      // size of Ax and Cx
+    GB_Context Context
 ) ;
 
 GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
@@ -2115,7 +2207,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
 int64_t GB_nvec_nonempty        // return # of non-empty vectors
 (
-    const GrB_Matrix A          // input matrix to examine
+    const GrB_Matrix A,         // input matrix to examine
+    GB_Context Context
 ) ;
 
 GrB_Info GB_to_nonhyper     // convert a matrix to non-hypersparse
@@ -2157,7 +2250,7 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
 //------------------------------------------------------------------------------
 
 // Global storage is used to record a list of matrices with pending operations
-// (fo GrB_wait), and to keep track of the GraphBLAS mode (blocking or
+// (for GrB_wait), and to keep track of the GraphBLAS mode (blocking or
 // non-blocking).
 
 typedef struct
@@ -2195,6 +2288,15 @@ typedef struct
     GrB_Mode mode ;             // GrB_NONBLOCKING or GrB_BLOCKING
 
     bool GrB_init_called ;      // true if GrB_init already called
+
+    int nthreads_max ;          // max number of threads to use
+
+    //--------------------------------------------------------------------------
+    // Sauna: thread workspace for Gustavson's method
+    //--------------------------------------------------------------------------
+
+    GB_Sauna Saunas   [GxB_NTHREADS_MAX] ;
+    bool Sauna_in_use [GxB_NTHREADS_MAX] ;
 
     //--------------------------------------------------------------------------
     // critical section for user threads
@@ -2306,6 +2408,16 @@ char *GB_thread_local_access ( ) ;
 // Functions use these macros to check/get their inputs and return an error
 // if something has gone wrong.
 
+#define GB_OK(method)                       \
+{                                           \
+    info = method ;                         \
+    if (info != GrB_SUCCESS)                \
+    {                                       \
+        GB_FREE_ALL ;                       \
+        return (info) ;                     \
+    }                                       \
+}
+
 // check if a required arg is NULL
 #define GB_RETURN_IF_NULL(arg)                                          \
     if ((arg) == NULL)                                                  \
@@ -2338,17 +2450,17 @@ char *GB_thread_local_access ( ) ;
     GB_RETURN_IF_NULL (arg) ;                                           \
     GB_RETURN_IF_FAULTY (arg) ;
 
-// check the descriptor and extract its contents
-#define GB_GET_DESCRIPTOR(info,desc,dout,dm,d0,d1,dalgo)                \
-    GrB_Info info ;                                                     \
-    bool dout, dm, d0, d1 ;                                             \
-    GrB_Desc_Value dalgo ;                                              \
-    /* if desc is NULL then defaults are used.  This is OK */           \
+// check the descriptor and extract its contents (also gets nthreads)
+#define GB_GET_DESCRIPTOR(info,desc,dout,dm,d0,d1,dalgo)                     \
+    GrB_Info info ;                                                          \
+    bool dout, dm, d0, d1 ;                                                  \
+    GrB_Desc_Value dalgo ;                                                   \
+    /* if desc is NULL then defaults are used.  This is OK */                \
     info = GB_Descriptor_get (desc, &dout, &dm, &d0, &d1, &dalgo, Context) ; \
-    if (info != GrB_SUCCESS)                                            \
-    {                                                                   \
-        /* desc not NULL, but uninitialized or an invalid object */     \
-        return (info) ;                                                 \
+    if (info != GrB_SUCCESS)                                                 \
+    {                                                                        \
+        /* desc not NULL, but uninitialized or an invalid object */          \
+        return (info) ;                                                      \
     }
 
 // C<Mask>=Z ignores Z if an empty Mask is complemented, so return from
@@ -2357,7 +2469,7 @@ char *GB_thread_local_access ( ) ;
     if (Mask_comp && Mask == NULL)                                      \
     {                                                                   \
         /* C<~NULL>=NULL since result does not depend on computing Z */ \
-        return (GB_mask (C, NULL, NULL, C_replace, true, Context)) ;    \
+        return (C_replace ? GB_clear (C, Context) : GrB_SUCCESS) ;      \
     }
 
 //------------------------------------------------------------------------------
@@ -3159,25 +3271,22 @@ static inline void GB_bracket
 // min(x,y) and max(x,y).  In MATLAB, min(3,NaN), min(NaN,3), max(3,NaN), and
 // max(NaN,3) are all 3, which is another interpretation.  The MATLAB min and
 // max functions have a 3rd argument that specifies how NaNs are handled:
-// 'omitnan' (default) and 'includenan'.  In SuiteSparse:GraphBLAS, the min and
-// max functions are the same as 'includenan' in MATLAB.
+// 'omitnan' (default) and 'includenan'.  In SuiteSparse:GraphBLAS 2.2.* and
+// earlier, the min and max functions were the same as 'includenan' in MATLAB.
+// As of version 2.3 and later, they are 'omitnan', to facilitate the terminal
+// exit of the MIN and MAX monoids for floating-point values.
 
 // Below is a complete comparison of MATLAB and GraphBLAS.  Both tables are the
 // results for both min and max (they return the same results in these cases):
 
-//   x    y  MATLAB    MATLAB   (x<y)?x:y   SuiteSparse:
-//           omitnan includenan             GraphBLAS
-//   3    3     3        3          3        3
-//   3   NaN    3       NaN        NaN      NaN
-//  NaN   3     3       NaN         3       NaN
-//  NaN  NaN   NaN      NaN        NaN      NaN
-
-// The 'includenan' result is the one SuiteSparse:GraphBLAS relies on.  The
-// result min(x,y) and max(x,y) should be NaN if either x or y are NaN.  NaN
-// means 'not any number', and any computations should propagate the result of
-// NaN if a function depends on that value.  If x = 5 then z=min(3,x) is 3, but
-// if x = 2, z=min(3,x) is 2.  Since z depends on x, z should be NaN if x is
-// NaN.
+//   x    y  MATLAB    MATLAB   (x<y)?x:y   SuiteSparse:    SuiteSparse:
+//           omitnan includenan             GraphBLAS       GraphBLAS
+//                                          v 2.2.x         this version
+//
+//   3    3     3        3          3        3              3
+//   3   NaN    3       NaN        NaN      NaN             3
+//  NaN   3     3       NaN         3       NaN             3
+//  NaN  NaN   NaN      NaN        NaN      NaN             NaN
 
 // suitable for all types, but given unique names to match GB_IMIN, GB_FMIN:
 #define GB_IABS(x) (((x) >= 0) ? (x) : (-(x)))
@@ -3187,18 +3296,19 @@ static inline void GB_bracket
 #define GB_IMAX(x,y) (((x) > (y)) ? (x) : (y))
 #define GB_IMIN(x,y) (((x) < (y)) ? (x) : (y))
 
-// for floating-point, same as min(x,y,'includenan') and max(...) in MATLAB
-#define GB_FMIN(x,y) ((isnan (x) || isnan (y)) ? NAN : GB_IMIN (x,y))
-#define GB_FMAX(x,y) ((isnan (x) || isnan (y)) ? NAN : GB_IMAX (x,y))
+// for floating-point, same as min(x,y,'omitnan') and max(...) in MATLAB
+#define GB_FMIN(x,y) ((isnan (x)) ? (y) : ((isnan (y)) ? (x) : GB_IMIN (x,y)))
+#define GB_FMAX(x,y) ((isnan (x)) ? (y) : ((isnan (y)) ? (x) : GB_IMAX (x,y)))
 
-//==============================================================================
-// GrB_Matrix iterator and related functions
-//==============================================================================
+//------------------------------------------------------------------------------
+// GB_lookup: find k so that j == Ah [k]
+//------------------------------------------------------------------------------
 
-// find k so that j == Ah [k], if it appears in the list.  k is not needed
-// by the caller, just the variables pstart, pend, pleft, and found.
+// Given a standard or hypersparse matrix, find k so that j == Ah [k], if it
+// appears in the list.  k is not needed by the caller, just the variables
+// pstart, pend, pleft, and found.
 
-static inline bool GB_lookup        // find j = Ah [k] in the hyperlist of a
+static inline bool GB_lookup        // find j = Ah [k] in a hyperlist
 (
     const bool A_is_hyper,          // true if A is hypersparse
     const int64_t *restrict Ah,     // A->h [0..A->nvec-1]: list of vectors
@@ -3243,18 +3353,258 @@ static inline bool GB_lookup        // find j = Ah [k] in the hyperlist of a
     }
 }
 
+
+//==============================================================================
+// GrB_Matrix iterators and related functions
+//==============================================================================
+
+// There are two distinct kinds of matrix iterators.
+
+// GBI_single_iterator:
+
+//      The simplest one is a GBI_single_iterator.  It controls the iteration
+//      over the vectors of a single matrix, which can be in any format
+//      (standard, hypersparse, slice, or hyperslice).  It is easily
+//      parallelizable if the iterations are independent, or for
+//      reduction-style loops via the appropriate #pragmas.
+
+// GBIk_multi_iterator:
+
+//      The GBIk_multi_iterator controls the interation over 2 or 3 objects, one
+//      of which may be an expanded scalar, and the others are standard or
+//      hypersparse matrices, in any combination.  It iterates over the set
+//      union of 2 or more objects, and is not suitable for a parallel for
+//      loop.  This iterator cannot be used to iterate over the vectors of a
+//      slice or hyperslice.
+
 //------------------------------------------------------------------------------
-// GBI_iterator: iterate over the vectors one, two, or three matrices
+// GBI_single_iterator: iterate over the vectors of a matrix
 //------------------------------------------------------------------------------
 
-// Any matrix of the three matrices may be standard sparse or hypersparse.  The
-// A->h and A->p components of the matrices may not change during the
-// iteration.
+// The Iter->* content of a GBIk_multi_iterator or GBI_single_iterator is
+// accessed only in this file.  All typedefs, functions, and macros that
+// operate on the SuiteSparse:GraphBLAS iterator have names that start with the
+// GBI prefix.  For both kinds of iterators, the A->h and A->p components of
+// the matrices may not change during the iteration.
 
-// The Iter->* content of a GBI_iterator Iter is accessed only in this file.
+// The single-matrix iterator, GBI_for_each_vector (A) can handle any of the
+// four cases: standard, hypersparse, slice, or hyperslice.  The comments below
+// assume A is in CSC format.
 
-// All typedefs, functions, and macros that operate on the
-// SuiteSparse:GraphBLAS iterator have names that start with the GBI prefix.
+#ifdef for_comments_only    // only so vim will add color to the code below:
+
+    // The GBI_for_each_vector (A) macro, which uses the GBI_single_iterator,
+    // the two functions GBI1_init and GBI1_start, and the macro
+    // GBI_jth_iteration can do any one of the 4 following for loops, depending
+    // on whether A is standard, hypersparse, a slice, or a hyperslice.
+
+    // A->vdim: the vector dimension of A (ncols(A))
+    // A->nvec: # of vectors that appear in A.  For the hypersparse case,
+    //          these are the number of column indices in Ah [0..nvec-1], since
+    //          A is CSC.  For all cases, Ap [0...nvec] are the pointers.
+
+    //--------------------
+    // (1) standard     // A->is_hyper == false, A->is_slice == false
+                        // A->nvec == A->vdim
+
+        for (k = 0 ; k < A->nvec ; k++)
+        {
+            j = k ;
+            // operate on column A(:,j)
+            for (p = Ap [j] ; p < Ap [j+1] ; p++)
+            {
+                // A(i,j) has row i = Ai [p], value aij = Ax [p]
+            }
+        }
+
+    //--------------------
+    // (2) hypersparse  // A->is_hyper == true, A->is_slice == false
+                        // A->nvec <= A->dim
+
+        for (k = 0 ; k < A->nvec ; k++)
+        {
+            j = A->h [k]
+            // operate on column A(:,j)
+            for (p = Ap [k] ; p < Ap [k+1] ; p++)
+            {
+                // A(i,j) has row i = Ai [p], value aij = Ax [p]
+            }
+        }
+
+    //--------------------
+    // (3) slice, of another standard matrix S. (FUTURE)
+                        // A->i == S->i, A->x == S->x
+                        // A->p = S->p + A->hfirst, A->h is NULL
+                        // A->nvec <= A->vdim == S->vdim
+
+        for (k = 0 ; k < A->nvec ; k++)
+        {
+            j = A->hfirst + k ;
+            ASSERT (S->p [j] == Ap [k]) ;
+            // operate on column A(:,j), which is also S (:,j)
+            for (p = Ap [k] ; p < Ap [k+1] ; p++)
+            {
+                // A(i,j) has row i = Ai [p], value aij = Ax [p]
+                // This is identical to S(i,j)
+            }
+        }
+
+    //--------------------
+    // (4) hyperslice, of another hypersparse matrix S (FUTURE)
+                        // A->i == S->i, A->x == S->x, A->p = S->p + kfirst,
+                        // A->h == S->h + kfirst where A(:,0) is the same
+                        // column as S->h [kfirst].  kfirst is not kept.
+                        // A->nvec <= A->vdim == S->vdim
+
+        for (k = 0 ; k < A->nvec ; k++)
+        {
+            j = A->h [k] ;
+            // operate on column A(:,j), which is also S (:,j)
+            for (p = Ap [k] ; p < Ap [k+1] ; p++)
+            {
+                // A(i,j) has row i = Ai [p], value aij = Ax [p].
+                // This is identical to S(i,j)
+            }
+        }
+
+    //--------------------
+    // all of the above: via GBI_for_each_vector (A)
+                        // are done with a single iterator that selects
+                        // the iteration method based on the format of A.
+
+        GBI_for_each_vector (A)
+        {
+            // get A(:,j)
+            GBI_jth_iteration (j, pstart, pend)
+            // operate on column A(:,j)
+            for (p = pstart ; p < pend ; p++)
+            {
+                // A(i,j) has row i = Ai [p], value aij = Ax [p].
+            }
+        }
+
+#endif
+
+//------------------------------------------------------------------------------
+// GBI_single_iterator: iterate over the vectors of a single matrix
+//------------------------------------------------------------------------------
+
+// The matrix may be standard sparse, hypersparse, slice, or hyperslice.
+
+typedef struct
+{
+    const int64_t *restrict p ; // vector pointer A->p of A
+    const int64_t *restrict h ; // A->h: hyperlist of vectors in A
+    int64_t nvec ;              // A->nvec: number of vectors in A
+    bool is_hyper ;             // true if A  is hypersparse
+//  FUTURE:: slice
+//  bool is_slice ;             // true if A [0] is a slice
+//  int64_t hfirst ;            // A->hfirst: first vector in slice A
+
+} GBI_single_iterator ;
+
+//----------------------------------------
+// GBI1_init: initialize a GBI_single_iterator
+//----------------------------------------
+
+static inline void GBI1_init
+(
+    GBI_single_iterator *Iter,
+    const GrB_Matrix A
+)
+{ 
+    // load the content of A into the iterator
+    Iter->is_hyper = A->is_hyper ;
+    Iter->p = A->p ;
+    Iter->h = A->h ;
+    Iter->nvec = A->nvec ;
+//  Iter->is_slice = A->is_slice ;          // FUTURE::
+//  Iter->hfirst = A->hfirst ;
+}
+
+//----------------------------------------
+// GBI1_start: start the kth iteration for GBI_single_iterator
+//----------------------------------------
+
+static inline void GBI1_start
+(
+    int64_t Iter_k,
+    GBI_single_iterator *Iter,
+    int64_t *j,
+    int64_t *pstart,
+    int64_t *pend
+)
+{
+
+#if 0
+    // FUTURE:: slice and hyperslice
+    if (Iter->is_slice)
+    {
+        // get next vector from A
+        if (Iter->is_hyper)
+        {
+            // A is a hyperslice of a hypersparse matrix
+            (*j) = Iter->h [Iter_k] ;
+        }
+        else
+        {
+            // A is a slice of a standard matrix
+            (*j) = (Iter->hfirst) + Iter_k ;
+        }
+    }
+    else
+#endif
+    {
+        if (Iter->is_hyper)
+        { 
+            // A is a hypersparse matrix
+            // get next vector from A
+            (*j) = Iter->h [Iter_k] ;
+        }
+        else
+        { 
+            // A is a standard matrix
+            // get next vector from A
+            (*j) = Iter_k ;
+        }
+    }
+
+    // get the start and end of the next vector of A
+    (*pstart) = Iter->p [Iter_k  ] ;
+    (*pend)   = Iter->p [Iter_k+1] ;
+}
+
+// iterate over one matrix A (sparse, hypersparse, slice, or hyperslice)
+// with a named iterator
+#define GBI_for_each_vector_with_iter(Iter,A)                               \
+    GBI_single_iterator Iter ;                                              \
+    GBI1_init (&Iter, A) ;                                                  \
+    for (int64_t Iter ## _k = 0 ; Iter ## _k < Iter.nvec ; Iter ## _k++)
+
+// iterate over one matrix A (sparse, hypersparse, slice, or hyperslice)
+// with the iterator named "Iter"
+#define GBI_for_each_vector(A) GBI_for_each_vector_with_iter (Iter,A)
+
+// get the column at the current iteration, and the start/end pointers
+// of column j in the matrix A
+#define GBI_jth_iteration_with_iter(Iter,j0,pstart0,pend0)                  \
+    int64_t j0, pstart0, pend0 ;                                            \
+    GBI1_start (Iter ## _k, &Iter, &j0, &pstart0, &pend0) ;
+
+#define GBI_jth_iteration(j0,pstart0,pend0)                                 \
+    GBI_jth_iteration_with_iter(Iter,j0,pstart0,pend0)
+
+// iterate over a vector of a single matrix
+#define GBI_for_each_entry(j,p,pend)                                        \
+    GBI_jth_iteration (j, p, pend) ;                                        \
+    for ( ; (p) < (pend) ; (p)++)
+
+//------------------------------------------------------------------------------
+// GBIk_multi_iterator: iterate over vectors of multiple matrices
+//------------------------------------------------------------------------------
+
+// Any of the matrices may be standard sparse or hypersparse.  None can be a
+// slice or hyperslice.
 
 typedef struct
 {
@@ -3273,22 +3623,23 @@ typedef struct
     int64_t k [3] ;             // current index into hyperlist h [0..2]
     int64_t jj [3] ;            // current vector jj [.] = h [k [.]]
 
-} GBI_iterator ;
+} GBIk_multi_iterator ;
 
 //------------------------------------------------------------------------------
 // GBI#_init
 //------------------------------------------------------------------------------
 
-// Initialize an iterator for one, two, or three matrices.  Extracts the vector
-// content (is_hyper, vdim, p, h, and nvec) of A, B, and/or C and caches them
-// in the GBI_iterator Iter, and initializes the counters Iter->j and Iter->k
-// [0..2].  The GBI#_init functions are the only inline functions that directly
-// access the matrix content A->(...) for A, B, and/or C.  All other iterator
-// functions and macros access the cached copies in Iter.
+// Initialize an iterator for two or three matrices (one of which may be an
+// expanded scalar).  Extracts the vector content (is_hyper, vdim, p, h, and
+// nvec) of A, B, and/or C and caches them in the GBIk_multi_iterator Iter, and
+// initializes the counters Iter->j and Iter->k [0..2].  The GBI#_init
+// functions are the only inline functions that directly access the matrix
+// content A->(...) for A, B, and/or C.  All other iterator functions and
+// macros access the cached copies in Iter.
 
 static inline void GBI3_init
 (
-    GBI_iterator *Iter,
+    GBIk_multi_iterator *Iter,
     const GrB_Matrix A,
     const GrB_Matrix B,
     const GrB_Matrix C
@@ -3297,6 +3648,9 @@ static inline void GBI3_init
     // A, B, and C must have the same vdim.  vlen can vary
     ASSERT (A->vdim == B->vdim) ;
     ASSERT (A->vdim == C->vdim) ;
+
+    // GBI3_for_each_vector (A,B,C) is not used if any matrix is a slice
+    // ASSERT (!A->is_slice && !B->is_slice && !C->is_slice) ;
 
     Iter->any_hyper = (A->is_hyper || B->is_hyper || C->is_hyper) ;
     Iter->j = 0 ;
@@ -3338,7 +3692,7 @@ static inline void GBI3_init
 
 static inline void GBI2_init
 (
-    GBI_iterator *Iter,
+    GBIk_multi_iterator *Iter,
     const GrB_Matrix A,
     const GrB_Matrix B
 )
@@ -3346,9 +3700,13 @@ static inline void GBI2_init
     // A and B must have the same vdim.  vlen can vary
     ASSERT (A->vdim == B->vdim) ;
 
+    // GBI2_for_each_vector (A,B) is not used if any matrix is a slice
+    // ASSERT (!A->is_slice && !B->is_slice) ;
+
     Iter->any_hyper = (A->is_hyper || B->is_hyper) ;
     Iter->j = 0 ;
     Iter->vdim = A->vdim ;
+
     Iter->p [0] = A->p ;
     Iter->p [1] = B->p ;
 //  Iter->p [2] = NULL ;
@@ -3383,16 +3741,30 @@ static inline void GBI2_init
 
 }
 
-static inline void GBI1_init
+static inline void GBI3s_init
 (
-    GBI_iterator *Iter,
+    GBIk_multi_iterator *Iter,
+    const GrB_Matrix A,
+    const GrB_Matrix B
+)
+{ 
+    GBI2_init (Iter, A, B) ;
+}
+
+static inline void GBI2s_init
+(
+    GBIk_multi_iterator *Iter,
     const GrB_Matrix A
 )
 { 
 
+    // GBI2s_for_each_vector (A,scalar) is not used if the matrix is a slice
+    // ASSERT (!A->is_slice)
+
     Iter->any_hyper = (A->is_hyper) ;
     Iter->j = 0 ;
     Iter->vdim = A->vdim ;
+
     Iter->p [0] = A->p ;
 //  Iter->p [1] = NULL ;
 //  Iter->p [2] = NULL ;
@@ -3427,35 +3799,17 @@ static inline void GBI1_init
 
 }
 
-static inline void GBI3s_init
-(
-    GBI_iterator *Iter,
-    const GrB_Matrix A,
-    const GrB_Matrix B
-)
-{ 
-    GBI2_init (Iter, A, B) ;
-}
-
-static inline void GBI2s_init
-(
-    GBI_iterator *Iter,
-    const GrB_Matrix A
-)
-{ 
-    GBI1_init (Iter, A) ;
-}
-
 //------------------------------------------------------------------------------
-// GBI#_while
+// GBI#_while for GBIk_multi_iterator
 //------------------------------------------------------------------------------
 
-// Test the condition for a loop over one, two, or three matrices and
-// prepare to access the vector at each matrix.  The inline
-// GBI#_while functions are only used in the GB_each_vector* macros.
+// The GBI#_while functions test the condition for a loop over one (plus an
+// expanded scalar), two, or three matrices and prepare to access the vector at
+// each matrix.  The inline GBI#_while functions are only used in the GB_*each*
+// macros.  These macros are not used for iterating over slices.
 
 // get the index of the next vector in a given matrix
-#define GBI_jjget(Iter,matrix)                                              \
+#define GBIk_jjget(Iter,matrix)                                              \
 {                                                                           \
     if (!(Iter->is_hyper [matrix]))                                         \
     {                                                                       \
@@ -3474,33 +3828,20 @@ static inline void GBI2s_init
     }                                                                       \
 }
 
-// get the pointers to the next vector A (:,j), not hypersparse
-#define GBI_pget(Iter,matrix)                                               \
-{                                                                           \
-    Iter->pstart [matrix] = (Iter->p [matrix]) [Iter->j  ] ;                \
-    Iter->pend   [matrix] = (Iter->p [matrix]) [Iter->j+1] ;                \
-}
-
-// get the pointers to the kth vector A (:,j), hypersparse
-#define GBI_hget(Iter,matrix)                                               \
-{                                                                           \
-    Iter->pstart [matrix] = (Iter->p [matrix]) [Iter->k [matrix]  ] ;       \
-    Iter->pend   [matrix] = (Iter->p [matrix]) [Iter->k [matrix]+1] ;       \
-}
-
-// Get the pointers to the next vector A (:,j), sparse or hypersparse.  The
-// vector appears in Ai and Ax [Iter->pstart [matrix]...Iter->pend [matrix]-1].
-#define GBI_phget(Iter,matrix)                                              \
+// Get the pointers to the next vector A [matrix] (:,j), sparse or hypersparse.
+// The vector appears in Ai and Ax [Iter->pstart [matrix]...Iter->pend
+// [matrix]-1].
+#define GBIk_phget(Iter,matrix)                                              \
 {                                                                           \
     if (!(Iter->is_hyper [matrix]))                                         \
     {                                                                       \
         /* A (:,j) is the jth vector in the non-hypersparse matrix */       \
-        GBI_pget (Iter, matrix) ;                                           \
+        GBIk_pget (Iter, matrix) ;                                           \
     }                                                                       \
     else if (Iter->j == Iter->jj [matrix])                                  \
     {                                                                       \
         /* A (:,j) is the kth vector in the hypersparse matrix */           \
-        GBI_hget (Iter, matrix) ;                                           \
+        GBIk_pget_hyper (Iter, matrix) ;                                     \
     }                                                                       \
     else                                                                    \
     {                                                                       \
@@ -3510,18 +3851,44 @@ static inline void GBI2s_init
     }                                                                       \
 }
 
+//----------------------------------------
+// get the start and end of A [matrix] (:,j)
+//----------------------------------------
+
+// get the pointers to the next vector A (:,j), not hypersparse
+#define GBIk_pget(Iter,matrix)                                               \
+{                                                                           \
+    Iter->pstart [matrix] = (Iter->p [matrix]) [Iter->j  ] ;                \
+    Iter->pend   [matrix] = (Iter->p [matrix]) [Iter->j+1] ;                \
+}
+
+// get the pointers to the kth vector A (:,j), hypersparse
+#define GBIk_pget_hyper(Iter,matrix)                                         \
+{                                                                           \
+    Iter->pstart [matrix] = (Iter->p [matrix]) [Iter->k [matrix]  ] ;       \
+    Iter->pend   [matrix] = (Iter->p [matrix]) [Iter->k [matrix]+1] ;       \
+}
+
+// The GBI2* and GBI3* methods can iterate over standard or hypersparse
+// matrices, one of which may be an expanded scalar.  They cannot iterate over
+// any slice or hyperslice matrix.
+
+//----------------------------------------
+// while iterating over 3 matrices
+//----------------------------------------
+
 static inline bool GBI3_while
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
 
     if (Iter->any_hyper)
     { 
         // get next vector from A, B and/or C
-        GBI_jjget (Iter, 0) ;
-        GBI_jjget (Iter, 1) ;
-        GBI_jjget (Iter, 2) ;
+        GBIk_jjget (Iter, 0) ;
+        GBIk_jjget (Iter, 1) ;
+        GBIk_jjget (Iter, 2) ;
         Iter->j = GB_IMIN (Iter->jj [0], Iter->jj [1]) ;
         Iter->j = GB_IMIN (Iter->j     , Iter->jj [2]) ;
 
@@ -3529,9 +3896,9 @@ static inline bool GBI3_while
         if (Iter->j >= Iter->vdim) return (false) ;
 
         // get the start and end of each vector of A, B, and C
-        GBI_phget (Iter, 0) ;
-        GBI_phget (Iter, 1) ;
-        GBI_phget (Iter, 2) ;
+        GBIk_phget (Iter, 0) ;
+        GBIk_phget (Iter, 1) ;
+        GBIk_phget (Iter, 2) ;
     }
     else
     { 
@@ -3539,18 +3906,22 @@ static inline bool GBI3_while
         if (Iter->j >= Iter->vdim) return (false) ;
 
         // get the start and end of the jth vector of A, B, and C
-        GBI_pget (Iter, 0) ;
-        GBI_pget (Iter, 1) ;
-        GBI_pget (Iter, 2) ;
+        GBIk_pget (Iter, 0) ;
+        GBIk_pget (Iter, 1) ;
+        GBIk_pget (Iter, 2) ;
     }
 
     // end of matrix has not yet been reached
     return (true) ;
 }
 
+//----------------------------------------
+// while iterating over 2 matrices and a scalar
+//----------------------------------------
+
 static inline bool GBI3s_while
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
 
@@ -3560,41 +3931,45 @@ static inline bool GBI3s_while
     if (Iter->any_hyper)
     { 
         // get next vector from A and/or B
-        GBI_jjget (Iter, 0) ;
-        GBI_jjget (Iter, 1) ;
-        GBI_phget (Iter, 0) ;
-        GBI_phget (Iter, 1) ;
+        GBIk_jjget (Iter, 0) ;
+        GBIk_jjget (Iter, 1) ;
+        GBIk_phget (Iter, 0) ;
+        GBIk_phget (Iter, 1) ;
     }
     else
     { 
         // get the start and end of the jth vector of A and B
-        GBI_pget (Iter, 0) ;
-        GBI_pget (Iter, 1) ;
+        GBIk_pget (Iter, 0) ;
+        GBIk_pget (Iter, 1) ;
     }
 
     // end of matrix has not yet been reached
     return (true) ;
 }
 
+//----------------------------------------
+// while iterating over 2 matrices
+//----------------------------------------
+
 static inline bool GBI2_while
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
 
     if (Iter->any_hyper)
     { 
         // get next vector from A and/or B
-        GBI_jjget (Iter, 0) ;
-        GBI_jjget (Iter, 1) ;
+        GBIk_jjget (Iter, 0) ;
+        GBIk_jjget (Iter, 1) ;
         Iter->j = GB_IMIN (Iter->jj [0], Iter->jj [1]) ;
 
         // test if the end of the matrix has been reached
         if (Iter->j >= Iter->vdim) return (false) ;
 
         // get the start and end of each vector of A and B
-        GBI_phget (Iter, 0) ;
-        GBI_phget (Iter, 1) ;
+        GBIk_phget (Iter, 0) ;
+        GBIk_phget (Iter, 1) ;
     }
     else
     { 
@@ -3602,17 +3977,21 @@ static inline bool GBI2_while
         if (Iter->j >= Iter->vdim) return (false) ;
 
         // get the start and end of the jth vector of A and B
-        GBI_pget (Iter, 0) ;
-        GBI_pget (Iter, 1) ;
+        GBIk_pget (Iter, 0) ;
+        GBIk_pget (Iter, 1) ;
     }
 
     // end of matrix has not yet been reached
     return (true) ;
 }
 
+//----------------------------------------
+// while iterating over a matrix and a scalar
+//----------------------------------------
+
 static inline bool GBI2s_while
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
 
@@ -3622,65 +4001,36 @@ static inline bool GBI2s_while
     if (Iter->any_hyper)
     { 
         // get next vector from A
-        GBI_jjget (Iter, 0) ;
-        GBI_phget (Iter, 0) ;
+        GBIk_jjget (Iter, 0) ;
+        GBIk_phget (Iter, 0) ;
     }
     else
     { 
         // get the start and end of the jth vector of A and B
-        GBI_pget (Iter, 0) ;
+        GBIk_pget (Iter, 0) ;
     }
 
     // end of matrix has not yet been reached
     return (true) ;
 }
 
-static inline bool GBI1_while
-(
-    GBI_iterator *Iter
-)
-{
+//----------------------------------------
+// only used by GBI#_while:
+//----------------------------------------
 
-    if (Iter->any_hyper)
-    { 
-        // test if the end of the matrix has been reached
-        if (Iter->k [0] >= Iter->nvec [0]) return (false) ;
-
-        // get next vector from A
-        Iter->j = (Iter->h [0]) [Iter->k [0]] ;
-
-        // get the start and end of the next vector of A
-        GBI_hget (Iter, 0) ;
-
-    }
-    else
-    { 
-        // test if the end of the matrix has been reached
-        if (Iter->j >= Iter->vdim) return (false) ;
-
-        // get the start and end of the jth vector of A
-        GBI_pget (Iter, 0) ;
-    }
-
-    // end of matrix has not yet been reached
-    return (true) ;
-}
-
-// The GBI_jjget, GBI_pget, GBI_hget, and GBI_phget macros
-// are only directly used in the GBI#_while functions defined above.
-#undef GBI_jjget
-#undef GBI_pget
-#undef GBI_hget
-#undef GBI_phget
+#undef GBIk_jjget
+#undef GBIk_phget
+#undef GBIk_pget
+#undef GBIk_pget_hyper
 
 //------------------------------------------------------------------------------
 // GBI#_next
 //------------------------------------------------------------------------------
 
 // Advance to the next vector of one, two, or three matrices.  The inline
-// GBI#_next functions are only used in the GB_each_vector* macros.
+// GBI#_next functions are only used in the GB_*each* macros.
 
-#define GBI_jnext(Iter,matrix)                                                \
+#define GBIk_jnext(Iter,matrix)                                                \
 {                                                                             \
     if (!(Iter->is_hyper [matrix]))                                           \
     {                                                                         \
@@ -3697,15 +4047,15 @@ static inline bool GBI1_while
 
 static inline void GBI3_next
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
     if (Iter->any_hyper)
     { 
         // advance to the next vector of A, B, and/or C
-        GBI_jnext (Iter, 0) ;
-        GBI_jnext (Iter, 1) ;
-        GBI_jnext (Iter, 2) ;
+        GBIk_jnext (Iter, 0) ;
+        GBIk_jnext (Iter, 1) ;
+        GBIk_jnext (Iter, 2) ;
     }
     else
     { 
@@ -3716,29 +4066,29 @@ static inline void GBI3_next
 
 static inline void GBI3s_next
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
     if (Iter->any_hyper)
     { 
         // advance to the next vector of A, and/or B
-        GBI_jnext (Iter, 0) ;
-        GBI_jnext (Iter, 1) ;
+        GBIk_jnext (Iter, 0) ;
+        GBIk_jnext (Iter, 1) ;
     }
-    // C is an implicit scalar
+    // C is an expanded scalar, so it always advances
     Iter->j++ ;
 }
 
 static inline void GBI2_next
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
     if (Iter->any_hyper)
     { 
         // advance to the next vector of A and/or B
-        GBI_jnext (Iter, 0) ;
-        GBI_jnext (Iter, 1) ;
+        GBIk_jnext (Iter, 0) ;
+        GBIk_jnext (Iter, 1) ;
     }
     else
     { 
@@ -3749,46 +4099,29 @@ static inline void GBI2_next
 
 static inline void GBI2s_next
 (
-    GBI_iterator *Iter
+    GBIk_multi_iterator *Iter
 )
 {
     if (Iter->any_hyper)
     { 
         // advance to the next vector of A
-        GBI_jnext (Iter, 0) ;
+        GBIk_jnext (Iter, 0) ;
     }
-    // B is an implicit scalar
+    // B is an expanded scalar, so it always advances
     Iter->j++ ;
 }
 
-static inline void GBI1_next
-(
-    GBI_iterator *Iter
-)
-{
-    if (Iter->any_hyper)
-    { 
-        // always advance to the next vector of A
-        Iter->k [0]++ ;
-    }
-    else
-    { 
-        // A is non-hypersparse
-        Iter->j++ ;
-    }
-}
-
-// the GBI_jnext* macros are only used in the GBI#_next functions above.
-#undef GBI_jnext
+// the GBIk_jnext* macros are only used in the GBI#_next functions above.
+#undef GBIk_jnext
 
 //------------------------------------------------------------------------------
-// GBI#_initj
+// GBI#_jth_iteration
 //------------------------------------------------------------------------------
 
 // Get the column at the current iteration, and the start/end pointers
 // of column j in the three matrices A, B, and C.
-
-#define GBI3_initj(Iter,j_,pstart0,pend0,pstart1,pend1,pstart2,pend2)  \
+#define GBI3_jth_iteration(Iter,j_,pstart0,pend0,pstart1,pend1,pstart2,pend2)  \
+    int64_t                                                            \
     j_      = Iter.j,                                                  \
     pstart0 = Iter.pstart [0],                                         \
     pend0   = Iter.pend   [0],                                         \
@@ -3799,70 +4132,49 @@ static inline void GBI1_next
 
 // get the column at the current iteration, and the start/end pointers
 // of column j in the two matrices A and B
-
-#define GBI2_initj(Iter,j_,pstart0,pend0,pstart1,pend1)                \
+#define GBI2_jth_iteration(Iter,j_,pstart0,pend0,pstart1,pend1)        \
+    int64_t                                                            \
     j_      = Iter.j,                                                  \
     pstart0 = Iter.pstart [0],                                         \
     pend0   = Iter.pend   [0],                                         \
     pstart1 = Iter.pstart [1],                                         \
     pend1   = Iter.pend   [1]
 
-// get the column at the current iteration, and the start/end pointers
-// of column j in the matrix A
+// these are the same:
+#define GBI3s_jth_iteration(Iter,j_,pstart0,pend0,pstart1,pend1)       \
+         GBI2_jth_iteration(Iter,j_,pstart0,pend0,pstart1,pend1)
 
-#define GBI1_initj(Iter,j_,pstart0,pend0)                              \
+#define GBI2s_jth_iteration(Iter,j_,pstart0,pend0)                     \
+    int64_t                                                            \
     j_      = Iter.j,                                                  \
     pstart0 = Iter.pstart [0],                                         \
-    pend0   = Iter.pend   [0]
+    pend0   = Iter.pend   [0]                                          \
 
 //------------------------------------------------------------------------------
 // for-loop control: iterate over the vectors and entries of 1, 2, or 3 matrices
 //------------------------------------------------------------------------------
 
-// iterate over one matrix A
-#define GB_each_vector(Iter,A)                                                 \
-    GBI1_init (&Iter,A)     ; GBI1_while (&Iter)  ; GBI1_next (&Iter)
+// iterate over the vectors in the union of two matrices A and B
+#define GBI2_for_each_vector(A,B)                                              \
+    GBIk_multi_iterator Iter ;                                                  \
+    for (GBI2_init (&Iter,A,B) ; GBI2_while (&Iter) ; GBI2_next (&Iter))
 
-#define GB_for_each_vector(A)                                                  \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector (Iter, A))
+// iterate over the vectors in the union of three matrices A, B, and C
+#define GBI3_for_each_vector(A,B,C)                                            \
+    GBIk_multi_iterator Iter ;                                                  \
+    for (GBI3_init (&Iter,A,B,C) ; GBI3_while (&Iter) ; GBI3_next (&Iter))
 
-// iterate the union of two matrices A and B
-#define GB_each_vector2(Iter,A,B)                                              \
-    GBI2_init (&Iter,A,B)   ; GBI2_while (&Iter)  ; GBI2_next (&Iter)
+// iterate over the vectors of a matrix A and an expanded scalar
+// (note the scalar arg is not used; it is for code readability only):
+#define GBI2s_for_each_vector(A,scalar)                                        \
+    GBIk_multi_iterator Iter ;                                                  \
+    for (GBI2s_init (&Iter,A) ; GBI2s_while (&Iter) ; GBI2s_next (&Iter))
 
-#define GB_for_each_vector2(A,B)                                               \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector2 (Iter, A, B))
-
-// iterate the union of three matrices A, B, and C
-#define GB_each_vector3(Iter,A,B,C)                                            \
-    GBI3_init (&Iter,A,B,C) ; GBI3_while (&Iter)  ; GBI3_next (&Iter)
-
-#define GB_for_each_vector3(A,B,C)                                             \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector3 (Iter, A, B, C))
-
-// iterate over a matrix A and an implicit expanded scalar
-#define GB_each_vector2s(Iter,A)                                               \
-    GBI2s_init (&Iter,A)    ; GBI2s_while (&Iter) ; GBI2s_next (&Iter)
-
-#define GB_for_each_vector2s(A)                                                \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector2s (Iter, A))
-
-// iterate over two matrices A and B, and an implicit expanded scalar
-#define GB_each_vector3s(Iter,A,B)                                             \
-    GBI3s_init (&Iter,A,B)  ; GBI3s_while (&Iter) ; GBI3s_next (&Iter)
-
-#define GB_for_each_vector3s(A,B)                                              \
-    GBI_iterator Iter ;                                                     \
-    for (GB_each_vector3s (Iter, A, B))
-
-// iterate over a vector of a single matrix
-#define GB_for_each_entry(j,p,pend)                                            \
-    int64_t GBI1_initj (Iter, j, p, pend) ;                                 \
-    for ( ; (p) < (pend) ; (p)++)
+// iterate over the vectors of two matrices A and B, and an expanded scalar
+// (note the scalar arg is not used; it is for code readability only):
+#define GBI3s_for_each_vector(A,B,scalar)                                      \
+    GBIk_multi_iterator Iter ;                                                  \
+    for (GBI3s_init (&Iter,A,B) ; GBI3s_while (&Iter) ; GBI3s_next (&Iter))
 
 //------------------------------------------------------------------------------
 // GB_jstartup:  start the formation of a matrix
@@ -3896,9 +4208,6 @@ static inline void GB_jstartup
 //------------------------------------------------------------------------------
 // GB_jappend:  append a new vector to the end of a matrix
 //------------------------------------------------------------------------------
-
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // Append a new vector to the end of a matrix C.
 
@@ -5789,6 +6098,7 @@ inline void GB_copy_user_user (void *z, const void *x, size_t s)
 #define GB_DEF_GxB_LXOR_BOOL_MONOID_add  GB_LXOR_f_BOOL
 #define GB_DEF_GxB_EQ_BOOL_MONOID_add    GB_EQ_f_BOOL
 
+// monoid identity values
 #define GB_DEF_GxB_MIN_INT8_MONOID_identity   INT8_MAX
 #define GB_DEF_GxB_MIN_UINT8_MONOID_identity  UINT8_MAX
 #define GB_DEF_GxB_MIN_INT16_MONOID_identity  INT16_MAX
@@ -5838,6 +6148,58 @@ inline void GB_copy_user_user (void *z, const void *x, size_t s)
 #define GB_DEF_GxB_LXOR_BOOL_MONOID_identity   false
 #define GB_DEF_GxB_EQ_BOOL_MONOID_identity     true
 
+// monoid terminal values
+#define GB_DEF_GxB_MIN_INT8_MONOID_terminal   INT8_MIN
+#define GB_DEF_GxB_MIN_UINT8_MONOID_terminal  0
+#define GB_DEF_GxB_MIN_INT16_MONOID_terminal  INT16_MIN
+#define GB_DEF_GxB_MIN_UINT16_MONOID_terminal 0
+#define GB_DEF_GxB_MIN_INT32_MONOID_terminal  INT32_MIN
+#define GB_DEF_GxB_MIN_UINT32_MONOID_terminal 0
+#define GB_DEF_GxB_MIN_INT64_MONOID_terminal  INT64_MIN
+#define GB_DEF_GxB_MIN_UINT64_MONOID_terminal 0
+#define GB_DEF_GxB_MIN_FP32_MONOID_terminal   (-INFINITY)
+#define GB_DEF_GxB_MIN_FP64_MONOID_terminal   (-INFINITY)
+
+#define GB_DEF_GxB_MAX_INT8_MONOID_terminal   INT8_MAX
+#define GB_DEF_GxB_MAX_UINT8_MONOID_terminal  UINT8_MAX
+#define GB_DEF_GxB_MAX_INT16_MONOID_terminal  INT16_MAX
+#define GB_DEF_GxB_MAX_UINT16_MONOID_terminal UINT16_MAX
+#define GB_DEF_GxB_MAX_INT32_MONOID_terminal  INT32_MAX
+#define GB_DEF_GxB_MAX_UINT32_MONOID_terminal UINT32_MAX
+#define GB_DEF_GxB_MAX_INT64_MONOID_terminal  INT64_MAX
+#define GB_DEF_GxB_MAX_UINT64_MONOID_terminal UINT64_MAX
+#define GB_DEF_GxB_MAX_FP32_MONOID_terminal   INFINITY
+#define GB_DEF_GxB_MAX_FP64_MONOID_terminal   INFINITY
+
+// no #define GB_DEF_GxB_PLUS_INT8_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_UINT8_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_INT16_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_UINT16_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_INT32_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_UINT32_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_INT64_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_UINT64_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_FP32_MONOID_terminal
+// no #define GB_DEF_GxB_PLUS_FP64_MONOID_terminal
+
+// no #define GB_DEF_GxB_TIMES_INT8_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_UINT8_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_INT16_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_UINT16_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_INT32_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_UINT32_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_INT64_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_UINT64_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_FP32_MONOID_terminal
+// no #define GB_DEF_GxB_TIMES_FP64_MONOID_terminal
+
+#define GB_DEF_GxB_LOR_BOOL_MONOID_terminal    true
+#define GB_DEF_GxB_LAND_BOOL_MONOID_terminal   false
+// no #define GB_DEF_GxB_LXOR_BOOL_MONOID_terminal
+// no #define GB_DEF_GxB_EQ_BOOL_MONOID_terminal
+
+//------------------------------------------------------------------------------
+
 GrB_Info GB_AxB_user
 (
     const GrB_Desc_Value AxB_method,
@@ -5847,7 +6209,10 @@ GrB_Info GB_AxB_user
     const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy,                // if true, A and B have been swapped
+    bool flipxy,
+
+    // for dot method only:
+    const bool GB_mask_comp,
 
     // for heap method only:
     int64_t *restrict List,
@@ -5856,9 +6221,7 @@ GrB_Info GB_AxB_user
     const int64_t bjnz_max,
 
     // for Gustavson's method only:
-    GB_Sauna Sauna,
-
-    GB_Context Context
+    GB_Sauna Sauna
 ) ;
 
 //------------------------------------------------------------------------------
@@ -5867,15 +6230,28 @@ GrB_Info GB_AxB_user
 
 void GB_Sauna_free                  // free a Sauna
 (
-    GB_Sauna *Sauna_Handle          // handle of Sauna to free
+    int Sauna_id                    // id of Sauna to free
 ) ;
 
 GrB_Info GB_Sauna_alloc             // create a Sauna
 (
-    GB_Sauna *Sauna_Handle,         // handle of Sauna to create
+    int Sauna_id,                   // id of Sauna to create
     int64_t Sauna_n,                // size of the Sauna
-    size_t Sauna_size,              // size of each entry in the Sauna
+    size_t Sauna_size               // size of each entry in the Sauna
+) ;
+
+GrB_Info GB_Sauna_acquire
+(
+    int nthreads,           // number of internal threads that need a Sauna
+    int *Sauna_ids,         // size nthreads, the Sauna id's acquired
+    GrB_Desc_Value *AxB_methods_used,       // size nthreads
     GB_Context Context
+) ;
+
+GrB_Info GB_Sauna_release
+(
+    int nthreads,           // number of internal threads that have a Sauna
+    int *Sauna_ids          // size nthreads, the Sauna id's to release
 ) ;
 
 #ifndef NDEBUG
@@ -5899,6 +6275,7 @@ static inline int64_t GB_Sauna_reset
 )
 { 
 
+    ASSERT (Sauna != NULL) ;
     Sauna->Sauna_hiwater += reset ;     // increment the Sauna_hiwater
 
     if (Sauna->Sauna_hiwater + range <= 0 || reset == 0)
@@ -5916,6 +6293,54 @@ static inline int64_t GB_Sauna_reset
 
     return (Sauna->Sauna_hiwater) ;
 }
+
+//------------------------------------------------------------------------------
+// import/export
+//------------------------------------------------------------------------------
+
+#define GB_IMPORT_CHECK                                         \
+    GB_RETURN_IF_NULL (A) ;                                     \
+    (*A) = NULL ;                                               \
+    GB_RETURN_IF_NULL_OR_FAULTY (type) ;                        \
+    if (nrows > GB_INDEX_MAX)                                   \
+    {                                                           \
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,           \
+            "problem too large: nrows "GBu" exceeds "GBu,       \
+            nrows, GB_INDEX_MAX))) ;                            \
+    }                                                           \
+    if (ncols > GB_INDEX_MAX)                                   \
+    {                                                           \
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,           \
+            "problem too large: ncols "GBu" exceeds "GBu,       \
+            ncols, GB_INDEX_MAX))) ;                            \
+    }                                                           \
+    if (nvals > GB_INDEX_MAX)                                   \
+    {                                                           \
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,           \
+            "problem too large: nvals "GBu" exceeds "GBu,       \
+            nvals, GB_INDEX_MAX))) ;                            \
+    }                                                           \
+    /* get the descriptor */                                    \
+    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5) ;
+
+#define GB_EXPORT_CHECK                                         \
+    GB_RETURN_IF_NULL (A) ;                                     \
+    GB_RETURN_IF_NULL_OR_FAULTY (*A) ;                          \
+    ASSERT_OK (GB_check (*A, "A to export", GB0)) ;             \
+    /* finish any pending work */                               \
+    GB_WAIT (*A) ;                                              \
+    /* check these after forcing completion */                  \
+    GB_RETURN_IF_NULL (type) ;                                  \
+    GB_RETURN_IF_NULL (nrows) ;                                 \
+    GB_RETURN_IF_NULL (ncols) ;                                 \
+    GB_RETURN_IF_NULL (nvals) ;                                 \
+    /* get the descriptor */                                    \
+    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5) ;   \
+    /* export basic attributes */                               \
+    (*type) = (*A)->type ;                                      \
+    (*nrows) = GB_NROWS (*A) ;                                  \
+    (*ncols) = GB_NCOLS (*A) ;                                  \
+    (*nvals) = GB_NNZ (*A) ;
 
 #endif
 

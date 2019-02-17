@@ -2,7 +2,7 @@
 // GB_add: 'add' two matrices using an operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -48,6 +48,11 @@
 
 // FUTURE: this could be faster with built-in operators and types.
 
+// PARALLEL: use 1D parallelism here.  Either do the work in symbolic/numeric
+// phases (one to compute nnz in each column, one to fill the output), or
+// compute submatrices and then concatenate them.  Probably do the former.
+// See also GB_emult.
+
 #include "GB.h"
 
 GrB_Info GB_add             // C = A+B
@@ -80,24 +85,44 @@ GrB_Info GB_add             // C = A+B
     ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
     ASSERT (GB_Type_compatible (B->type, op->ytype)) ;
 
-    (*Chandle) = NULL ;
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // allocate the output matrix C
     //--------------------------------------------------------------------------
 
+    (*Chandle) = NULL ;
+
     // C is hypersparse if both A and B are (contrast with GrB_Matrix_emult).
     // C acquires the same hyperatio as A.
 
     bool C_is_hyper = (A->is_hyper && B->is_hyper) && (A->vdim > 1) ;
+    int64_t cplen = -1 ;
+
+    if (C_is_hyper)
+    {
+        if (A->nvec_nonempty < 0)
+        { 
+            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+        }
+        if (B->nvec_nonempty < 0)
+        { 
+            B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+        }
+        cplen = A->nvec_nonempty + B->nvec_nonempty ;
+    }
 
     // [ allocate the result C; C->p is malloc'd
     // worst case nnz (C) is nnz (A) + nnz (B)
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, ctype, A->vlen, A->vdim, GB_Ap_malloc, C_is_csc,
-        GB_SAME_HYPER_AS (C_is_hyper), A->hyper_ratio,
-        A->nvec_nonempty + B->nvec_nonempty, GB_NNZ (A) + GB_NNZ (B), true) ;
+        GB_SAME_HYPER_AS (C_is_hyper), A->hyper_ratio, cplen,
+        GB_NNZ (A) + GB_NNZ (B), true, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -140,14 +165,14 @@ GrB_Info GB_add             // C = A+B
         size_t s = ctype->size ;
 
         // for each vector of A and B
-        GB_for_each_vector2 (A, B)
+        GBI2_for_each_vector (A, B)
         {
 
             //------------------------------------------------------------------
             // get the next column, A (:,j) and B (:j)
             //------------------------------------------------------------------
 
-            int64_t GBI2_initj (Iter, j, pa, pa_end, pb, pb_end) ;
+            GBI2_jth_iteration (Iter, j, pa, pa_end, pb, pb_end) ;
 
             //------------------------------------------------------------------
             // merge A (:,j) and B (:,j) while both have entries
@@ -258,14 +283,14 @@ GrB_Info GB_add             // C = A+B
         cast_Z_to_C = GB_cast_factory (ctype->code,     op->ztype->code) ;
 
         // for each vector of A and B
-        GB_for_each_vector2 (A, B)
+        GBI2_for_each_vector (A, B)
         {
 
             //------------------------------------------------------------------
             // get the next column, A (:,j) and B (:j)
             //------------------------------------------------------------------
 
-            int64_t GBI2_initj (Iter, j, pa, pa_end, pb, pb_end) ;
+            GBI2_jth_iteration (Iter, j, pa, pa_end, pb, pb_end) ;
 
             //------------------------------------------------------------------
             // merge A (:,j) and B (:,j) while both have entries
