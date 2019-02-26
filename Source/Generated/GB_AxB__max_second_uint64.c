@@ -25,7 +25,7 @@
 // Identity: 0 (where cij = GB_IMAX (cij,identity) does not change cij)
 // Multiply: z = y
 // Add:      cij = GB_IMAX (cij,z)
-// Terminal: if (z == UINT64_MAX) break ;
+// Terminal: if (cij == UINT64_MAX) break ;
 
 #define GB_XTYPE \
     uint64_t
@@ -34,8 +34,8 @@
 #define GB_HANDLE_FLIPXY \
     0
 
-#define GB_DOT_TERMINAL(z) \
-    if (z == UINT64_MAX) break ;
+#define GB_DOT_TERMINAL(cij) \
+    if (cij == UINT64_MAX) break ;
 
 #define GB_MULTOP(z,x,y) \
     z = y
@@ -141,15 +141,6 @@ GrB_Info GB_AgusB__max_second_uint64
 // save the value of C(i,j)
 #define GB_DOT_SAVE            \
     Cx [cnz] = cij ;
-
-#define GB_DOT_WORK_TYPE \
-    GB_btype
-
-#define GB_DOT_WORK(k) Work [k]
-
-// Work [k] = Bx [pB]
-#define GB_DOT_SCATTER \
-    Work [k] = Bx [pB] ;
 
 GrB_Info GB_AdotB__max_second_uint64
 (

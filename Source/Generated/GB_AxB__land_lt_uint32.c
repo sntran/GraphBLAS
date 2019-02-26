@@ -25,7 +25,7 @@
 // Identity: true (where cij = (cij && identity) does not change cij)
 // Multiply: z = x < y
 // Add:      cij = (cij && z)
-// Terminal: if (z == false) break ;
+// Terminal: if (cij == false) break ;
 
 #define GB_XTYPE \
     uint32_t
@@ -34,8 +34,8 @@
 #define GB_HANDLE_FLIPXY \
     0
 
-#define GB_DOT_TERMINAL(z) \
-    if (z == false) break ;
+#define GB_DOT_TERMINAL(cij) \
+    if (cij == false) break ;
 
 #define GB_MULTOP(z,x,y) \
     z = x < y
@@ -141,15 +141,6 @@ GrB_Info GB_AgusB__land_lt_uint32
 // save the value of C(i,j)
 #define GB_DOT_SAVE            \
     Cx [cnz] = cij ;
-
-#define GB_DOT_WORK_TYPE \
-    GB_btype
-
-#define GB_DOT_WORK(k) Work [k]
-
-// Work [k] = Bx [pB]
-#define GB_DOT_SCATTER \
-    Work [k] = Bx [pB] ;
 
 GrB_Info GB_AdotB__land_lt_uint32
 (

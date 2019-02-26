@@ -198,6 +198,5 @@ void mexFunction
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

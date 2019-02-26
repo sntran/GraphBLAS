@@ -168,7 +168,7 @@ GrB_Info GB_build_factory           // build a matrix
     size_t ssize = GB_code_size (scode, tsize) ;
 
     // T->x is allocated fresh but iwork is transplanted in T->i, when done.
-    // This malloc is typically free since jwork has just been freed in the
+    // This allocation is typically free since jwork has just been freed in the
     // caller, GB_builder.  T->x has size tnz*tsize and jwork is size
     // ijlen*sizeof(int64_t).  tnz <= ijlen always holds, and tsize <=
     // size(int64_t) holds for all built-in types.
@@ -220,12 +220,14 @@ GrB_Info GB_build_factory           // build a matrix
         // GB_INCLUDE_SECOND_OPERATOR definition, so they do not appear in
         // GB_reduce_to_* where the FIRST and SECOND operators are not needed.
 
+        // Early exit cannot be exploited, so the terminal value is ignored.
+
         #define GB_INCLUDE_SECOND_OPERATOR
 
         bool done = false ;
 
         // define the worker for the switch factory
-        #define GB_WORKER(type)                                             \
+        #define GB_ASSOC_WORKER(type,ignore)                                \
         {                                                                   \
             const type *restrict sx = (type *) S ;                          \
             type *restrict tx = (type *) Tx ;                               \
@@ -249,7 +251,8 @@ GrB_Info GB_build_factory           // build a matrix
                 }                                                           \
             }                                                               \
             done = true ;                                                   \
-        }
+        }                                                                   \
+        break ;
 
         //----------------------------------------------------------------------
         // launch the switch factory

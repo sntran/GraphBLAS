@@ -34,7 +34,7 @@
 #define GB_HANDLE_FLIPXY \
     0
 
-#define GB_DOT_TERMINAL(z) \
+#define GB_DOT_TERMINAL(cij) \
     ;
 
 #define GB_MULTOP(z,x,y) \
@@ -141,15 +141,6 @@ GrB_Info GB_AgusB__plus_iseq_fp32
 // save the value of C(i,j)
 #define GB_DOT_SAVE            \
     Cx [cnz] = cij ;
-
-#define GB_DOT_WORK_TYPE \
-    GB_btype
-
-#define GB_DOT_WORK(k) Work [k]
-
-// Work [k] = Bx [pB]
-#define GB_DOT_SCATTER \
-    Work [k] = Bx [pB] ;
 
 GrB_Info GB_AdotB__plus_iseq_fp32
 (

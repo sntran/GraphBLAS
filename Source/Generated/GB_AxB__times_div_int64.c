@@ -25,7 +25,7 @@
 // Identity: 1 (where cij *= identity does not change cij)
 // Multiply: z = GB_IDIV(x,y)
 // Add:      cij *= z
-// Terminal: ;
+// Terminal: if (cij == 0) break ;
 
 #define GB_XTYPE \
     int64_t
@@ -34,8 +34,8 @@
 #define GB_HANDLE_FLIPXY \
     1
 
-#define GB_DOT_TERMINAL(z) \
-    ;
+#define GB_DOT_TERMINAL(cij) \
+    if (cij == 0) break ;
 
 #define GB_MULTOP(z,x,y) \
     z = GB_IDIV(x,y)
@@ -141,15 +141,6 @@ GrB_Info GB_AgusB__times_div_int64
 // save the value of C(i,j)
 #define GB_DOT_SAVE            \
     Cx [cnz] = cij ;
-
-#define GB_DOT_WORK_TYPE \
-    GB_btype
-
-#define GB_DOT_WORK(k) Work [k]
-
-// Work [k] = Bx [pB]
-#define GB_DOT_SCATTER \
-    Work [k] = Bx [pB] ;
 
 GrB_Info GB_AdotB__times_div_int64
 (

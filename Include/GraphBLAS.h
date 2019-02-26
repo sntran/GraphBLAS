@@ -2,7 +2,7 @@
 // GraphBLAS.h: definitions for the GraphBLAS package
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -70,7 +70,7 @@
     (((major)*1000ULL + (minor))*1000ULL + (sub))
 
 // The version of this implementation, and the GraphBLAS API version:
-#define GxB_DATE "Feb 16, 2019 (BETA1)"
+#define GxB_DATE "Feb 25, 2019"
 #define GxB_IMPLEMENTATION_MAJOR 2
 #define GxB_IMPLEMENTATION_MINOR 3
 #define GxB_IMPLEMENTATION_SUB   0
@@ -86,13 +86,13 @@
 
 // The 'about' string the describes this particular implementation of GraphBLAS:
 #define GxB_ABOUT \
-"SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, "                   \
+"SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, "                   \
 "All Rights Reserved.\n"                                                     \
 "http://suitesparse.com  Dept of Computer Sci. & Eng, Texas A&M University\n"
 
 // The GraphBLAS license for this particular implementation of GraphBLAS:
 #define GxB_LICENSE \
-"SuiteSparse:GraphBLAS, Copyright 2017-2018, Timothy A. Davis\n"             \
+"SuiteSparse:GraphBLAS, Copyright 2017-2019, Timothy A. Davis\n"             \
 "\n"                                                                         \
 "Licensed under the Apache License, Version 2.0 (the \"License\");\n"        \
 "you may not use SuiteSparse:GraphBLAS except in compliance with the\n"      \
@@ -278,6 +278,9 @@ GrB_Info ;
 // the user application.  With non-blocking mode, operations can be left
 // pending, and are computed only when needed.
 
+// The extension GxB_init does the work of GrB_init, but it also defines the
+// memory management functions that SuiteSparse:GraphBLAS will use internally.
+
 // The GrB_wait ( ) function forces all pending operations to complete.
 // Blocking mode is as if GrB_wait is called whenever a GraphBLAS method or
 // operation returns to the user.
@@ -314,6 +317,26 @@ GrB_Mode ;
 GrB_Info GrB_init           // start up GraphBLAS
 (
     const GrB_Mode mode     // blocking or non-blocking mode
+) ;
+
+// SPEC: GxB_init is an extension to the spec.  It does the same thing as
+// GrB_init, but it also defines the memory management functions that GraphBLAS
+// will use internally.  The functions can only be defined once, in GxB_init.
+// The GxB_*import* and GxB_*export* functions require that the user
+// application and the GraphBLAS library agree on the same
+// malloc/calloc/realloc/free functions to use, thus GxB_init is a required
+// so the user application can define them for SuiteSparse:GraphBLAS.
+
+GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
+(
+    const GrB_Mode mode,    // blocking or non-blocking mode
+
+    // pointers to memory management functions.  If any are NULL, use the
+    // built-in ANSI C11 functions.
+    void * (* user_malloc_function  ) (size_t),
+    void * (* user_calloc_function  ) (size_t, size_t),
+    void * (* user_realloc_function ) (void *, size_t),
+    void   (* user_free_function    ) (void *)
 ) ;
 
 // In non-blocking mode, GraphBLAS operations need not complete until their
@@ -1096,8 +1119,155 @@ GrB_Info GrB_Monoid_new             // create a monoid
     )                                               \
     (monoid, op, identity) ;
 
-// SPEC: GxB_Monoid_operator is an extension to the spec
+// GxB_Monoid_terminal_new is identical to GrB_Monoid_new, except that a
+// terminal value can be specified.  The terminal may be NULL, which indicates
+// no terminal value (and in this case, it is identical to GrB_Monoid_new).
+// The terminal value, if not NULL, must have the same type as the identity.
 
+GrB_Info GxB_Monoid_terminal_new_BOOL        // create a new boolean monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const bool identity,            // identity value of the monoid
+    const bool terminal             // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT8        // create a new int8 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int8_t identity,          // identity value of the monoid
+    const int8_t terminal           // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT8       // create a new uint8 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint8_t identity,         // identity value of the monoid
+    const uint8_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT16       // create a new int16 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int16_t identity,         // identity value of the monoid
+    const int16_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT16      // create a new uint16 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint16_t identity,        // identity value of the monoid
+    const uint16_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT32       // create a new int32 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int32_t identity,         // identity value of the monoid
+    const int32_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT32      // create a new uint32 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint32_t identity,        // identity value of the monoid
+    const uint32_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT64       // create a new int64 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int64_t identity,         // identity value of the monoid
+    const int64_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT64      // create a new uint64 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint64_t identity,        // identity value of the monoid
+    const uint64_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_FP32        // create a new float monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const float identity,           // identity value of the monoid
+    const float terminal            // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_FP64        // create a new double monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const double identity,          // identity value of the monoid
+    const double terminal           // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UDT    // create a monoid with a user type
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const void *identity,           // identity value of the monoid
+    const void *terminal            // terminal value of the monoid
+) ;
+
+// Type-generic method for creating a new monoid with a terminal value:
+
+/*
+
+GrB_Info GxB_Monoid_terminal_new             // create a monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const <type> identity,          // identity value of the monoid
+    const <type> terminal           // terminal value of the monoid
+) ;
+
+*/
+
+#define GxB_Monoid_terminal_new(monoid,op,identity,terminal)    \
+    _Generic                                                    \
+    (                                                           \
+        (identity),                                             \
+        const bool     : GxB_Monoid_terminal_new_BOOL   ,       \
+              bool     : GxB_Monoid_terminal_new_BOOL   ,       \
+        const int8_t   : GxB_Monoid_terminal_new_INT8   ,       \
+              int8_t   : GxB_Monoid_terminal_new_INT8   ,       \
+        const uint8_t  : GxB_Monoid_terminal_new_UINT8  ,       \
+              uint8_t  : GxB_Monoid_terminal_new_UINT8  ,       \
+        const int16_t  : GxB_Monoid_terminal_new_INT16  ,       \
+              int16_t  : GxB_Monoid_terminal_new_INT16  ,       \
+        const uint16_t : GxB_Monoid_terminal_new_UINT16 ,       \
+              uint16_t : GxB_Monoid_terminal_new_UINT16 ,       \
+        const int32_t  : GxB_Monoid_terminal_new_INT32  ,       \
+              int32_t  : GxB_Monoid_terminal_new_INT32  ,       \
+        const uint32_t : GxB_Monoid_terminal_new_UINT32 ,       \
+              uint32_t : GxB_Monoid_terminal_new_UINT32 ,       \
+        const int64_t  : GxB_Monoid_terminal_new_INT64  ,       \
+              int64_t  : GxB_Monoid_terminal_new_INT64  ,       \
+        const uint64_t : GxB_Monoid_terminal_new_UINT64 ,       \
+              uint64_t : GxB_Monoid_terminal_new_UINT64 ,       \
+        const float    : GxB_Monoid_terminal_new_FP32   ,       \
+              float    : GxB_Monoid_terminal_new_FP32   ,       \
+        const double   : GxB_Monoid_terminal_new_FP64   ,       \
+              double   : GxB_Monoid_terminal_new_FP64   ,       \
+        const void *   : GxB_Monoid_terminal_new_UDT    ,       \
+              void *   : GxB_Monoid_terminal_new_UDT            \
+    )                                                           \
+    (monoid, op, identity, terminal) ;
+
+// SPEC: GxB_Monoid_terminal_new is an extension to the spec
+
+// SPEC: GxB_Monoid_operator is an extension to the spec
 GrB_Info GxB_Monoid_operator        // return the monoid operator
 (
     GrB_BinaryOp *op,               // returns the binary op of the monoid
@@ -1105,10 +1275,18 @@ GrB_Info GxB_Monoid_operator        // return the monoid operator
 ) ;
 
 // SPEC: GxB_Monoid_identity is an extension to the spec
-
 GrB_Info GxB_Monoid_identity        // return the monoid identity
 (
     void *identity,                 // returns the identity of the monoid
+    const GrB_Monoid monoid         // monoid to query
+) ;
+
+// SPEC: GxB_Monoid_terminal is an extension to the spec
+GrB_Info GxB_Monoid_terminal        // return the monoid terminal
+(
+    bool *has_terminal,             // true if the monoid has a terminal value
+    void *terminal,                 // returns the terminal of the monoid,
+                                    // unmodified if has_terminal is false
     const GrB_Monoid monoid         // monoid to query
 ) ;
 
@@ -2611,8 +2789,8 @@ typedef enum
     GrB_INP1 = 3,   // descriptor for the second input of a method
 
     GxB_DESCRIPTOR_NTHREADS = GxB_NTHREADS,   // number of threads to use.
-                    // If <= GxB_DEFAULT, then GraphBLAS selects the number of
-                    // threads automatically.
+                        // If <= GxB_DEFAULT, then GraphBLAS selects the number
+                        // of threads automatically.
 
     // SuiteSparse:GraphBLAS extensions are given large values so they do not
     // conflict with future enum values added to the spec:
@@ -2749,11 +2927,12 @@ typedef enum            // for global options or matrix options
 
     GxB_THREADING = 4,  // thread library used for internal GraphBLAS threads
 
-    GxB_METHOD_NTHREADS = GxB_NTHREADS   // number of threads to use for
-                        // GrB_Matrix and GrB_Vector methods that do not use a
-                        // GrB_Descriptor (GrB_wait, GrB_*_dup, GrB_*_build,
-                        // GxB_*_resize, GrB_*_clear, GrB_*_nvals, and
-                        // GrB_*_exportTuples).
+    GxB_GLOBAL_NTHREADS = GxB_NTHREADS,  // max number of threads to use
+                        // If <= GxB_DEFAULT, then GraphBLAS selects the number
+                        // of threads automatically.
+
+    GxB_IS_HYPER = 6    // query a matrix to see if it hypersparse or not
+                        // (GxB_Matrix_Option_get only)
 
 } GxB_Option_Field ;
 
@@ -2761,11 +2940,7 @@ typedef enum            // for global options or matrix options
 typedef enum
 {
     GxB_BY_ROW = 0,     // CSR: compressed sparse row format
-    GxB_BY_COL = 1,     // CSC: compressed sparse column format
-    GxB_BY_EITHER = 3   // A is held in both CSR and CSC formats, and accessing
-                        // the row A(i,:) is just as efficient as accessing
-                        // A(:,j).  This is not yet implemented in SuiteSparse,
-                        // but the enum value is defined here for future use.
+    GxB_BY_COL = 1      // CSC: compressed sparse column format
 }
 GxB_Format_Value ;
 
@@ -2885,6 +3060,10 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      GxB_set (GrB_Matrix A, GxB_FORMAT, GxB_BY_ROW) ;
 //      GxB_set (GrB_Matrix A, GxB_FORMAT, GxB_BY_COL) ;
 //      GxB_get (GrB_Matrix A, GxB_FORMAT, GxB_Format_Value *s) ;
+
+// To get a matrix status (modified with GxB_HYPER, double h parameter):
+//
+//      GxB_get (GrB_Matrix A, GxB_IS_HYPER, bool *is_hyper) ;
 
 // To set/get a descriptor field:
 //
@@ -4928,56 +5107,56 @@ GrB_Info GrB_transpose              // C<Mask> = accum (C, A')
 extern GrB_Monoid
 
     // MIN monoids:
-    GxB_MIN_INT8_MONOID,          // identity: INT8_MAX
-    GxB_MIN_UINT8_MONOID,         // identity: UINT8_MAX
-    GxB_MIN_INT16_MONOID,         // identity: INT16_MAX
-    GxB_MIN_UINT16_MONOID,        // identity: UINT16_MAX
-    GxB_MIN_INT32_MONOID,         // identity: INT32_MAX
-    GxB_MIN_UINT32_MONOID,        // identity: UINT32_MAX
-    GxB_MIN_INT64_MONOID,         // identity: INT64_MAX
-    GxB_MIN_UINT64_MONOID,        // identity: UINT64_MAX
-    GxB_MIN_FP32_MONOID,          // identity: INFINITY
-    GxB_MIN_FP64_MONOID,          // identity: INFINITY
+    GxB_MIN_INT8_MONOID,          // identity: INT8_MAX     terminal: INT8_MIN
+    GxB_MIN_INT16_MONOID,         // identity: INT16_MAX    terminal: INT16_MIN
+    GxB_MIN_INT32_MONOID,         // identity: INT32_MAX    terminal: INT32_MIN
+    GxB_MIN_INT64_MONOID,         // identity: INT64_MAX    terminal: INT32_MIN
+    GxB_MIN_UINT8_MONOID,         // identity: UINT8_MAX    terminal: 0
+    GxB_MIN_UINT16_MONOID,        // identity: UINT16_MAX   terminal: 0
+    GxB_MIN_UINT32_MONOID,        // identity: UINT32_MAX   terminal: 0
+    GxB_MIN_UINT64_MONOID,        // identity: UINT64_MAX   terminal: 0
+    GxB_MIN_FP32_MONOID,          // identity: INFINITY     terminal: -INFINITY
+    GxB_MIN_FP64_MONOID,          // identity: INFINITY     terminal: -INFINITY
 
     // MAX monoids:
-    GxB_MAX_INT8_MONOID,          // identity: INT8_MIN
-    GxB_MAX_UINT8_MONOID,         // identity: 0
-    GxB_MAX_INT16_MONOID,         // identity: INT16_MIN
-    GxB_MAX_UINT16_MONOID,        // identity: 0
-    GxB_MAX_INT32_MONOID,         // identity: INT32_MIN
-    GxB_MAX_UINT32_MONOID,        // identity: 0
-    GxB_MAX_INT64_MONOID,         // identity: INT64_MIN
-    GxB_MAX_UINT64_MONOID,        // identity: 0
-    GxB_MAX_FP32_MONOID,          // identity: -INFINITY
-    GxB_MAX_FP64_MONOID,          // identity: -INFINITY
+    GxB_MAX_INT8_MONOID,          // identity: INT8_MIN     terminal: INT8_MAX
+    GxB_MAX_INT16_MONOID,         // identity: INT16_MIN    terminal: INT16_MAX
+    GxB_MAX_INT32_MONOID,         // identity: INT32_MIN    terminal: INT32_MAX
+    GxB_MAX_INT64_MONOID,         // identity: INT64_MIN    terminal: INT64_MAX
+    GxB_MAX_UINT8_MONOID,         // identity: 0            terminal: UINT8_MAX
+    GxB_MAX_UINT16_MONOID,        // identity: 0            terminal: UINT16_MAX
+    GxB_MAX_UINT32_MONOID,        // identity: 0            terminal: UINT32_MAX
+    GxB_MAX_UINT64_MONOID,        // identity: 0            terminal: UINT64_MAX
+    GxB_MAX_FP32_MONOID,          // identity: -INFINITY    terminal: INFINITY
+    GxB_MAX_FP64_MONOID,          // identity: -INFINITY    terminal: INFINITY
 
     // PLUS monoids:
-    GxB_PLUS_INT8_MONOID,         // identity: 0
-    GxB_PLUS_UINT8_MONOID,        // identity: 0
-    GxB_PLUS_INT16_MONOID,        // identity: 0
-    GxB_PLUS_UINT16_MONOID,       // identity: 0
-    GxB_PLUS_INT32_MONOID,        // identity: 0
-    GxB_PLUS_UINT32_MONOID,       // identity: 0
-    GxB_PLUS_INT64_MONOID,        // identity: 0
-    GxB_PLUS_UINT64_MONOID,       // identity: 0
-    GxB_PLUS_FP32_MONOID,         // identity: 0
-    GxB_PLUS_FP64_MONOID,         // identity: 0
+    GxB_PLUS_INT8_MONOID,         // identity: 0            terminal: none
+    GxB_PLUS_INT16_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_INT32_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_INT64_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_UINT8_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_UINT16_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_UINT32_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_UINT64_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_FP32_MONOID,         // identity: 0            terminal: none
+    GxB_PLUS_FP64_MONOID,         // identity: 0            terminal: none
 
     // TIMES monoids:
-    GxB_TIMES_INT8_MONOID,        // identity: 1
-    GxB_TIMES_UINT8_MONOID,       // identity: 1
-    GxB_TIMES_INT16_MONOID,       // identity: 1
-    GxB_TIMES_UINT16_MONOID,      // identity: 1
-    GxB_TIMES_INT32_MONOID,       // identity: 1
-    GxB_TIMES_UINT32_MONOID,      // identity: 1
-    GxB_TIMES_INT64_MONOID,       // identity: 1
-    GxB_TIMES_UINT64_MONOID,      // identity: 1
-    GxB_TIMES_FP32_MONOID,        // identity: 1
-    GxB_TIMES_FP64_MONOID,        // identity: 1
+    GxB_TIMES_INT8_MONOID,        // identity: 1            terminal: 0
+    GxB_TIMES_INT16_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_INT32_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_INT64_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_UINT8_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_UINT16_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_UINT32_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_UINT64_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_FP32_MONOID,        // identity: 1            terminal: none
+    GxB_TIMES_FP64_MONOID,        // identity: 1            terminal: none
 
     // Boolean monoids:
-    GxB_LOR_BOOL_MONOID,          // identity: false
-    GxB_LAND_BOOL_MONOID,         // identity: true
+    GxB_LOR_BOOL_MONOID,          // identity: false        terminal: true
+    GxB_LAND_BOOL_MONOID,         // identity: true         terminal: false
     GxB_LXOR_BOOL_MONOID,         // identity: false
     GxB_EQ_BOOL_MONOID ;          // identity: true
 
@@ -5577,7 +5756,9 @@ GrB_Info GxB_Matrix_import_CSR      // import a CSR matrix
     GrB_Index ncols,
     GrB_Index nvals,        // number of entries in the matrix
     // CSR format:
-    GrB_Index **Ap,         // row pointers, size nrows+1
+    int64_t nonempty,       // number of rows with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // row "pointers", size nrows+1
     GrB_Index **Aj,         // column indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5598,6 +5779,10 @@ GrB_Info GxB_Matrix_import_CSR      // import a CSR matrix
     //      at least nvals.  If nvals is zero, then the Aj and Ax arrays need
     //      not be present and can be NULL.
 
+    //      The nonempty parameter is optional.  It states the number of rows
+    //      that have at least one entry: if not known, use -1;
+    //      if nonempty >= 0 the value must be exact.
+
 //------------------------------------------------------------------------------
 
 GrB_Info GxB_Matrix_import_CSC      // import a CSC matrix
@@ -5608,7 +5793,9 @@ GrB_Info GxB_Matrix_import_CSC      // import a CSC matrix
     GrB_Index ncols,
     GrB_Index nvals,        // number of entries in the matrix
     // CSC format:
-    GrB_Index **Ap,         // column pointers, size ncols+1
+    int64_t nonempty,       // number of columns with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // column "pointers", size ncols+1
     GrB_Index **Ai,         // row indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5629,6 +5816,10 @@ GrB_Info GxB_Matrix_import_CSC      // import a CSC matrix
     //      at least nvals.  If nvals is zero, then the Ai and Ax arrays need
     //      not be present and can be NULL.
 
+    //      The nonempty parameter is optional.  It states the number of
+    //      columns that have at least one entry: if not known, use -1;
+    //      if nonempty >= 0 the value must be exact.
+
 //------------------------------------------------------------------------------
 
 GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
@@ -5639,16 +5830,18 @@ GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
     GrB_Index ncols,
     GrB_Index nvals,        // number of entries in the matrix
     // hypersparse CSR format:
-    GrB_Index nvec,         // number of non-empty rows
-    GrB_Index **Ah,         // list of non-empty rows, size nvec
-    GrB_Index **Ap,         // row pointers, size nvec+1
+    int64_t nonempty,       // number of rows in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
     GrB_Index **Aj,         // column indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
 ) ;
 
-    // HYPER_CSR: an nrows-by-ncols matrix with nvals entries and nvec non-empty
-    // rows in HYPER_CSR format consists of 4 arrays:
+    // HYPER_CSR: an nrows-by-ncols matrix with nvals entries and nvec
+    // rows that may have entries in HYPER_CSR format consists of 4 arrays:
     //
     //          GrB_Index Ah [nvec], Ap [nvec+1], Aj [nvals] ;
     //          <type> Ax [nvals] ;
@@ -5656,9 +5849,10 @@ GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
     //      The Aj and Ax arrays are the same for a matrix in CSR or HYPER_CSR
     //      format.  Only Ap and Ah differ.
     //
-    //      The Ah array is a list of the row indices of non-empty rows.  It
+    //      The Ah array is a list of the row indices of rows that appear in
+    //      the matrix.  It
     //      must appear in sorted order, and no duplicates may appear.  If i =
-    //      Ah [k] is the kth non-empty row, then the column indices of the ith
+    //      Ah [k] is the kth row, then the column indices of the ith
     //      row appear in Aj [Ap [k] ... Ap [k+1]], and the corresponding
     //      values appear in the same locations in Ax.  Column indices must be
     //      in the range 0 to ncols-1, and must appear in sorted order within
@@ -5667,6 +5861,12 @@ GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
     //      be of size at least nvec, Ap must be of size at least nvec+1, and
     //      Aj and Ax must be at least of size nvals.  If nvals is zero, then
     //      the Aj and Ax arrays need not be present and can be NULL.
+
+    //      The nonempty parameter is optional.  Row indices that do not appear
+    //      in the Ah list have no entries.  Row indices that do appear in Ah
+    //      have >= 0 entries.  The nonempty parameter states the number of
+    //      rows in the Ah list that have at least one entry: if not known, use
+    //      -1.  If nonempty >= 0 the value must be exact.
 
 //------------------------------------------------------------------------------
 
@@ -5678,16 +5878,18 @@ GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
     GrB_Index ncols,
     GrB_Index nvals,        // number of entries in the matrix
     // hypersparse CSC format:
-    GrB_Index nvec,         // number of non-empty columns
-    GrB_Index **Ah,         // list of non-empty columns, size nvec
-    GrB_Index **Ap,         // column pointers, size nvec+1
+    int64_t nonempty,       // number of columns in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // column "pointers", size nvec+1
     GrB_Index **Ai,         // row indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
 ) ;
 
     // HYPER_CSC: an nrows-by-ncols matrix with nvals entries and nvec
-    // non-empty columns in HYPER_CSC format consists of 4 arrays:
+    // columns that may have entries in HYPER_CSC format consists of 4 arrays:
     //
     //
     //          GrB_Index Ah [nvec], Ap [nvec+1], Ai [nvals] ;
@@ -5708,6 +5910,12 @@ GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
     //      size at least nvec+1, and Ai and Ax must be at least of size nvals.
     //      If nvals is zero, then the Ai and Ax arrays need not be present and
     //      can be NULL.
+
+    //      The nonempty parameter is optional.  Column indices that do not
+    //      appear in the Ah list have no entries.  Column indices that do
+    //      appear in Ah have >= 0 entries.  The nonempty parameter states the
+    //      number of columns in the Ah list that have at least one entry: if
+    //      not known, use -1.  If nonempty >= 0 the value must be exact.
 
 //------------------------------------------------------------------------------
 
@@ -5789,10 +5997,11 @@ GrB_Info GxB_Matrix_export_CSR  // export and free a CSR matrix
     GrB_Matrix *A,          // handle of matrix to export and free
     GrB_Type *type,         // type of matrix exported
     GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
-    GrB_Index *nrols,
+    GrB_Index *ncols,
     GrB_Index *nvals,       // number of entries in the matrix
     // CSR format:
-    GrB_Index **Ap,         // row pointers, size nrows+1
+    int64_t *nonempty,      // number of rows with at least one entry
+    GrB_Index **Ap,         // row "pointers", size nrows+1
     GrB_Index **Aj,         // column indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5803,10 +6012,11 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
     GrB_Matrix *A,          // handle of matrix to export and free
     GrB_Type *type,         // type of matrix exported
     GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
-    GrB_Index *nrols,
+    GrB_Index *ncols,
     GrB_Index *nvals,       // number of entries in the matrix
     // CSC format:
-    GrB_Index **Ap,         // column pointers, size ncols+1
+    int64_t *nonempty,      // number of columns with at least one entry
+    GrB_Index **Ap,         // column "pointers", size ncols+1
     GrB_Index **Ai,         // row indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5817,12 +6027,13 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     GrB_Matrix *A,          // handle of matrix to export and free
     GrB_Type *type,         // type of matrix exported
     GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
-    GrB_Index *nrols,
+    GrB_Index *ncols,
     GrB_Index *nvals,       // number of entries in the matrix
     // hypersparse CSR format:
-    GrB_Index *nvec,        // number of non-empty rows
-    GrB_Index **Ah,         // list of non-empty rows, size nvec
-    GrB_Index **Ap,         // row pointers, size nvec+1
+    int64_t *nonempty,      // number of rows in Ah with at least one entry
+    GrB_Index *nvec,        // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
     GrB_Index **Aj,         // column indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5833,12 +6044,13 @@ GrB_Info GxB_Matrix_export_HyperCSC  // export and free a hypersparse CSC matrix
     GrB_Matrix *A,          // handle of matrix to export and free
     GrB_Type *type,         // type of matrix exported
     GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
-    GrB_Index *nrols,
+    GrB_Index *ncols,
     GrB_Index *nvals,       // number of entries in the matrix
     // hypersparse CSC format:
-    GrB_Index *nvec,        // number of non-empty columns
-    GrB_Index **Ah,         // list of non-empty columns, size nvec
-    GrB_Index **Ap,         // columns pointers, size nvec+1
+    int64_t *nonempty,      // number of columns in Ah with at least one entry
+    GrB_Index *nvec,        // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // columns "pointers", size nvec+1
     GrB_Index **Ai,         // row indices, size nvals
     void      **Ax,         // values, size nvals
     const GrB_Descriptor desc       // descriptor for # of threads to use
@@ -5893,422 +6105,6 @@ GrB_Info GxB_Vector_export  // export and free a vector
  
 
 
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_pagerank.m4: PageRank semiring
-//------------------------------------------------------------------------------
-
-// Defines a PageRank type, operators, monoid, and semiring for the method in
-// Demo/Source/dpagerank2.c.
-
-#ifdef GxB_USER_INCLUDE
-
-// Define a token that dpagerank2.c can use to determine if these definitions
-// are available at compile-time.
-#define PAGERANK_PREDEFINED
-
-// each node has a rank value, and a constant which is 1/outdegree
-typedef struct
-{
-    double rank ;
-    double invdegree ;
-}
-pagerank_type ;
-
-// global variable declarations
-extern
-double pagerank_damping, pagerank_teleport, pagerank_rdiff,
-    pagerank_init_rank, pagerank_rsum ;
-
-// for thread safety if the user application uses OpenMP, with parallel calls
-// to dpagerank2 on independent problems.
-#pragma omp threadprivate(pagerank_damping, pagerank_teleport, pagerank_rdiff, pagerank_init_rank, pagerank_rsum)
-
-// The identity value for the pagerank_add monoid is {0,0}. For the
-// GxB_*_define macro that defines the GrB_Monoid, the identity argument must
-// be a compile-time constant (for the C definition), and it must also be
-// parsable as an argument to the m4 macro.  If the user-defined type is a
-// struct, the initializer uses curly brackets, but this causes a parsing error
-// for m4.  The solution is to define a C macro with the initialization
-// constant, and to use it in the GxB*define m4 macro.
-#define PAGERANK_ZERO {0,0}
-
-// unary operator to divide a double entry by the scalar pagerank_rsum
-static inline
-void pagerank_div (double *z, const double *x)
-{
-    (*z) = (*x) / pagerank_rsum ;
-}
-
-// unary operator that typecasts PageRank_type to double, extracting the rank
-static inline
-void pagerank_get_rank (double *z, const pagerank_type *x)
-{
-    (*z) = (x->rank) ;
-}
-
-// unary operator to initialize a node
-static inline
-void init_page (pagerank_type *z, const double *x)
-{
-    z->rank = pagerank_init_rank ;  // all nodes start with rank 1/n
-    z->invdegree = 1. / (*x) ;      // set 1/outdegree of this node 
-}
-
-//------------------------------------------------------------------------------
-// PageRank semiring
-//------------------------------------------------------------------------------
-
-// In MATLAB notation, the new rank is computed with:
-// newrank = pagerank_damping * (rank * D * A) + pagerank_teleport
-
-// where A is a square binary matrix of the original graph, and A(i,j)=1 if
-// page i has a link to page j.  rank is a row vector of size n.  The matrix D
-// is diagonal, with D(i,i)=1/outdegree(i), where outdegree(i) = the outdegree
-// of node i, or equivalently, outdegree(i) = sum (A (i,:)).
-
-// That is, if newrank(j) were computed with a dot product:
-//      newrank (j) = 0
-//      for all i:
-//          newrank (j) = newrank (j) + (rank (i) * D (i,i)) * A (i,j)
-
-// To accomplish this computation in a single vector-matrix multiply, the value
-// of D(i,i) is held as component of a combined data type, the pagerank_type,
-// which has both the rank(i) and the entry D(i,i).
-
-// binary multiplicative operator for the pagerank semiring
-static inline
-void pagerank_multiply
-(
-    pagerank_type *z,
-    const pagerank_type *x,
-    const bool *y
-)
-{
-    // y is the boolean entry of the matrix, A(i,j)
-    // x->rank is the rank of node i, and x->invdegree is 1/outdegree(i)
-    // note that z->invdegree is left unchanged
-    z->rank = (*y) ? ((x->rank) * (x->invdegree)) : 0 ;
-}
-
-// binary additive operator for the pagerank semiring
-static inline
-void pagerank_add
-(
-    pagerank_type *z,
-    const pagerank_type *x,
-    const pagerank_type *y
-)
-{
-    // note that z->invdegree is left unchanged; it is unused
-    z->rank = (x->rank) + (y->rank) ;
-}
-
-//------------------------------------------------------------------------------
-// pagerank accumulator
-//------------------------------------------------------------------------------
-
-// The semiring computes the vector newrank = rank*D*A.  To complete the page
-// rank computation, the new rank must be scaled by the
-// pagerank_damping, and the pagerank_teleport must be included, which is
-// done in the page rank accumulator:
-
-// newrank = pagerank_damping * newrank + pagerank_teleport
-
-// The PageRank_semiring does not construct the entire pagerank_type of
-// rank*D*A, since the vector that holds newrank(i) must also keep the
-// 1/invdegree(i), unchanged.  This is restored in the accumulator operator.
-
-// The PageRank_accum operator can also compute pagerank_rdiff = norm (r-rnew),
-// as a side effect.  This is unsafe but faster (see the comments below);
-// uncomment the following #define to enable the unsafe method, or comment it
-// out to use the safe method:
-//
-    #define PAGERANK_UNSAFE
-
-// binary operator to accumulate the new rank from the old
-static inline
-void pagerank_accum
-(
-    pagerank_type *z,
-    const pagerank_type *x,
-    const pagerank_type *y
-)
-{
-    // note that this formula does not use the old rank:
-    // new rank = pagerank_damping * (rank*A ) + pagerank_teleport
-    double rnew = pagerank_damping * (y->rank) + pagerank_teleport ;
-
-    #ifdef PAGERANK_UNSAFE
-
-    // This computation of pagerank_rdiff is not guaranteed to work per the
-    // GraphBLAS spec, but it does work with the current implementation of
-    // SuiteSparse:GraphBLAS.  The reason is that there is no guarantee that
-    // the accumulator step of a GraphBLAS operation is computed sequentially.
-    // If computed in parallel, a race condition would occur.
-
-    // This step uses the old rank, to compute the stopping criterion:
-    // pagerank_rdiff = sum (ranknew - rankold)
-    double delta = rnew - (x->rank) ;
-    pagerank_rdiff += delta * delta ;
-
-    #endif
-
-    // update the rank, and copy over the inverse degree from the old page info
-    z->rank = rnew ;
-    z->invdegree = x->invdegree ;
-}
-
-//------------------------------------------------------------------------------
-// pagerank_diff: compute the change in the rank
-//------------------------------------------------------------------------------
-
-// This is safer than computing pagerank_rdiff via pagerank_accum, and is
-// compliant with the GraphBLAS spec.
-
-static inline
-void pagerank_diff
-(
-    pagerank_type *z,
-    const pagerank_type *x,
-    const pagerank_type *y
-)
-{
-    double delta = (x->rank) - (y->rank) ;
-    z->rank = delta * delta ;
-}
-
-#else
-
-// global variable definitions
-double pagerank_damping, pagerank_teleport, pagerank_rdiff,
-    pagerank_init_rank, pagerank_rsum ;
-
-#endif
-
-// create the new Page type
-extern GrB_Type PageRank_type ;
-
-// create the unary operator to initialize the PageRank_type of each node
-extern GrB_UnaryOp PageRank_init ;
-
-// create PageRank_accum
-extern GrB_BinaryOp PageRank_accum ;
-
-// create PageRank_add operator and monoid
-extern GrB_BinaryOp PageRank_add ;
-
-// create PageRank_monoid.  See the discussion above for PAGERANK_ZERO.
-extern GrB_Monoid PageRank_monoid ;
-
-// create PageRank_multiply operator
-extern GrB_BinaryOp PageRank_multiply ;
-
-// create PageRank_semiring
-extern GrB_Semiring PageRank_semiring ;
-
-// create unary operator that typecasts the PageRank_type to double
-extern GrB_UnaryOp PageRank_get ;
-
-// create unary operator that scales the rank by pagerank_rsum
-extern GrB_UnaryOp PageRank_div ;
-
-// create PageRank_diff operator
-extern GrB_BinaryOp PageRank_diff ;
-
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_scale.m4: example user built-in objects
-//------------------------------------------------------------------------------
-
-// user-defined unary operator: z = f(x) = my_scalar*x and its global scalar
-
-#ifdef GxB_USER_INCLUDE
-
-    //--------------------------------------------------------------------------
-    // declarations: for GraphBLAS.h
-    //--------------------------------------------------------------------------
-
-    // The following are declarations that are enabled in GraphBLAS.h and
-    // appear in all user codes that #include "GraphBLAS.h", and also in all
-    // internal GraphBLAS codes.  All user declarations (not definitions)
-    // should appear here.
-
-    #define MY_SCALE
-
-    extern double my_scalar ;
-    // for thread safety if the user application uses OpenMP
-    #pragma omp threadprivate(my_scalar)
-
-    static inline void my_scale
-    (
-        double *z,
-        const double *x
-    )
-    {
-        (*z) = my_scalar * (*x) ;
-    }
-
-#else
-
-    //--------------------------------------------------------------------------
-    // definitions: code appears just once, in Source/all_user_objects.c
-    //--------------------------------------------------------------------------
-
-    // The following defintions are enabled in only a single place:
-    // SuiteSparse/GraphBLAS/Source/all_user_objects.c.  This is the place
-    // where all user-defined global variables should be defined.
-
-    double my_scalar = 0 ;
-
-#endif
-
-
-//------------------------------------------------------------------------------
-// define/declare the GrB_UnaryOp My_scale
-//------------------------------------------------------------------------------
-
-// Unary operator to compute z = my_scalar*x
-
-extern GrB_UnaryOp My_scale ;
-
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_plus_rdiv.m4: example user built-in objects
-//------------------------------------------------------------------------------
-
-#ifdef GxB_USER_INCLUDE
-
-#define MY_RDIV
-
-    static inline void my_rdiv
-    (
-        double *z,
-        const double *x,
-        const double *y
-    )
-    {
-        (*z) = (*y) / (*x) ;
-    }
-
-#endif
-
-// rdiv operator
-extern GrB_BinaryOp My_rdiv ;
-
-// plus-rdiv semiring
-extern GrB_Semiring My_plus_rdiv ;
-
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_plus_rdiv2.m4: example user built-in objects
-//------------------------------------------------------------------------------
-
-// This version tests the case when the user-defined multiply operator
-// has a different type for x and y.
-
-#ifdef GxB_USER_INCLUDE
-
-    #define MY_RDIV2
-
-    static inline void my_rdiv2
-    (
-        double *z,
-        const double *x,
-        const float *y
-    )
-    {
-        (*z) = (*y) / (*x) ;
-    }
-
-#endif
-
-// rdiv2 operator
-extern GrB_BinaryOp My_rdiv2 ;
-
-// plus-rdiv2 semiring
-extern GrB_Semiring My_plus_rdiv2 ;
-
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_complex.m4: example user built-in objects
-//------------------------------------------------------------------------------
-
-// user-defined functions for a double complex type
-
-#ifdef GxB_USER_INCLUDE
-
-    // Get the complex.h definitions, but remove "I" since it is used elsewhere
-    // in GraphBLAS.
-    #include <complex.h>
-    #undef I
-
-    // Not all complex.h definitions include the CMPLX macro
-    #ifndef CMPLX
-    #define CMPLX(real,imag) \
-        ( \
-        (double complex)((double)(real)) + \
-        (double complex)((double)(imag) * _Complex_I) \
-        )
-    #endif
-
-    // define a token so a user application can check for existence 
-    #define MY_COMPLEX
-
-    static inline void my_complex_plus
-    (
-        double complex *z,
-        const double complex *x,
-        const double complex *y
-    )
-    {
-        (*z) = (*x) + (*y) ;
-    }
-
-    static inline void my_complex_times
-    (
-        double complex *z,
-        const double complex *x,
-        const double complex *y
-    )
-    {
-        (*z) = (*x) * (*y) ;
-    }
-
-#endif
-
-// GraphBLAS does not have a complex type; this defines one:
-extern GrB_Type My_Complex ;
-
-// The two operators, complex add and multiply:
-extern GrB_BinaryOp My_Complex_plus ;
-
-extern GrB_BinaryOp My_Complex_times ;
-
-// The plus monoid:
-extern GrB_Monoid My_Complex_plus_monoid ;
-
-// the conventional plus-times semiring for C=A*B for the complex case
-extern GrB_Semiring My_Complex_plus_times ;
-
-//------------------------------------------------------------------------------
-// GraphBLAS/User/Example/my_band.m4: example user built-in objects
-//------------------------------------------------------------------------------
-
-// user-defined functions for GxB_select, to choose entries within a band
-
-#ifdef GxB_USER_INCLUDE
-
-    #define MY_BAND
-
-    static inline bool myband (GrB_Index i, GrB_Index j, GrB_Index nrows,
-        GrB_Index ncols, const void *x, const void *thunk)
-    {
-        int64_t *lohi = (int64_t *) thunk ;
-        int64_t i2 = (int64_t) i ;
-        int64_t j2 = (int64_t) j ;
-        return ((lohi [0] <= (j2-i2)) && ((j2-i2) <= lohi [1])) ;
-    }
-
-#endif
-
-// Select operator to compute C = tril (triu (A, k1), k2)
-extern GxB_SelectOp My_band ;
 
 #endif
 
